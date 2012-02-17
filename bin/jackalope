@@ -44,7 +44,6 @@ $cli->addCommands(array(
     new \PHPCR\Util\Console\Command\RegisterNodeTypesCommand(),
     new \PHPCR\Util\Console\Command\Sql2Command(),
     new \Jackalope\Tools\Console\Command\InitDoctrineDbalCommand(),
-    new \Jackalope\Tools\Console\Command\JackrabbitCommand(),
 ));
 $cli->run();
 

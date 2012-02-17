@@ -8,7 +8,7 @@
          stopOnFailure="false"
          syntaxCheck="true"
          strict="false"
-         bootstrap="bootstrap_doctrine_dbal.php">
+         bootstrap="bootstrap.php">
     <php>
         <var name="phpcr.user" value="admin" />
         <var name="phpcr.pass" value="admin" />
@@ -43,13 +43,12 @@
             <exclude>
                 <!-- ignore helpers -->
                 <file>../src/Jackalope/autoloader.php</file>
-                <file>../src/Jackalope/Transport/curl.php</file>
 
                 <!-- ignore whats not implemented yet -->
-                <directory>../lib/phpcr/src/PHPCR/Lock</directory>
-                <directory>../lib/phpcr/src/PHPCR/Observation</directory>
-                <directory>../lib/phpcr/src/PHPCR/Retention</directory>
-                <directory>../lib/phpcr/src/PHPCR/Security</directory>
+                <directory>../lib/jackalope/lib/phpcr/src/PHPCR/Lock</directory>
+                <directory>../lib/jackalope/lib/phpcr/src/PHPCR/Observation</directory>
+                <directory>../lib/jackalope/lib/phpcr/src/PHPCR/Retention</directory>
+                <directory>../lib/jackalope/lib/phpcr/src/PHPCR/Security</directory>
             </exclude>
         </whitelist>
     </filter>

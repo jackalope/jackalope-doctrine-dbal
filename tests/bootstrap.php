@@ -2,12 +2,6 @@
 /** make sure we get ALL infos from php */
 error_reporting(E_ALL | E_STRICT);
 
-// PHPUnit 3.4 compat
-if (method_exists('PHPUnit_Util_Filter', 'addDirectoryToFilter')) {
-    PHPUnit_Util_Filter::addDirectoryToFilter(__DIR__);
-    PHPUnit_Util_Filter::addFileToFilter(__DIR__.'/../src/Jackalope/Transport/curl.php');
-}
-
 /**
  * bootstrap file for jackalope doctrine dbal tests
  *
@@ -32,11 +26,10 @@ if (isset($GLOBALS['phpcr.doctrine.loader'])) {
 /**
  * autoloader: tests rely on an autoloader.
  */
-require_once __DIR__ . '/../src/autoload.doctrine_dbal.dist.php';
+require_once __DIR__ . '/../src/autoload.dist.php';
 
 ### Load classes needed for jackalope unit tests ###
-require 'Jackalope/TestCase.php';
-require 'Jackalope/Transport/Jackrabbit/JackrabbitTestCase.php';
+require __DIR__ . '/../lib/jackalope/tests/Jackalope/TestCase.php';
 require 'Jackalope/Transport/DoctrineDBAL/DoctrineDBALTestCase.php';
 
 ### Load the implementation loader class ###

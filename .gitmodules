@@ -1,9 +1,9 @@
 [submodule "tests/api"]
 	path = tests/phpcr-api
 	url = git://github.com/phpcr/phpcr-api-tests.git
-[submodule "lib/phpcr"]
-	path = lib/phpcr
-	url = git://github.com/phpcr/phpcr.git
-[submodule "lib/phpcr-utils"]
-	path = lib/phpcr-utils
-	url = git://github.com/phpcr/phpcr-utils.git
+[submodule "lib/jackalope"]
+	path = lib/jackalope
+	url = git://github.com/jackalope/jackalope.git
+[submodule "lib/vendor/doctrine-dbal"]
+	path = lib/vendor/doctrine-dbal
+	url = git://github.com/doctrine/dbal.git

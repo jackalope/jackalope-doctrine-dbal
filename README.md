@@ -1,15 +1,10 @@
-# Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope.png?branch=master)](http://travis-ci.org/jackalope/jackalope)
+# Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
 
 A powerful implementation of the [PHPCR API](http://phpcr.github.com).
 
-You can use Jackalope with different storage backends. For now, we support:
-
-* *relational databases* with the DoctrineDBAL backend. Works with any
+Jackalope binding for relational databases with the DoctrineDBAL. Works with any
     database supported by doctrine (mysql, postgres, ...) and has no dependency
     on java or jackrabbit. For the moment, it is less feature complete.
-* *Jackrabbit* server backend supports many features and requires you to simply
-    install a .jar file for the data store component.
-
 
 Discuss on jackalope-dev@googlegroups.com
 or visit #jackalope on irc.freenode.net
@@ -20,34 +15,18 @@ Please see the file LICENSE in this folder.
 
 # Preconditions
 
-* libxml version >= 2.7.0 (due to a bug in libxml [http://bugs.php.net/bug.php?id=36501](http://bugs.php.net/bug.php?id=36501))
-* phpunit >= 3.5 (if you want to run the tests)
+* phpunit >= 3.6 (if you want to run the tests)
 * phpunit/DbUnit (if you want to run the Doctrine DBAL Transport tests)
 
 # Installation
 
     # in your project directory
-    git clone git://github.com/jackalope/jackalope.git
-    cd jackalope
+    git clone git://github.com/jackalope/jackalope-doctrine-dbal.git
+    cd jackalope-doctrine-dbal
     git submodule update --init --recursive
 
 *Be sure to run the git submodule command with recursive to get all dependencies of jackalope.*
 
-## Jackalope Jackrabbit
-
-Besides the Jackalope repository, you need the Jackrabbit server component. For instructions, see [Jackalope Wiki](https://github.com/jackalope/jackalope/wiki/Running-a-jackrabbit-server)
-Make sure you have at least the version specified in [the protocol implementation](https://github.com/jackalope/jackalope/blob/master/src/Jackalope/Transport/Jackrabbit/Client.php#L56)
-
-## Jackalope - Doctrine DBAL
-
-Besides the Jackalope repository, you need [Doctrine DBAL](https://github.com/doctrine/dbal)
-(which bundles [Doctrine Common](https://github.com/doctrine/common) too) installed on your machine.
-
-    # in your project directory
-    cd lib/vendor
-    git clone git://github.com/doctrine/dbal.git doctrine-dbal
-    cd doctrine-dbal
-    git submodule update --init
 
 ## phpunit Tests
 
@@ -70,8 +49,6 @@ Jackalope specific commands:
 
 * ``jackalope:init:dbal``: Initialize a database for jackalope with the
     Doctrine DBAL transport.
-* ``jackalope:run:jackrabbit [--jackrabbit_jar[="..."]] [start|stop|status]``:
-    Start and stop the Jackrabbit server
 
 Commands available from the phpcr-utils:
 
@@ -94,41 +71,23 @@ Commands available from the phpcr-utils:
 
 Jackalope relies on autoloading and the namespaces and folder structure follow
 PSR-0. Either set up your autoloading to find classes in the following folders
-or copy the ``autoload.jackrabbit.dist.php`` resp. ``autoload.dbal.dist.php``
-file in ``src/`` to ``autoload.php`` and adjust as needed.
+or copy the ``autoload.dist.php`` file in ``src/`` to ``autoload.php`` and
+adjust as needed.
 
 If you checked out everything as submodules, the paths will be
 
 * src/
-* lib/phpcr/src
-* lib/phpcr-utils/src
-* lib/phpcr-utils/lib/vendor
-
-
-## Bootstrapping Jackrabbit
-
-Minimalist sample code to get a PHPCR session with the jackrabbit backend.
-
-    $jackrabbit_url = 'http://127.0.0.1:8080/server/';
-    $user       = 'admin';
-    $pass       = 'admin';
-    $workspace  = 'default'; // to use a non-default workspace, you need to create it first. Until phpcr:workspace:create is supported for jackrabbit, see [test README](https://github.com/jackalope/jackalope/blob/master/tests/README.md) for instructions.
-
-    $repository = \Jackalope\RepositoryFactoryJackrabbit::getRepository(array('jackalope.jackrabbit_uri' => 'http://localhost:8080/server'));
-    $credentials = new SimpleCredentials($user, $pass);
-    $session = $repository->login($credentials, $workspace);
-
-
-## Bootstrapping Doctrine DBAL
-
-For Doctrine DBAL, you additionally need the doctrine repositories autoloaded.
-If you checked out as in the above instructions, those paths will be
-
+* lib/jackalope/src
+* lib/jackalope/lib/phpcr/src
+* lib/jackalope/lib/phpcr-utils/src
+* lib/jackalope/lib/phpcr-utils/lib/vendor
 * lib/vendor/doctrine-dbal/lib
 * lib/vendor/doctrine-dbal/lib/vendor/doctrine-common/lib
 
-Then you need to make sure the commands are set up (see above "Enable the
-commands") and run
+## Bootstrapping Doctrine DBAL
+
+Before you can use jackalope with a database, you need to set the database up.
+Make sure the commands are set up (see above "Enable the commands") and run
 
     bin/jackalope jackalope:init:dbal
 
@@ -183,20 +142,13 @@ See [PHPCR Tutorial](https://github.com/phpcr/phpcr/blob/master/doc/Tutorial.md)
 for a more detailed tutorial on how to use the PHPCR API.
 
 
-# Implementation notes
-
-See (doc/architecture.md) for an introduction how Jackalope is built. Have a
-look at the source files and generate the phpdoc.
-
-
 # TODO
 
 The best overview of what needs to be done are the functional test failures and
 skipped tests. Have a look at tests/inc/DoctrineDBALImplementationLoader.php
-resp. tests/inc/JackrabbitImplementationLoader.php to see what is currently not
-working and start hacking :-)
+to see what is currently not working and start hacking :-)
 
-## Some Doctrine DBAL notes
+## Some notes
 
 * Implement moving nodes, DoctrineTransport::modeNode() (and make sure not to violate any constraints during the process)
 * Implement usage of NodeTypeDefintions to read/write validation and formatting data correctly (such as auto-creating values, forcing multi-values)
