@@ -37,8 +37,7 @@ If you want to run the tests , please see the [README file in the tests folder](
 
 There are a couple of useful commands to interact with the repository.
 
-To use the console, copy cli-config.php.dist to cli-config.php and adjust it
-to use jackrabbit or doctrine dbal and configure the connection parameters.
+To use the console, copy cli-config.php.dist to cli-config.php and configure the connection parameters.
 Then you can run the commands from the jackalope directory with ``./bin/phpcr``
 
 NOTE: If you are using PHPCR inside of Symfony, the DoctrinePHPCRBundle

@@ -35,26 +35,6 @@ After setting tests up (see below), you can simply run them with phpunit
 
 You should only see success or skipped tests, no failures or errors.
 
-
-## Test setup for Jackrabbit Transport
-
-You need to create a new workspace. The simplest way to do this is
-
-    java -jar jackrabbit-*.jar
-    # when it says "Apache Jackrabbit is now running at http://localhost:8080/" ctrl-c to stop
-    cp -r jackrabbit/workspaces/default jackrabbit/workspace/tests
-    edit jackrabbit/workspaces/tests/workspace.xml
-    # change the line <Workspace name="default"> to <Workspace name="tests">
-    java -jar jackrabbit-*.jar
-
-See also "Jackrabbit Doc":http://jackrabbit.apache.org/jackrabbit-configuration.html#JackrabbitConfiguration-Workspaceconfiguration
-
-Once you have jackrabbit with a tests workspace, run the tests.
-
-    cd /path/to/jackalope/tests
-    cp phpunit_jackrabbit.xml.dist phpunit.xml
-    phpunit
-
 ## Test setup for the Doctrine DBAL transport
 
 There is a phpunit_doctrinedbal.xml.dist file in the tests/ folder. Copy that to phpunit.xml and adjust settings as you need them.
@@ -71,26 +51,6 @@ The converted fixtures are written into **tests/fixtures/doctrine**. The convert
     cp phpunit_doctrine_dbal.xml.dist phpunit.xml
     ./generate_doctrine_dbal_fixture.php
     phpunit
-
-
-
-# Some notes on the jackalope-jackrabbit api testing.
-
-## Using JackrabbitFixtureLoader for load your own fixtures
-
-Note that the best would be to implement the Session::importXML method
-
-Until this happens, you can use the class JackrabbitFixtureLoader found in
-inc/JackrabbitFixtureLoader.php to import fixtures in the JCR XML formats.
-It relies on jack.jar. The class can be plugged in Symfony2 autoload mechanism
-through autoload.php, which can be used to feed a MapFileClassLoader instance. E.g:
-
-
-    $phpcr_loader = new MapFileClassLoader(
-        __DIR__.'/../vendor/doctrine-phpcr-odm/lib/vendor/jackalope/inc/JackrabbitFixtureLoader.php'
-    );
-    $phpcr_loader->register();
-
 
 ## Note on JCR
 

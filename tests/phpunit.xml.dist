@@ -15,8 +15,8 @@
         <var name="phpcr.workspace" value="tests" />
         <!-- Path to Doctrine stuff for transport -->
         <!-- if you want your vendors in a different than the default path, uncomment and change this
-        <var name="phpcr.doctrine.loader" value="../lib/vendor/doctrine-common/lib/Doctrine/Common/ClassLoader.php" />
-        <var name="phpcr.doctrine.commondir" value="../lib/vendor/doctrine-common/lib" />
+        <var name="phpcr.doctrine.loader" value="../lib/vendor/doctrine-dbal/lib/vendor/doctrine-common/lib/Doctrine/Common/ClassLoader.php" />
+        <var name="phpcr.doctrine.commondir" value="../lib/vendor/doctrine-dbal/lib/vendor/doctrine-common/lib" />
         <var name="phpcr.doctrine.dbaldir" value="../lib/vendor/doctrine-dbal/lib" />
         -->
         <var name="phpcr.doctrine.dbal.driver" value="pdo_mysql" />
@@ -30,7 +30,6 @@
         <testsuite name="Jackalope Doctrine DBAL Tests">
             <directory>./Jackalope</directory>
             <directory>./phpcr-api/</directory>
-            <exclude>./Jackalope/Transport/Jackrabbit</exclude>
         </testsuite>
     </testsuites>
 

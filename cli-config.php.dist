@@ -6,20 +6,8 @@
  * configuration
  */
 $workspace  = 'default'; // phpcr workspace to use
-$user       = 'admin';   // jackrabbit or sql user
-$pass       = 'admin';   // jackrabbit or sql password
-
-/** for jackalope - jackrabbit, do this: */
-function bootstrapJackrabbit()
-{
-    global $repository, $user, $pass;
-
-    /* additional jackrabbit configuration */
-    $jackrabbit_url = 'http://127.0.0.1:8080/server/';
-
-    // bootstrap jackrabbit
-    $repository = \Jackalope\RepositoryFactoryJackrabbit::getRepository(array("jackalope.jackrabbit_uri" => $jackrabbit_url));
-}
+$user       = 'admin';   // RDBMS user
+$pass       = 'admin';   // RDBMS password
 
 /** for jackalope - doctrine dbal, do this: */
 function bootstrapDoctrineDbal()
@@ -42,20 +30,12 @@ function bootstrapDoctrineDbal()
     $repository = \Jackalope\RepositoryFactoryDoctrineDBAL::getRepository(array('jackalope.doctrine_dbal_connection' => $dbConn));
 }
 
-/*
- * enable jackrabbit backend
- */
-bootstrapJackrabbit();
-/*
- * or comment out jackrabbit and uncomment this instead to enable doctrine backend
- */
-//bootstrapDoctrineDbal();
+bootstrapDoctrineDbal();
 
 $credentials = new \PHPCR\SimpleCredentials($user, $pass);
 
 /* only create a session if this is not about the server control command */
 if (isset($argv[1])
-    && $argv[1] != 'jackalope:run:jackrabbit'
     && $argv[1] != 'jackalope:init:dbal'
     && $argv[1] != 'list'
     && $argv[1] != 'help'
