@@ -1406,7 +1406,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $language = $query->getLanguage();
         if ($language === QueryInterface::JCR_SQL2) {
-            $parser = new Sql2ToQomQueryConverter($this->factory->get('Jackalope\Query\QOM\QueryObjectModelFactory'));
+            $parser = new Sql2ToQomQueryConverter($this->factory->get('Query\QOM\QueryObjectModelFactory'));
             try {
                 $query = $parser->parse($query->getStatement());
             } catch (\Exception $e) {
