@@ -218,6 +218,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function logout()
     {
         $this->loggedIn = false;
+        $this->conn->close();
         $this->conn = null;
     }
 
