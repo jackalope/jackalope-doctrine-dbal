@@ -1649,4 +1649,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         throw new NotImplementedException("Setting a transaction timeout is not yet implemented");
     }
+    
+    /**
+     * {@inheritDoc}
+     */
+
+    public function finishSave() 
+    {
+    }
 }
