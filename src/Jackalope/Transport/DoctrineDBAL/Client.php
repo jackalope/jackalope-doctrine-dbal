@@ -914,16 +914,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $params = array($xml, $nodeId);
 
         } else {
-            $params = array($path."%", $this->workspaceId);
+            $params = array($path, $path."/%", $this->workspaceId);
 
-            $query = 'SELECT count(*) FROM phpcr_nodes_foreignkeys fk INNER JOIN phpcr_nodes n ON n.id = fk.target_id'.
-                     '    WHERE n.path LIKE ? AND workspace_id = ? AND fk.type = ' . PropertyType::REFERENCE;
+            $query =
+                'SELECT count(*)
+                 FROM phpcr_nodes_foreignkeys fk
+                   INNER JOIN phpcr_nodes n ON n.id = fk.target_id
+                 WHERE (n.path = ? OR n.path LIKE ?)
+                   AND workspace_id = ?
+                   AND fk.type = ' . PropertyType::REFERENCE;
             $fkReferences = $this->conn->fetchColumn($query, $params);
             if ($fkReferences > 0) {
                 throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode.");
             }
 
-            $query = 'DELETE FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
+            $query =
+                'DELETE FROM phpcr_nodes
+                 WHERE (path = ? OR path LIKE ?)
+                   AND workspace_id = ?';
         }
 
         $this->conn->beginTransaction();
