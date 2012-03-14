@@ -27,6 +27,13 @@ Please see the file LICENSE in this folder.
 
 *Be sure to run the git submodule command with recursive to get all dependencies of jackalope.*
 
+## Create a repository
+
+Set up a new database supported by Doctrine DBAL (i.e. mysql or postgres). You
+can use your favorite GUI frontend or just do something like this:
+
+    mysqladmin -u root -p  create jackalope
+    echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
 ## phpunit Tests
 

@@ -1,12 +1,15 @@
 #!/usr/bin/env php
 <?php
 
+$autoload_dist = __DIR__.'/../src/autoload.dist.php';
 $autoload = __DIR__.'/../src/autoload.php';
-if (! file_exists($autoload)) {
-    die("Please copy one of the autoload dist files in src/ to $autoload and adjust as needed\n");
+if (file_exists($autoload)) {
+    require_once($autoload);
+} elseif (file_exists($autoload_dist)) {
+    require_once($autoload_dist);
+} else {
+    die("Please copy the autoload dist file in src/ to $autoload and adjust as needed\n");
 }
-
-require_once($autoload);
 
 $configFile = getcwd() . DIRECTORY_SEPARATOR . 'cli-config.php';
 

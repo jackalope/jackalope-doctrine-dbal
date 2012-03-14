@@ -44,7 +44,7 @@ Set up a new mysql database to run the tests against - be aware that the whole
 database is dropped each time you run the tests. You can use your favorite GUI
 frontend or just do something like this:
 
-    sudo mysqladmin -u root -p  create jackalope_doctrine
+    mysqladmin -u root -p  create jackalope_doctrine
     echo "grant all privileges on jackalope_doctrine.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
 Test fixtures for functional tests are written in JCR System XML format. Use
