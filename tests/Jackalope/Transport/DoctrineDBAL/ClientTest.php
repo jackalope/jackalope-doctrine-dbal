@@ -40,7 +40,15 @@ class ClientTest extends DoctrineDBALTestCase
 
         $this->repository = new \Jackalope\Repository(null, $this->transport);
 
-        $this->session = $this->repository->login(new \PHPCR\SimpleCredentials("user", "passwd"), "default");
+        try {
+            $this->transport->createWorkspace($GLOBALS['phpcr.workspace']);
+        } catch (\PHPCR\RepositoryException $e) {
+            if ($e->getMessage() != "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
+                // if the message is not that the workspace already exists, something went really wrong
+                throw $e;
+            }
+        }
+        $this->session = $this->repository->login(new \PHPCR\SimpleCredentials("user", "passwd"), $GLOBALS['phpcr.workspace']);
     }
 
     public function testQueryNodes()

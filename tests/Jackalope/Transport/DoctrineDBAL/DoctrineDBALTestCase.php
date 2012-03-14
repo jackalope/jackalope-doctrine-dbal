@@ -9,13 +9,6 @@ abstract class DoctrineDBALTestCase extends TestCase
 {
     protected $conn;
 
-    public function setUp()
-    {
-        if (!isset($GLOBALS['phpcr.doctrine_dbal.loaded'])) {
-            $this->markTestSkipped('phpcr.doctrine_dbal.loaded is not set. Skipping Doctrine tests.');
-        }
-    }
-
     protected function getConnection()
     {
         if ($this->conn === null) {

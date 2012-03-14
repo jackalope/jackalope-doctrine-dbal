@@ -37,15 +37,22 @@ You should only see success or skipped tests, no failures or errors.
 
 ## Test setup for the Doctrine DBAL transport
 
-There is a phpunit_doctrinedbal.xml.dist file in the tests/ folder. Copy that to phpunit.xml and adjust settings as you need them.
+There is a phpunit_doctrinedbal.xml.dist file in the tests/ folder. Copy that
+to phpunit.xml and adjust settings as you need them.
 
-To setup a new mysql database to run the tests against, you can do something like - or use your favorite GUI frontend
+Set up a new mysql database to run the tests against - be aware that the whole
+database is dropped each time you run the tests. You can use your favorite GUI
+frontend or just do something like this:
 
     sudo mysqladmin -u root -p  create jackalope_doctrine
     echo "grant all privileges on jackalope_doctrine.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
-Test fixtures for functional tests are written in JCR System XML format. Use the converter script ``tests/generate_doctrine_dbal_fixture.php`` to prepare the fixtures for doctrine tests.
-The converted fixtures are written into **tests/fixtures/doctrine**. The converted fixtures are not tracked in the repository, you should regenerate them whenever the fixtures in tests/phpcr-api/fixtures change.
+Test fixtures for functional tests are written in JCR System XML format. Use
+the converter script ``tests/generate_doctrine_dbal_fixture.php`` to prepare
+the fixtures for doctrine tests.
+The converted fixtures are written into **tests/fixtures/doctrine**. The
+converted fixtures are not tracked in the repository, you should regenerate
+them whenever the fixtures in tests/phpcr-api/fixtures change.
 
     cd /path/to/jackalope/tests
     cp phpunit_doctrine_dbal.xml.dist phpunit.xml

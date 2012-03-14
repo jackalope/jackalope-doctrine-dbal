@@ -17,45 +17,64 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'PermissionsAndCapabilities',
                     'Import',
                     'Observation',
-                    'WorkspaceManagement',
                     'ShareableNodes',
                     'Versioning',
                     'AccessControlManagement',
                     'Locking',
                     'LifecycleManagement',
                     'RetentionAndHold',
-                    'Transactions',
                     'SameNameSiblings',
                     'OrderableChildNodes',
         );
 
         $this->unsupportedCases = array(
                     'Writing\\MoveMethodsTest',
-                    'Writing\\NodeTypePreemptiveValidationTest', // TODO: some of this could work, test it and make all work
         );
 
         $this->unsupportedTests = array(
                     'Connecting\\RepositoryTest::testLoginException', //TODO: figure out what would be invalid credentials
                     'Connecting\\RepositoryTest::testNoLogin',
-                    'Connecting\\RepositoryTest::testNoLoginAndWorkspace',
 
+                    'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
                     'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
                     'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix',
-                    'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
-                    'Reading\\PropertyReadMethodsTest::testJcrCreated', // fails because NodeTypeDefinitions do not work inside DoctrineDBAL transport yet.
+                    'Reading\\PropertyReadMethodsTest::testJcrCreated', // TODO: fails because NodeTypeDefinitions do not work inside DoctrineDBAL transport yet.
 
                     'Query\\QueryManagerTest::testGetQuery',
                     'Query\\QueryManagerTest::testGetQueryInvalid',
                     'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
+                    'Query\\QueryObjectSql2Test::testExecuteOffset',
                     'Query\\QuerySql2OperationsTest::testQueryJoin',
                     'Query\\QuerySql2OperationsTest::testQueryJoinReference',
 
                     'Writing\\NamespaceRegistryTest::testRegisterUnregisterNamespace',
+                    'Writing\\AddMethodsTest::testAddNodeAndChildNode',
+                    'Writing\\AddMethodsTest::testAddNodeIllegalType',
+                    'Writing\\AddMethodsTest::testAddNodeInParallel',
+                    'Writing\\AddMethodsTest::testAddPropertyWrongType',
+                    'Writing\\AddMethodsTest::testAddNodeChild',
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy',
+                    'Writing\\CopyMethodsTest::testWorkspaceCopy',
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved', // TODO: enable and look at the exception you get as starting point
                     'Writing\\MoveMethodsTest::testNodeOrderBeforeEnd',
                     'Writing\\MoveMethodsTest::testNodeOrderBeforeDown',
                     'Writing\\MoveMethodsTest::testNodeOrderBeforeUp',
+                    'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation',
+                    'Writing\\DeleteMethodsTest::testRemoveNodeParentState',
+                    'Writing\\DeleteMethodsTest::testRemovePropertyFromBackend',
+                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation',
+                    'Writing\\DeleteMethodsTest::testDeleteReferencedNodeException',
+                    'Writing\\DeleteMethodsTest::testRemoveNodeFromBackend',
+                    'Writing\\DeleteMethodsTest::testGetRemovedNodeSession',
+                    'Writing\\CombinedManipulationsTest::testRemoveAndMove',
+                    'Writing\\CombinedManipulationsTest::testRemoveAndAdd',
+                    'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
+                    'Writing\\CombinedManipulationsTest::testMoveSessionRefreshKeepChanges',
+
+
+                    'Transactions\\TransactionMethodsTest::testInTransaction',
+                    'Transactions\\TransactionMethodsTest::testTransactionCommit',
+                    'Transactions\\TransactionMethodsTest::testTransactionRollback',
         );
 
     }
@@ -98,9 +117,15 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
     {
         global $dbConn;
 
-        $dbConn->insert('phpcr_workspaces', array('name' => $GLOBALS['phpcr.workspace']));
         $transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory, $dbConn);
-        $GLOBALS['pdo'] = $dbConn->getWrappedConnection();
+        try {
+            $transport->createWorkspace($GLOBALS['phpcr.workspace']);
+        } catch (\PHPCR\RepositoryException $e) {
+            if ($e->getMessage() != "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
+                // if the message is not that the workspace already exists, something went really wrong
+                throw $e;
+            }
+        }
         return new \Jackalope\Repository(null, $transport);
     }
 
@@ -117,7 +142,8 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
     function getFixtureLoader()
     {
+        global $dbConn;
         require_once "DoctrineDBALFixtureLoader.php";
-        return new DoctrineDBALFixtureLoader($GLOBALS['pdo'], __DIR__ . "/../fixtures/doctrine/");
+        return new DoctrineDBALFixtureLoader($dbConn->getWrappedConnection(), __DIR__ . "/../fixtures/doctrine/");
     }
 }

@@ -16,10 +16,10 @@ if (isset($GLOBALS['phpcr.doctrine.loader'])) {
             die('Please set '.$val.' in your phpunit.xml.' . "\n");
         }
     }
-    $loader = new \Doctrine\Common\ClassLoader("Doctrine\Common", $GLOBALS['phpcr.doctrine.commondir']);
+    $loader = new \Doctrine\Common\ClassLoader("Doctrine\\Common", $GLOBALS['phpcr.doctrine.commondir']);
     $loader->register();
 
-    $loader = new \Doctrine\Common\ClassLoader("Doctrine\DBAL", $GLOBALS['phpcr.doctrine.dbaldir']);
+    $loader = new \Doctrine\Common\ClassLoader("Doctrine\\DBAL", $GLOBALS['phpcr.doctrine.dbaldir']);
     $loader->register();
 }
 
@@ -62,7 +62,7 @@ foreach ($schema->toSql($dbConn->getDatabasePlatform()) as $sql) {
         echo $e->getMessage();
     }
 }
-$GLOBALS['phpcr.doctrine_dbal.loaded'] = true;
+
 echo "done.\n";
 
 /** some constants */
