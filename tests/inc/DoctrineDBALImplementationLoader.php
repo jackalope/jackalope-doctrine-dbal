@@ -64,16 +64,10 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\MoveMethodsTest::testNodeOrderBeforeDown',
                     'Writing\\MoveMethodsTest::testNodeOrderBeforeUp',
                     'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation',
-                    'Writing\\DeleteMethodsTest::testRemovePropertyFromBackend',
                     'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation',
-                    'Writing\\DeleteMethodsTest::testDeleteReferencedNodeException',
-                    'Writing\\DeleteMethodsTest::testRemoveNodeFromBackend',
-                    'Writing\\DeleteMethodsTest::testGetRemovedNodeSession',
                     'Writing\\CombinedManipulationsTest::testRemoveAndMove',
-                    'Writing\\CombinedManipulationsTest::testRemoveAndAdd',
                     'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
                     'Writing\\CombinedManipulationsTest::testMoveSessionRefreshKeepChanges',
-
 
                     'Transactions\\TransactionMethodsTest::testInTransaction',
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',

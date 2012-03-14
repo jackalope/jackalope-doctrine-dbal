@@ -82,8 +82,16 @@ foreach ($ri as $file) {
     $dom->appendChild($rootNode);
 
     $nodes = $srcDom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'node');
+    // current node unique id
     $nodeId = 1;
+    // map of uuid => nodeid
     $nodeIds = array();
+    // this collects entries for phpcr_nodes_foreignkeys to be added
+    // map of target uuid => array of array with params for query to insert foreign keys
+    // each target uuid can have more than one ref to it
+    $foreignkeys = array();
+    // map of uuid => nodeid for the target_id in foreignkeys
+    $expectedNodes = array();
 
     // is this a system-view?
     if ($nodes->length > 0) {
@@ -151,12 +159,12 @@ foreach ($ri as $file) {
                 $id = \PHPCR\Util\UUIDHelper::generateUUID();
             }
 
-            if (isset($nodeIds[$id])) {
-                $nodeId = $nodeIds[$id];
+            if (isset($expectedNodes[$id])) {
+                $nodeId = $expectedNodes[$id];
             } else {
                 $nodeId = count($nodeIds)+1;
-                $nodeIds[$id] = $nodeId;
             }
+            $nodeIds[$id] = $nodeId;
 
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $rootNode = $dom->createElement('sv:node');
@@ -197,18 +205,18 @@ foreach ($ri as $file) {
                             case 'reference':
                                 if (isset($nodeIds[$value])) {
                                     $targetId = $nodeIds[$value];
+                                } elseif (isset($expectedNodes[$value])) {
+                                    $targetId = $expectedNodes[$value];
                                 } else {
-                                    $targetUUID = \PHPCR\Util\UUIDHelper::generateUUID();
-                                    $nodeIds[$targetUUID] = count($nodeIds)+1;
-                                    $targetId = $nodeIds[$targetUUID];
+                                    $expectedNodes[$value] = count($nodeIds)+1;
+                                    $targetId = $expectedNodes[$value];
                                 }
-
-                                $dataSetBuilder->addRow('phpcr_nodes_foreignkeys', array(
+                                $foreignkeys[$value][] = array(
                                     'source_id' => $nodeId,
                                     'source_property_name' => $attr,
                                     'target_id' => $targetId,
                                     'type' => $jcrTypeConst,
-                                ));
+                                );
                                 break;
                         }
                         $valueNode = $dom->createElement('sv:value');
@@ -260,6 +268,16 @@ foreach ($ri as $file) {
                 'props' => $dom->saveXML(),
             ));
         }
+
+        // delay this to the end to not add entries for weak refs to not existing nodes
+        foreach($foreignkeys as $uuid => $foreignkey) {
+            if (isset($nodeIds[$uuid])) {
+                foreach($foreignkey as $data) {
+                    $dataSetBuilder->addRow('phpcr_nodes_foreignkeys', $data);
+                }
+            }
+        }
+
     } else {
         continue; // document view not supported
     }
