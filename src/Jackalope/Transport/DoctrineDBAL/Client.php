@@ -16,6 +16,7 @@ use PHPCR\ReferentialIntegrityException;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
+use PHPCR\NodeType\ConstraintViolationException;
 
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\ArrayCache;
@@ -217,9 +218,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function logout()
     {
-        $this->loggedIn = false;
-        $this->conn->close();
-        $this->conn = null;
+        if ($this->loggedIn) {
+            $this->loggedIn = false;
+            $this->conn->close();
+            $this->conn = null;
+        }
     }
 
     /**
@@ -263,7 +266,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
             }
 
-            throw new RepositoryException();
+            throw new RepositoryException('You need to be logged in for this operation');
         }
     }
 
@@ -753,7 +756,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_id = ?';
         $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceId));
         if (!$row) {
-            throw new ItemNotFoundException("Item ".$path." not found.");
+            throw new ItemNotFoundException("Item ".$path." not found in workspace ".$this->workspaceName);
         }
 
         $data = new \stdClass();
@@ -876,6 +879,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
+        if ('/' == $path) {
+            throw new ConstraintViolationException('You can not delete the root node of a repository');
+        }
+
         $nodeId = $this->pathExists($path);
 
         if (!$nodeId) {
@@ -960,7 +967,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         throw new NotImplementedException("Moving nodes is not yet implemented");
     }
-    
+
     /**
      * Get parent path of a path.
      *
@@ -1649,12 +1656,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         throw new NotImplementedException("Setting a transaction timeout is not yet implemented");
     }
-    
+
     /**
      * {@inheritDoc}
      */
 
-    public function finishSave() 
+    public function finishSave()
     {
     }
 }
