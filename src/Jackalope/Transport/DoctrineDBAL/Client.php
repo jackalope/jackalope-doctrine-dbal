@@ -886,96 +886,40 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeId = $this->pathExists($path);
 
         if (!$nodeId) {
-            // This might still be a property
-            $nodePath = $this->getParentPath($path);
-            $nodeId = $this->pathExists($nodePath);
-            if (!$nodeId) {
-                // no we really don't know that path
-                throw new ItemNotFoundException("No item found at ".$path);
-            }
+            throw new ItemNotFoundException("No node found at ".$path);
+        }
+        $params = array($path, $path."/%", $this->workspaceId);
 
-            if ('/' == $nodePath) {
-                // root node is a special case
-                $propertyName = substr($path, 1);
-            } else {
-                $propertyName = str_replace($nodePath . '/', '', $path);
-            }
-
-            $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
-            $xml = $this->conn->fetchColumn($query, array($nodeId));
-
-            $dom = new \DOMDocument('1.0', 'UTF-8');
-            $dom->loadXml($xml);
-
-            $this->conn->beginTransaction();
-
-            $found = false;
-            foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-                if ($propertyName == $propertyNode->getAttribute('sv:name')) {
-                    $found = true;
-                    if ($propertyNode->hasAttribute('sv:type') &&
-                        ('reference' == $propertyNode->getAttribute('sv:type') ||
-                         'weakreference' == $propertyNode->getAttribute('sv:type'))
-                    ) {
-                        $query =
-                            'DELETE FROM phpcr_nodes_foreignkeys
-                             WHERE source_id = ?
-                                AND source_property_name = ?';
-                        try {
-                            $this->conn->executeUpdate($query, array($nodeId, $propertyName));
-                        } catch (\Exception $e) {
-                            $this->conn->rollBack();
-
-                            return false;
-                        }
-                    }
-                    $propertyNode->parentNode->removeChild($propertyNode);
-                    break;
-                }
-            }
-            if (! $found) {
-                $this->conn->rollBack();
-                throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
-            }
-            $xml = $dom->saveXML();
-
-            $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
-            $params = array($xml, $nodeId);
-
-        } else {
-            $params = array($path, $path."/%", $this->workspaceId);
-
+        $query =
+            'SELECT count(*)
+             FROM phpcr_nodes_foreignkeys fk
+               INNER JOIN phpcr_nodes n ON n.id = fk.target_id
+             WHERE (n.path = ? OR n.path LIKE ?)
+               AND workspace_id = ?
+               AND fk.type = ' . PropertyType::REFERENCE;
+        $fkReferences = $this->conn->fetchColumn($query, $params);
+        if ($fkReferences > 0) {
+            /*
+            TODO: if we had logging, we could report which nodes
             $query =
-                'SELECT count(*)
+                'SELECT fk.source_id
                  FROM phpcr_nodes_foreignkeys fk
                    INNER JOIN phpcr_nodes n ON n.id = fk.target_id
+                   INNER JOIN phpcr_nodes f ON f.id = fk.source_id
                  WHERE (n.path = ? OR n.path LIKE ?)
-                   AND workspace_id = ?
+                   AND n.workspace_id = ?
                    AND fk.type = ' . PropertyType::REFERENCE;
-            $fkReferences = $this->conn->fetchColumn($query, $params);
-            if ($fkReferences > 0) {
-                /*
-                TODO: if we had logging, we could report which nodes
-                $query =
-                    'SELECT fk.source_id
-                     FROM phpcr_nodes_foreignkeys fk
-                       INNER JOIN phpcr_nodes n ON n.id = fk.target_id
-                       INNER JOIN phpcr_nodes f ON f.id = fk.source_id
-                     WHERE (n.path = ? OR n.path LIKE ?)
-                       AND n.workspace_id = ?
-                       AND fk.type = ' . PropertyType::REFERENCE;
-                $paths = $this->conn->fetchAssoc($query, $params);
-                */
-                throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode");
-            }
-
-            $query =
-                'DELETE FROM phpcr_nodes
-                 WHERE (path = ? OR path LIKE ?)
-                   AND workspace_id = ?';
-
-            $this->conn->beginTransaction();
+            $paths = $this->conn->fetchAssoc($query, $params);
+            */
+            throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode");
         }
+
+        $query =
+            'DELETE FROM phpcr_nodes
+             WHERE (path = ? OR path LIKE ?)
+               AND workspace_id = ?';
+
+        $this->conn->beginTransaction();
 
         try {
             $this->conn->executeUpdate($query, $params);
@@ -994,7 +938,76 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function deleteProperty($path)
     {
-        throw new NotImplementedException("Deleting properties by path is not yet implemented");
+        $this->assertLoggedIn();
+
+        $nodePath = $this->getParentPath($path);
+        $nodeId = $this->pathExists($nodePath);
+        if (!$nodeId) {
+            // no we really don't know that path
+            throw new ItemNotFoundException("No item found at ".$path);
+        }
+
+        if ('/' == $nodePath) {
+            // root node is a special case
+            $propertyName = substr($path, 1);
+        } else {
+            $propertyName = str_replace($nodePath . '/', '', $path);
+        }
+
+        $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
+        $xml = $this->conn->fetchColumn($query, array($nodeId));
+
+        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom->loadXml($xml);
+
+        $this->conn->beginTransaction();
+
+        $found = false;
+        foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
+            if ($propertyName == $propertyNode->getAttribute('sv:name')) {
+                $found = true;
+
+                // would be nice to have the property object to ask for type
+                // but its in state deleted, would mean lots of refactoring
+                if ($propertyNode->hasAttribute('sv:type') &&
+                    ('reference' == $propertyNode->getAttribute('sv:type') ||
+                        'weakreference' == $propertyNode->getAttribute('sv:type'))
+                ) {
+                    $query =
+                        'DELETE FROM phpcr_nodes_foreignkeys
+                         WHERE source_id = ?
+                            AND source_property_name = ?';
+                    try {
+                        $this->conn->executeUpdate($query, array($nodeId, $propertyName));
+                    } catch (\Exception $e) {
+                        $this->conn->rollBack();
+
+                        return false;
+                    }
+                }
+                $propertyNode->parentNode->removeChild($propertyNode);
+                break;
+            }
+        }
+        if (! $found) {
+            $this->conn->rollBack();
+            throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
+        }
+        $xml = $dom->saveXML();
+
+        $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
+        $params = array($xml, $nodeId);
+
+        try {
+            $this->conn->executeUpdate($query, $params);
+            $this->conn->commit();
+        } catch (\Exception $e) {
+            $this->conn->rollBack();
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
