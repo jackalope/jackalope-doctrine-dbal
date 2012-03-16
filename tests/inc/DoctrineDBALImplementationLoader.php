@@ -52,11 +52,9 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\NodeViewTest::testSeekable',
 
                     'Writing\\NamespaceRegistryTest::testRegisterUnregisterNamespace',
-                    'Writing\\AddMethodsTest::testAddNodeAndChildNode',
                     'Writing\\AddMethodsTest::testAddNodeIllegalType',
                     'Writing\\AddMethodsTest::testAddNodeInParallel',
                     'Writing\\AddMethodsTest::testAddPropertyWrongType',
-                    'Writing\\AddMethodsTest::testAddNodeChild',
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy',
                     'Writing\\CopyMethodsTest::testWorkspaceCopy',
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved', // TODO: enable and look at the exception you get as starting point
