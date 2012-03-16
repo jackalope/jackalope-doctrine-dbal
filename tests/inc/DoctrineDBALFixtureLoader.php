@@ -31,7 +31,16 @@ class DoctrineDBALFixtureLoader implements \PHPCR\Test\FixtureLoaderInterface
         $tester->setTearDownOperation(PHPUnit_Extensions_Database_Operation_Factory::NONE());
         $tester->setDataSet($dataSet);
         try {
+            $pdo = $this->testConn->getConnection();
+            //mysql from version 5.5.7 does not like to truncate tables with foreign key references: http://bugs.mysql.com/bug.php?id=58788
+            $mysql = strpos('mysql', $pdo->getAttribute(PDO::ATTR_DRIVER_NAME)) != -1;
+            if ($mysql) {
+                $pdo->exec('SET foreign_key_checks = 0');
+            }
             $tester->onSetUp();
+            if ($mysql) {
+                $pdo->exec('SET foreign_key_checks = 1');
+            }
         } catch(PHPUnit_Extensions_Database_Operation_Exception $e) {
             throw new RuntimeException("Could not load fixture ".$file.": ".$e->getMessage());
         }
