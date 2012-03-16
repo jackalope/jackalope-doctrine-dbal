@@ -1157,6 +1157,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $properties);
 
+        foreach ($node as $child) {
+            if ($child->isNew()) {
+                //could be existing node moved to this location
+                $this->storeNode($child);
+            }
+        }
         return true;
     }
 
