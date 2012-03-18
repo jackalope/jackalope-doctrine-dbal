@@ -1,4 +1,3 @@
-src/autoload.php
 cli-config.php
 
 test-reports
@@ -13,3 +12,7 @@ doc/html
 
 tests/fixtures/doctrine
 tests/phpunit.xml
+
+vendor/
+composer.phar
+composer.lock
