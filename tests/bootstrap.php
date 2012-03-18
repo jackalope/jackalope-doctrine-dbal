@@ -1,35 +1,17 @@
 <?php
+
+if (!$loader = @include __DIR__.'/../vendor/.composer/autoload.php') {
+    die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
+        'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
+        'php composer.phar install'.PHP_EOL);
+}
+
+$loader->add('Jackalope', __DIR__.'/../vendor/jackalope/jackalope/tests');
+
 /** make sure we get ALL infos from php */
 error_reporting(E_ALL | E_STRICT);
 
-/**
- * bootstrap file for jackalope doctrine dbal tests
- *
- * If you want to overwrite the defaults, you can to specify the autoloader and doctrine sources
- */
-if (isset($GLOBALS['phpcr.doctrine.loader'])) {
-    require_once $GLOBALS['phpcr.doctrine.loader'];
-    // Make sure we have the necessary config
-    $necessaryConfigValues = array('phpcr.doctrine.loader', 'phpcr.doctrine.commondir', 'phpcr.doctrine.dbaldir');
-    foreach ($necessaryConfigValues as $val) {
-        if (empty($GLOBALS[$val])) {
-            die('Please set '.$val.' in your phpunit.xml.' . "\n");
-        }
-    }
-    $loader = new \Doctrine\Common\ClassLoader("Doctrine\\Common", $GLOBALS['phpcr.doctrine.commondir']);
-    $loader->register();
-
-    $loader = new \Doctrine\Common\ClassLoader("Doctrine\\DBAL", $GLOBALS['phpcr.doctrine.dbaldir']);
-    $loader->register();
-}
-
-/**
- * autoloader: tests rely on an autoloader.
- */
-require_once __DIR__ . '/../src/autoload.dist.php';
-
 ### Load classes needed for jackalope unit tests ###
-require __DIR__ . '/../lib/jackalope/tests/Jackalope/TestCase.php';
 require 'Jackalope/Transport/DoctrineDBAL/DoctrineDBALTestCase.php';
 
 ### Load the implementation loader class ###
