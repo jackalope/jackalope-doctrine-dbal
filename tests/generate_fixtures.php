@@ -6,9 +6,13 @@
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  */
 
-require_once __DIR__ . "/../src/autoload.dist.php";
+if (!$loader = @include __DIR__.'/../vendor/.composer/autoload.php') {
+    die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
+        'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
+        'php composer.phar install'.PHP_EOL);
+}
 
-$srcDir = __DIR__ . "/phpcr-api/fixtures";
+$srcDir = __DIR__ . "/../vendor/phpcr/phpcr-api-tests/fixtures";
 $destDir = __DIR__ . "/fixtures/doctrine";
 
 $jcrTypes = array(

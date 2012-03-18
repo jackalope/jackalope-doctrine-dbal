@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__.'/../phpcr-api/inc/AbstractLoader.php';
+require_once __DIR__.'/../../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
 
 /**
  * Implementation loader for jackalope-doctrine-dbal

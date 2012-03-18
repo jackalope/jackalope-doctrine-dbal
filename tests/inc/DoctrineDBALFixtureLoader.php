@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__.'/../phpcr-api/inc/FixtureLoaderInterface.php';
+require_once __DIR__.'/../../vendor/phpcr/phpcr-api-tests/inc/FixtureLoaderInterface.php';
 
 /**
  * Import fixtures into the doctrine dbal backend of jackalope
