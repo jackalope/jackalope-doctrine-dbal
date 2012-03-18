@@ -1047,6 +1047,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * TODO: we should move that into the common Jackalope NodeType space
+     * it will be helpful for all implementations.
+     *
      * @param \PHPCR\NodeInterface $node
      * @param \PHPCR\NodeType\NodeTypeDefinitionInterface $def
      */
