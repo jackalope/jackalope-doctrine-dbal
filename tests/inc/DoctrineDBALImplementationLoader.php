@@ -70,6 +70,10 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Transactions\\TransactionMethodsTest::testInTransaction',
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
                     'Transactions\\TransactionMethodsTest::testTransactionRollback',
+
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
+                    'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
         );
 
     }
