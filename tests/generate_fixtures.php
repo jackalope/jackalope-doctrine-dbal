@@ -6,9 +6,13 @@
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  */
 
-require_once __DIR__ . "/../src/autoload.dist.php";
+if (!$loader = @include __DIR__.'/../vendor/.composer/autoload.php') {
+    die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
+        'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
+        'php composer.phar install'.PHP_EOL);
+}
 
-$srcDir = __DIR__ . "/phpcr-api/fixtures";
+$srcDir = __DIR__ . "/../vendor/phpcr/phpcr-api-tests/fixtures";
 $destDir = __DIR__ . "/fixtures/doctrine";
 
 $jcrTypes = array(
@@ -269,6 +273,9 @@ foreach ($ri as $file) {
             ));
         }
 
+        // make sure we have table phpcr_nodes_foreignkeys even if there is not a single entry in it to have it truncated
+        $dataSetBuilder->ensureTableExists('phpcr_nodes_foreignkeys', array('source_id', 'source_property_name', 'target_id', 'type'));
+
         // delay this to the end to not add entries for weak refs to not existing nodes
         foreach($foreignkeys as $uuid => $foreignkey) {
             if (isset($nodeIds[$uuid])) {
@@ -304,15 +311,7 @@ class PHPUnit_Extensions_Database_XmlDataSetBuilder
 
     public function addRow($tableName, array $data)
     {
-        if (!isset($this->tables[$tableName])) {
-            $table = $this->dom->createElement('table');
-            $table->setAttribute('name', $tableName);
-            foreach ($data as $k => $v) {
-                $table->appendChild($this->dom->createElement('column', $k));
-            }
-            $this->tables[$tableName] = $table;
-            $this->dom->documentElement->appendChild($table);
-        }
+        $this->ensureTableExists($tableName, array_keys($data));
 
         $row = $this->dom->createElement('row');
         foreach ($data as $k => $v) {
@@ -323,6 +322,19 @@ class PHPUnit_Extensions_Database_XmlDataSetBuilder
             }
         }
         $this->tables[$tableName]->appendChild($row);
+    }
+
+    public function ensureTableExists($tableName, $columns)
+    {
+        if (!isset($this->tables[$tableName])) {
+            $table = $this->dom->createElement('table');
+            $table->setAttribute('name', $tableName);
+            foreach ($columns as $k) {
+                $table->appendChild($this->dom->createElement('column', $k));
+            }
+            $this->tables[$tableName] = $table;
+            $this->dom->documentElement->appendChild($table);
+        }
     }
 
     public function asXml()

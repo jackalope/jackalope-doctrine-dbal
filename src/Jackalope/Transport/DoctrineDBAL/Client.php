@@ -1052,6 +1052,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * TODO: we should move that into the common Jackalope NodeType space
+     * it will be helpful for all implementations.
+     *
      * @param \PHPCR\NodeInterface $node
      * @param \PHPCR\NodeType\NodeTypeDefinitionInterface $def
      */
@@ -1385,13 +1388,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $this->conn->insert('phpcr_type_props', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $propertyDef->getName(),
-                        'protected' => $propertyDef->isProtected(),
-                        'mandatory' => $propertyDef->isMandatory(),
-                        'auto_created' => $propertyDef->isAutoCreated(),
+                        'protected' => $propertyDef->isProtected() ? 1 : 0,
+                        'mandatory' => $propertyDef->isMandatory() ? 1 : 0,
+                        'auto_created' => $propertyDef->isAutoCreated() ? 1 : 0,
                         'on_parent_version' => $propertyDef->getOnParentVersion(),
-                        'multiple' => $propertyDef->isMultiple(),
-                        'fulltext_searchable' => $propertyDef->isFullTextSearchable(),
-                        'query_orderable' => $propertyDef->isQueryOrderable(),
+                        'multiple' => $propertyDef->isMultiple() ? 1 : 0,
+                        'fulltext_searchable' => $propertyDef->isFullTextSearchable() ? 1 : 0,
+                        'query_orderable' => $propertyDef->isQueryOrderable() ? 1 : 0,
                         'required_type' => $propertyDef->getRequiredType(),
                         'query_operators' => 0, // transform to bitmask
                         'default_value' => $propertyDef->getDefaultValues() ? current($propertyDef->getDefaultValues()) : null,
@@ -1405,9 +1408,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $this->conn->insert('phpcr_type_childs', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $childDef->getName(),
-                        'protected' => $childDef->isProtected(),
-                        'mandatory' => $childDef->isMandatory(),
-                        'auto_created' => $childDef->isAutoCreated(),
+                        'protected' => $childDef->isProtected() ? 1 : 0,
+                        'mandatory' => $childDef->isMandatory() ? 1 : 0,
+                        'auto_created' => $childDef->isAutoCreated() ? 1 : 0,
                         'on_parent_version' => $childDef->getOnParentVersion(),
                         'primary_types' => implode(' ', $childDef->getRequiredPrimaryTypeNames() ?: array()),
                         'default_type' => $childDef->getDefaultPrimaryTypeName(),

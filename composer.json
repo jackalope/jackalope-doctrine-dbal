@@ -2,7 +2,7 @@
     "name": "jackalope/jackalope-doctrine-dbal",
     "type": "library",
     "description": "Jackalope Transport library",
-    "keywords": ["transport implementation", "doctirne-dbal"],
+    "keywords": ["transport implementation", "doctrine-dbal"],
     "homepage": "http://jackalope.github.com",
     "license": "MIT",
     "authors": [

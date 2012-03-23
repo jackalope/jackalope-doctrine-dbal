@@ -1,6 +1,6 @@
 <?php
 
-require_once __DIR__.'/../phpcr-api/inc/AbstractLoader.php';
+require_once __DIR__.'/../../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
 
 /**
  * Implementation loader for jackalope-doctrine-dbal
@@ -70,6 +70,10 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Transactions\\TransactionMethodsTest::testInTransaction',
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
                     'Transactions\\TransactionMethodsTest::testTransactionRollback',
+
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
+                    'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
         );
 
     }
