@@ -3,8 +3,9 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\PropertyType;
-use PHPCR\RepositoryException;
 use PHPCR\Query\QueryInterface;
+use PHPCR\RepositoryException;
+use PHPCR\NamespaceException;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\Util\UUIDHelper;
@@ -436,6 +437,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $namespaces = $this->getNamespaces();
+
+        if (!isset($namespaces[$alias])) {
+            throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
+        }
 
         return array($namespaces[$alias], $name);
     }
