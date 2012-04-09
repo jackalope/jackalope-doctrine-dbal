@@ -13,11 +13,7 @@
         <var name="phpcr.user" value="admin" />
         <var name="phpcr.pass" value="admin" />
         <var name="phpcr.workspace" value="tests" />
-        <!-- Path to Doctrine stuff for transport -->
-        <!-- if you want your vendors in a different than the default path, uncomment and change this
-        <var name="phpcr.doctrine.commondir" value="doctrine-common/lib" />
-        <var name="phpcr.doctrine.dbaldir" value="doctrine-dbal/lib" />
-        -->
+        <!-- Doctrine DBAL database configuration -->
         <var name="phpcr.doctrine.dbal.driver" value="pdo_mysql" />
         <var name="phpcr.doctrine.dbal.host" value="localhost" />
         <var name="phpcr.doctrine.dbal.username" value="root" />
@@ -28,7 +24,10 @@
     <testsuites>
         <testsuite name="Jackalope Doctrine DBAL Tests">
             <directory>./Jackalope</directory>
-            <directory>./../vendor/phpcr/phpcr-api-tests/</directory>
+            <directory>../vendor/jackalope/jackalope/tests</directory>
+            <directory>../vendor/phpcr/phpcr/tests</directory>
+            <directory>../vendor/phpcr/phpcr-utils/tests</directory>
+            <directory>../vendor/phpcr/phpcr-api-tests/</directory>
         </testsuite>
     </testsuites>
 
@@ -36,15 +35,26 @@
     <filter>
         <whitelist>
             <directory>../src</directory>
-            <directory>./../vendor/phpcr</directory>
+            <directory>../vendor/jackalope/jackalope/src</directory>
+            <directory>../vendor/phpcr/phpcr/src</directory>
+            <directory>../vendor/phpcr/phpcr-utils/src</directory>
 
             <exclude>
-
                 <!-- ignore whats not implemented yet -->
-                <directory>./../vendor/phpcr/src/PHPCR/Lock</directory>
-                <directory>./../vendor/phpcr/src/PHPCR/Observation</directory>
-                <directory>./../vendor/phpcr/src/PHPCR/Retention</directory>
-                <directory>./../vendor//phpcr/src/PHPCR/Security</directory>
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Version</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Version</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Lock</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Lock</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Observation</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Observation</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Retention</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Retention</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Security</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Security</directory>
             </exclude>
         </whitelist>
     </filter>
