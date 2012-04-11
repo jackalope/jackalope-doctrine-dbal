@@ -29,6 +29,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
         $this->unsupportedCases = array(
                     'Writing\\MoveMethodsTest',
+                    'Query\\XPath'
         );
 
         $this->unsupportedTests = array(
