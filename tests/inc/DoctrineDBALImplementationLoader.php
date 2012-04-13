@@ -15,7 +15,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
         $this->unsupportedChapters = array(
                     'PermissionsAndCapabilities',
-                    'Import',
                     'Observation',
                     'ShareableNodes',
                     'Versioning',
@@ -53,7 +52,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     // https://github.com/phpcr/phpcr-api-tests/issues/22
                     'Query\\NodeViewTest::testSeekable',
 
-                    'Writing\\NamespaceRegistryTest::testRegisterUnregisterNamespace',
                     'Writing\\AddMethodsTest::testAddNodeIllegalType',
                     'Writing\\AddMethodsTest::testAddNodeInParallel',
                     'Writing\\AddMethodsTest::testAddPropertyWrongType',
@@ -76,6 +74,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
+
+                    //some import tests are skipped for now, issue opened: https://github.com/jackalope/jackalope-doctrine-dbal/issues/12
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
         );
 
     }
