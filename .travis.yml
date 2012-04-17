@@ -6,7 +6,7 @@ php:
 
 before_script:
   - curl -s http://getcomposer.org/installer | php
-  - php composer.phar install --install-suggests
+  - php composer.phar install --dev
   - ./tests/travis.sh
 
 script: phpunit -c tests/phpunit.xml.dist

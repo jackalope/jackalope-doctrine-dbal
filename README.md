@@ -31,12 +31,12 @@ To install jackalope itselves, run the following in the parent directory of wher
 
     git clone git://github.com/jackalope/jackalope-doctrine-dbal.git
     cd jackalope-doctrine-dbal
-    php /usr/local/bin/composer.phar install --install-suggests
+    php /usr/local/bin/composer.phar install --dev
 
-Note that the --install-suggests parameter is only needed if you want to be
+Note that the --dev parameter is only needed if you want to be
 able to run the test suite. If you already installed jackalope without the test
 suite, you need to remove composer.lock before running composer again with the
---install-suggests parameter.
+--dev parameter.
 
 
 ## Create a repository

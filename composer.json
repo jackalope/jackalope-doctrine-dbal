@@ -20,7 +20,7 @@
     "provide": {
         "jackalope/jackalope-transport": "dev-master"
     },
-    "suggest": {
+    "require-dev": {
         "phpcr/phpcr-api-tests": "dev-master"
     },
     "autoload": {
