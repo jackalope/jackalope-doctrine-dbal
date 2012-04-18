@@ -25,6 +25,9 @@ use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 
+use Jackalope\Node;
+use Jackalope\Property;
+use Jackalope\Query\Query;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\WritingInterface;
@@ -32,6 +35,7 @@ use Jackalope\Transport\WorkspaceManagementInterface;
 use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\StandardNodeTypes;
+use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\NodeType\NodeTypeManager;
 use Jackalope\NotImplementedException;
 use Jackalope\FactoryInterface;
@@ -76,7 +80,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $nodeIdentifiers = array();
 
     /**
-     * @var PHPCR\NodeType\NodeTypeManagerInterface
+     * @var \PHPCR\NodeType\NodeTypeManagerInterface
      */
     private $nodeTypeManager;
 
@@ -658,7 +662,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $binaryData = null;
         foreach ($properties as $property) {
-            /* @var $prop \PHPCR\PropertyInterface */
+            /* @var $property Property */
             $propertyNode = $dom->createElement('sv:property');
             $propertyNode->setAttribute('sv:name', $property->getName());
             $propertyNode->setAttribute('sv:type', PropertyType::nameFromValue($property->getType()));
@@ -725,6 +729,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
                     break;
+                default:
+                    throw new RepositoryException('unknown type '.$property->getType());
             }
 
             foreach ((array)$values as $value) {
@@ -1122,14 +1128,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function getResponsibleNodeTypes($node)
+    private function getResponsibleNodeTypes(Node $node)
     {
         // This is very slow i believe :-(
         $nodeDef = $node->getPrimaryNodeType();
         $nodeTypes = $node->getMixinNodeTypes();
         array_unshift($nodeTypes, $nodeDef);
         foreach ($nodeTypes as $nodeType) {
-            /* @var $nodeType \PHPCR\NodeType\NodeTypeDefinitionInterface */
+            /* @var $nodeType \Jackalope\NodeType\NodeType */
             foreach ($nodeType->getDeclaredSupertypes() as $superType) {
                 $nodeTypes[] = $superType;
             }
@@ -1141,7 +1147,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function storeNode(\PHPCR\NodeInterface $node)
+    public function storeNode(Node $node)
     {
         $this->assertLoggedIn();
 
@@ -1177,7 +1183,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function storeProperty(\PHPCR\PropertyInterface $property)
+    public function storeProperty(Property $property)
     {
         $this->assertLoggedIn();
 
@@ -1191,7 +1197,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Validation if all the data is correct before writing it into the database.
      *
      * @param \PHPCR\PropertyInterface $property
+     *
      * @throws \PHPCR\ValueFormatException
+     *
      * @return void
      */
     private function assertValidProperty($property)
@@ -1481,7 +1489,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function query(\PHPCR\Query\QueryInterface $query)
+    public function query(Query $query)
     {
         $this->assertLoggedIn();
 
@@ -1516,7 +1524,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new InvalidQueryException($msg);
         }
 
-        $qomWalker = new Query\QOMWalker($this->nodeTypeManager, $this->conn->getDatabasePlatform(), $this->getNamespaces());
+        $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn->getDatabasePlatform(), $this->getNamespaces());
         $sql = $qomWalker->walkQOMQuery($query);
 
         $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
