@@ -15,7 +15,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
         $this->unsupportedChapters = array(
                     'PermissionsAndCapabilities',
-                    'Import',
                     'Observation',
                     'ShareableNodes',
                     'Versioning',
@@ -35,25 +34,27 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
         $this->unsupportedTests = array(
                     'Connecting\\RepositoryTest::testLoginException', //TODO: figure out what would be invalid credentials
-                    'Connecting\\RepositoryTest::testNoLogin',
 
                     'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
                     'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
-                    'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix',
+                    'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
                     'Reading\\PropertyReadMethodsTest::testJcrCreated', // TODO: fails because NodeTypeDefinitions do not work inside DoctrineDBAL transport yet.
 
+                    //TODO: implement getQuery method in Jackalope QueryManager
                     'Query\\QueryManagerTest::testGetQuery',
                     'Query\\QueryManagerTest::testGetQueryInvalid',
                     'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
-                    'Query\\QueryObjectSql2Test::testExecuteOffset',
+
+                    //call to undefined method Jackalope\Query\QOM\Join::getNodeTypeName()
+                    //in /jackalope-doctrine-dbal/src/Jackalope/Transport/DoctrineDBAL/Client.php on line 1513
                     'Query\\QuerySql2OperationsTest::testQueryJoin',
                     'Query\\QuerySql2OperationsTest::testQueryJoinReference',
+
                     // this seems a bug in php with arrayiterator - and jackalope is using
                     // arrayiterator for the search result
                     // https://github.com/phpcr/phpcr-api-tests/issues/22
                     'Query\\NodeViewTest::testSeekable',
 
-                    'Writing\\NamespaceRegistryTest::testRegisterUnregisterNamespace',
                     'Writing\\AddMethodsTest::testAddNodeIllegalType',
                     'Writing\\AddMethodsTest::testAddNodeInParallel',
                     'Writing\\AddMethodsTest::testAddPropertyWrongType',
@@ -76,6 +77,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
+
+                    //some import tests are skipped for now, issue opened: https://github.com/jackalope/jackalope-doctrine-dbal/issues/12
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
+                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
         );
 
     }
