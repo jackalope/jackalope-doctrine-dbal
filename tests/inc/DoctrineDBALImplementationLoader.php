@@ -14,22 +14,16 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         parent::__construct('Jackalope\RepositoryFactoryDoctrineDBAL', $GLOBALS['phpcr.workspace']);
 
         $this->unsupportedChapters = array(
-                    'PermissionsAndCapabilities',
-                    'Observation',
-                    'ShareableNodes',
-                    'Versioning',
-                    'AccessControlManagement',
-                    'Locking',
-                    'LifecycleManagement',
-                    'RetentionAndHold',
-                    'SameNameSiblings',
-                    'OrderableChildNodes',
+                    'PermissionsAndCapabilities', //TODO: Transport does not support permissions
+                    'Observation', //TODO: Transport does not support observation
+                    'Versioning', //TODO: Transport does not support versioning
+                    'Locking', //TODO: Transport does not support locking
         );
 
         $this->unsupportedCases = array(
-                    'Writing\\MoveMethodsTest',
-                    'Query\\XPath',
-                    'Query\\Sql1'
+                    'Writing\\MoveMethodsTest', //TODO: Moving nodes is not yet implemented
+                    'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
+                    'Query\\Sql1' //TODO: Query language 'sql' not yet implemented
         );
 
         $this->unsupportedTests = array(
@@ -45,8 +39,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\QueryManagerTest::testGetQueryInvalid',
                     'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
 
-                    //call to undefined method Jackalope\Query\QOM\Join::getNodeTypeName()
-                    //in /jackalope-doctrine-dbal/src/Jackalope/Transport/DoctrineDBAL/Client.php on line 1513
+                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/15
                     'Query\\QuerySql2OperationsTest::testQueryJoin',
                     'Query\\QuerySql2OperationsTest::testQueryJoinReference',
 
@@ -55,35 +48,33 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     // https://github.com/phpcr/phpcr-api-tests/issues/22
                     'Query\\NodeViewTest::testSeekable',
 
-                    'Writing\\AddMethodsTest::testAddNodeIllegalType',
-                    'Writing\\AddMethodsTest::testAddNodeInParallel',
-                    'Writing\\AddMethodsTest::testAddPropertyWrongType',
-                    'Writing\\CopyMethodsTest::testCopyUpdateOnCopy',
-                    'Writing\\CopyMethodsTest::testWorkspaceCopy',
+                    'Writing\\AddMethodsTest::testAddNodeIllegalType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/16
+                    'Writing\\AddMethodsTest::testAddNodeInParallel',  //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/17
+                    'Writing\\AddMethodsTest::testAddPropertyWrongType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/18
+                    'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
+                    'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved', // TODO: enable and look at the exception you get as starting point
-                    'Writing\\MoveMethodsTest::testNodeOrderBeforeEnd',
-                    'Writing\\MoveMethodsTest::testNodeOrderBeforeDown',
-                    'Writing\\MoveMethodsTest::testNodeOrderBeforeUp',
-                    'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation',
-                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation',
+                    'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/20
+                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/21
+
+                    //TODO: moving nodes is not implemented yet
                     'Writing\\CombinedManipulationsTest::testRemoveAndMove',
                     'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
                     'Writing\\CombinedManipulationsTest::testMoveSessionRefreshKeepChanges',
 
-                    'Transactions\\TransactionMethodsTest::testInTransaction',
+                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
-                    'Transactions\\TransactionMethodsTest::testTransactionRollback',
 
+                    //TODO: Client::createWorkspace throws a NotImplementedException
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
 
-                    //some import tests are skipped for now, issue opened: https://github.com/jackalope/jackalope-doctrine-dbal/issues/12
+                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/12
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
         );
-
     }
 
     public static function getInstance()
