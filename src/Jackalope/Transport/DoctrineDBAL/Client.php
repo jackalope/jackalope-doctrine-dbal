@@ -1496,6 +1496,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $limit = $query->getLimit();
         $offset = $query->getOffset();
 
+        //hack to avoid a bug in Doctrine DBAL with MySQL, see http://www.doctrine-project.org/jira/browse/DBAL-256
+        if ($this->conn->getDatabasePlatform()->getName() === 'mysql' && null !== $offset && null == $limit) {
+            $limit = PHP_INT_MAX;
+        }
+
         $language = $query->getLanguage();
         if ($language === QueryInterface::JCR_SQL2) {
             $parser = new Sql2ToQomQueryConverter($this->factory->get('Query\QOM\QueryObjectModelFactory'));
