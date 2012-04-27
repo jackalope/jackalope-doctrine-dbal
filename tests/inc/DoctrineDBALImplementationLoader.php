@@ -14,6 +14,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         parent::__construct('Jackalope\RepositoryFactoryDoctrineDBAL', $GLOBALS['phpcr.workspace']);
 
         $this->unsupportedChapters = array(
+                    'ShareableNodes', //TODO: Not implemented, no test currently written for it
+                    'AccessControlManagement', //TODO: Not implemented, no test currently written for it
+                    'LifecycleManagement', //TODO: Not implemented, no test currently written for it
+                    'RetentionAndHold', //TODO: Not implemented, no test currently written for it
+                    'SameNameSiblings', //TODO: Not implemented, no test currently written for it
                     'PermissionsAndCapabilities', //TODO: Transport does not support permissions
                     'Observation', //TODO: Transport does not support observation
                     'Versioning', //TODO: Transport does not support versioning
