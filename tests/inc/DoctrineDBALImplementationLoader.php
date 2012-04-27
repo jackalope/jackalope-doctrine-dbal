@@ -54,7 +54,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\NodeViewTest::testSeekable',
 
                     'Writing\\AddMethodsTest::testAddNodeIllegalType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/16
-                    'Writing\\AddMethodsTest::testAddNodeInParallel',  //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/17
                     'Writing\\AddMethodsTest::testAddPropertyWrongType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/18
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
                     'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
