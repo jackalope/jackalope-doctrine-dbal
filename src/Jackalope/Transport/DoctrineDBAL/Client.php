@@ -413,6 +413,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $dom->loadXML($row['props']);
 
                 $propsData = array('dom' => $dom, 'binaryData' => array());
+                //when copying a node, it is always a new node, then $isNewNode is set to true
                 $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
 
                 $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_id, idx, data)'.
@@ -449,6 +450,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return array($namespaces[$alias], $name);
     }
 
+
+    /**
+     * @param $uuid string node uuid
+     *
+     * @param $path string absolute path of the node
+     *
+     * @param $parent string absolute path of the parent node
+     *
+     * @param $type string node type
+     *
+     * @param $isNewNode bool new nodes to insert (true) or existing node to update (false)
+     *
+     * @param array $props
+     *
+     * @param array $propsData
+     *
+     * @return bool|mixed|string
+     *
+     * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
+     */
     private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
@@ -1154,7 +1175,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * {@inheritDoc}
+     * Recursively store a node and its children to the given absolute path.
+     *
+     * Transport stores the node at its path, with all properties and all
+     * children.
+     *
+     * @param \Jackalope\Node $node the node to store
+     *
+     * @param bool $saveChildren bool false to store only the current node and not its children
+     *
+     * @return bool bool true on success
+     *
+     * @throws \PHPCR\RepositoryException if not logged in
      */
     public function storeNode(Node $node, $saveChildren = true)
     {
@@ -1201,6 +1233,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $node = $property->getParent();
+        //do not store the children nodes, already taken into account previously with storeNode
         $this->storeNode($node, false);
 
         return true;
