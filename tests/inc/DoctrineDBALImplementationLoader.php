@@ -26,7 +26,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         );
 
         $this->unsupportedCases = array(
-                    'Writing\\MoveMethodsTest', //TODO: Moving nodes is not yet implemented
                     'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
                     'Query\\Sql1' //TODO: Query language 'sql' not yet implemented
         );
@@ -58,14 +57,13 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\AddMethodsTest::testAddPropertyWrongType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/18
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
                     'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
-                    'Writing\\MoveMethodsTest::testSessionDeleteMoved', // TODO: enable and look at the exception you get as starting point
                     'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/20
                     'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/21
 
-                    //TODO: moving nodes is not implemented yet
-                    'Writing\\CombinedManipulationsTest::testRemoveAndMove',
+                    // TODO: enable and look at the exception you get as starting point
+                    'Writing\\MoveMethodsTest::testSessionDeleteMoved',
+                    'Writing\\MoveMethodsTest::testSessionMoveReplace',
                     'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
-                    'Writing\\CombinedManipulationsTest::testMoveSessionRefreshKeepChanges',
 
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
