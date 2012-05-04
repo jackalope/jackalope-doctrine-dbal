@@ -1028,7 +1028,46 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        throw new NotImplementedException("Moving nodes is not yet implemented");
+        if (']' == substr($dstAbsPath, -1, 1)) {
+            // TODO: Understand assumptions of CopyMethodsTest::testCopyInvalidDstPath more
+            throw new RepositoryException('Invalid destination path');
+        }
+
+        $srcNodeId = $this->pathExists($srcAbsPath);
+        if (!$srcNodeId) {
+            throw new PathNotFoundException("Source path '$srcAbsPath' not found");
+        }
+
+        if ($this->pathExists($dstAbsPath)) {
+            throw new ItemExistsException("Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists.");
+        }
+
+        if (!$this->pathExists($this->getParentPath($dstAbsPath))) {
+            throw new PathNotFoundException("Parent of the destination path '" . $this->getParentPath($dstAbsPath) . "' has to exist.");
+        }
+
+        // Algorithm:
+        // 1. Select all nodes with path $srcAbsPath."%" and iterate them
+        // 2. update the path and parent path of all nodes
+
+        try {
+            $this->conn->beginTransaction();
+
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
+            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $this->workspaceId));
+
+            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+                $newParent = dirname($newPath);
+                $nodeId = $row['id'];
+                $query = "UPDATE phpcr_nodes SET path = ? , parent = ? WHERE id = ?";
+                $this->conn->executeUpdate($query, array($newPath, $newParent, $nodeId));
+            }
+            $this->conn->commit();
+        } catch (\Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
     }
 
     /**
