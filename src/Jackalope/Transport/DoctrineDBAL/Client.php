@@ -375,10 +375,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        if (']' == substr($dstAbsPath, -1, 1)) {
-            // TODO: Understand assumptions of CopyMethodsTest::testCopyInvalidDstPath more
-            throw new RepositoryException('Invalid destination path');
-        }
+        $this->assertValidPath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
         if (!$srcNodeId) {
@@ -1028,10 +1025,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        if (']' == substr($dstAbsPath, -1, 1)) {
-            // TODO: Understand assumptions of CopyMethodsTest::testCopyInvalidDstPath more
-            throw new RepositoryException('Invalid destination path');
-        }
+        $this->assertValidPath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
         if (!$srcNodeId) {
@@ -1053,8 +1047,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $this->workspaceId));
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ?';
+            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
+
+            /*
+             * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
+             * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
+             * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
+             * rather than raw sql, to make it work on a maximum of platforms.
+             *
+             * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
+             * we can ask the doctrine community how to do the substring operation.
+             * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
+             */
 
             while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
                 $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
