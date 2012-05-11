@@ -413,7 +413,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $dom->loadXML($row['props']);
 
                 $propsData = array('dom' => $dom, 'binaryData' => array());
-                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], array(), $propsData);
+                //when copying a node, it is always a new node, then $isNewNode is set to true
+                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
 
                 $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_id, idx, data)'.
                     '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -449,7 +450,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return array($namespaces[$alias], $name);
     }
 
-    private function syncNode($uuid, $path, $parent, $type, $props = array(), $propsData = array())
+
+    /**
+     * @param string $uuid node uuid
+     * @param string $path absolute path of the node
+     * @param string $parent absolute path of the parent node
+     * @param string $type node type
+     * @param bool $isNewNode new nodes to insert (true) or existing node to update (false)
+     * @param array $props
+     * @param array $propsData
+     *
+     * @return bool|mixed|string
+     *
+     * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
+     */
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -465,24 +480,33 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $uuid = UUIDHelper::generateUUID();
             }
 
-            $nodeId = $this->pathExists($path);
-            if (!$nodeId) {
+            if ($isNewNode) {
                 list($namespace, $localName) = $this->getJcrName($path);
-                $this->conn->insert('phpcr_nodes', array(
-                    'identifier'    => $uuid,
-                    'type'          => $type,
-                    'path'          => $path,
-                    'local_name'    => $localName,
-                    'namespace'     => $namespace,
-                    'parent'        => $parent,
-                    'workspace_id'  => $this->workspaceId,
-                    'props'         => $propsData['dom']->saveXML(),
-                ));
+
+                try {
+                    $this->conn->insert('phpcr_nodes', array(
+                        'identifier'    => $uuid,
+                        'type'          => $type,
+                        'path'          => $path,
+                        'local_name'    => $localName,
+                        'namespace'     => $namespace,
+                        'parent'        => $parent,
+                        'workspace_id'  => $this->workspaceId,
+                        'props'         => $propsData['dom']->saveXML(),
+                    ));
+                } catch (\PDOException $ex) {
+                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                }
 
                 $nodeId = $this->conn->lastInsertId($this->sequenceNodeName);
             } else {
+                $nodeId = $this->pathExists($path);
+                if (!$nodeId) {
+                    throw new RepositoryException();
+                }
                 $this->conn->update('phpcr_nodes', array('props' => $propsData['dom']->saveXML()), array('id' => $nodeId));
             }
+
             $this->nodeIdentifiers[$path] = $uuid;
 
             if (isset($propsData['binaryData'])) {
@@ -1145,9 +1169,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * {@inheritDoc}
+     * Recursively store a node and its children to the given absolute path.
+     *
+     * Transport stores the node at its path, with all properties and all
+     * children.
+     *
+     * @param \Jackalope\Node $node the node to store
+     * @param bool $saveChildren false to store only the current node and not its children
+     *
+     * @return bool true on success
+     *
+     * @throws \PHPCR\RepositoryException if not logged in
      */
-    public function storeNode(Node $node)
+    public function storeNode(Node $node, $saveChildren = true)
     {
         $this->assertLoggedIn();
 
@@ -1169,7 +1203,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $properties);
+        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $properties);
+
+        if (!$saveChildren) {
+            return true;
+        }
 
         foreach ($node as $child) {
             if ($child->isNew()) {
@@ -1188,7 +1226,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $node = $property->getParent();
-        $this->storeNode($node);
+        //do not store the children nodes, already taken into account previously with storeNode
+        $this->storeNode($node, false);
 
         return true;
     }
