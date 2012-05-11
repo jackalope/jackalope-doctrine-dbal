@@ -452,18 +452,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
 
     /**
-     * @param $uuid string node uuid
-     *
-     * @param $path string absolute path of the node
-     *
-     * @param $parent string absolute path of the parent node
-     *
-     * @param $type string node type
-     *
-     * @param $isNewNode bool new nodes to insert (true) or existing node to update (false)
-     *
+     * @param string $uuid node uuid
+     * @param string $path absolute path of the node
+     * @param string $parent absolute path of the parent node
+     * @param string $type node type
+     * @param bool $isNewNode new nodes to insert (true) or existing node to update (false)
      * @param array $props
-     *
      * @param array $propsData
      *
      * @return bool|mixed|string
@@ -1181,10 +1175,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * children.
      *
      * @param \Jackalope\Node $node the node to store
+     * @param bool $saveChildren false to store only the current node and not its children
      *
-     * @param bool $saveChildren bool false to store only the current node and not its children
-     *
-     * @return bool bool true on success
+     * @return bool true on success
      *
      * @throws \PHPCR\RepositoryException if not logged in
      */
