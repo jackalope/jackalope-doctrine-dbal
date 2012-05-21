@@ -142,7 +142,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if ($conn->getDatabasePlatform() instanceof PostgreSqlPlatform) {
             $this->sequenceWorkspaceName = 'phpcr_workspaces_id_seq';
             $this->sequenceNodeName = 'phpcr_nodes_id_seq';
-            $this->sequenceTypeName = 'phpcr_type_nodes_id_seq';
+            $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
         $this->cache = $cache ?: new ArrayCache();
     }
