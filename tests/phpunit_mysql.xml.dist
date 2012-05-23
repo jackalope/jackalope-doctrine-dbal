@@ -1,0 +1,61 @@
+<phpunit backupGlobals="false"
+         backupStaticAttributes="false"
+         colors="false"
+         convertErrorsToExceptions="true"
+         convertNoticesToExceptions="true"
+         convertWarningsToExceptions="true"
+         processIsolation="false"
+         stopOnFailure="false"
+         syntaxCheck="true"
+         strict="false"
+         bootstrap="bootstrap.php">
+    <php>
+        <var name="phpcr.user" value="admin" />
+        <var name="phpcr.pass" value="admin" />
+        <var name="phpcr.workspace" value="tests" />
+        <!-- Doctrine DBAL database configuration -->
+        <var name="phpcr.doctrine.dbal.driver" value="pdo_mysql" />
+        <var name="phpcr.doctrine.dbal.host" value="localhost" />
+        <var name="phpcr.doctrine.dbal.username" value="root" />
+        <var name="phpcr.doctrine.dbal.password" value="" />
+        <var name="phpcr.doctrine.dbal.dbname" value="phpcr_tests" />
+    </php>
+
+    <testsuites>
+        <testsuite name="Jackalope Doctrine DBAL Tests">
+            <directory>./Jackalope</directory>
+            <directory>../vendor/jackalope/jackalope/tests</directory>
+            <directory>../vendor/phpcr/phpcr/tests</directory>
+            <directory>../vendor/phpcr/phpcr-utils/tests</directory>
+            <directory>../vendor/phpcr/phpcr-api-tests/</directory>
+        </testsuite>
+    </testsuites>
+
+    <!-- configuration for code coverage report -->
+    <filter>
+        <whitelist>
+            <directory>../src</directory>
+            <directory>../vendor/jackalope/jackalope/src</directory>
+            <directory>../vendor/phpcr/phpcr/src</directory>
+            <directory>../vendor/phpcr/phpcr-utils/src</directory>
+
+            <exclude>
+                <!-- ignore whats not implemented yet -->
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Version</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Version</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Lock</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Lock</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Observation</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Observation</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Retention</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Retention</directory>
+
+                <directory>../vendor/phpcr/phpcr/src/PHPCR/Security</directory>
+                <directory>../vendor/jackalope/jackalope/src/Jackalope/Security</directory>
+            </exclude>
+        </whitelist>
+    </filter>
+</phpunit>
