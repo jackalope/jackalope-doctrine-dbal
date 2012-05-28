@@ -1117,10 +1117,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // Retrieve an array of siblings names in the original order.
         $qb = $this->conn->createQueryBuilder();
 
-        $qb->select('local_name')
-           ->from('phpcr_nodes')
-           ->where('parent = :absPath')
-           ->orderBy('sort_order', 'ASC');
+        $qb->select('n.local_name')
+           ->from('phpcr_nodes', 'n')
+           ->where('n.parent = :absPath')
+           ->orderBy('n.sort_order', 'ASC');
 
         $query = $qb->getSql();
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
