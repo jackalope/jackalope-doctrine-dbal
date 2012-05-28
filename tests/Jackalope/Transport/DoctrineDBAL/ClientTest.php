@@ -99,4 +99,51 @@ class ClientTest extends DoctrineDBALTestCase
         $this->assertEquals(1, count($def->getDeclaredPropertyDefinitions()));
         $this->assertEquals(1, count($def->getDeclaredChildNodeDefinitions()));
     }
+
+    public function testReorderNodes()
+    {
+        $root = $this->session->getNode('/');
+        $topic = $root->addNode('topic');
+        $topic->addNode('page1');
+        $topic->addNode('page2');
+        $topic->addNode('page3');
+        $topic->addNode('page4');
+        $topic->addNode('page5');                        
+
+        $this->session->save();
+
+        $topic->orderBefore('page3', 'page1');
+        $topic->orderBefore('page4', NULL);
+
+        $this->session->save();
+
+        $conn = $this->getConnection();       
+        $qb = $conn->createQueryBuilder();
+
+        $qb->select('local_name, sort_order')
+           ->from('phpcr_nodes', 'n')
+           ->where('n.local_name = :name')
+           ->andWhere('n.parent = :parent')
+           ->orderBy('n.sort_order', 'ASC');
+
+        $query = $qb->getSql();
+        $stmnt = $this->conn->prepare($query);
+
+        $stmnt = $this->conn->executeQuery($query, array('name' => 'page3', 'parent' => '/topic'));        
+        $row = $stmnt->fetch();
+        $this->assertEquals(0, $row['sort_order']);   
+
+        $stmnt = $this->conn->executeQuery($query, array('name' => 'page4', 'parent' => '/topic'));        
+
+        $row = $stmnt->fetch();
+        $this->assertEquals(4, $row['sort_order']);
+
+        $retrieved = $this->session->getNode('/topic');
+        foreach($retrieved as $name => $child) {
+            $check[] = $name;
+        }
+
+        $this->assertEquals($check[0], 'page3');
+        $this->assertEquals($check[4], 'page4');
+    }
 }
