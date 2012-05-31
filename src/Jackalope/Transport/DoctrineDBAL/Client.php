@@ -1137,15 +1137,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = $qb->getSql();
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
         
-        while($row = $stmnt->fetchColumn()) {
+        while ($row = $stmnt->fetchColumn()) {
             $original[] = $row;  
         }
 
         // Flip to access via the name.
         $modified = array_flip($original);
 
-        foreach($reorders as $reorder) {
-            if($reorder[1] === NULL) { 
+        foreach ($reorders as $reorder) {
+            if (null === $reorder[1]) { 
                 // Case: need to move node to the end of the array.
                 // Remove from old position and append to end.
                 unset($modified[$reorder[0]]);
@@ -1173,8 +1173,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            foreach($modified as $name => $order) {
-                if($original[$order] != $name) {
+            foreach ($modified as $name => $order) {
+                if ($original[$order] != $name) {
                     $qb = $this->conn->createQueryBuilder();                    
                     $qb->update('phpcr_nodes')
                        ->set('sort_order', ':order')
