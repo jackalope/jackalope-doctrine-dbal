@@ -481,14 +481,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select('max(n.sort_order) as max_sort_order')
+                $qb->select('max(n.sort_order)')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent');
-                $query = $qb->getSql();
-                $stmnt = $this->conn->executeQuery($query, array('parent' => $parent));
                 
-                $row = $stmnt->fetchColumn();
-                $maxSortOrder = $row['max_sort_order'];  
+                $sql = $qb->getSql();
+                $stmnt = $this->conn->executeQuery($sql, array('parent' => $parent));
+                $maxSortOrder = $stmnt->fetchColumn();
                 $newNodeSortOrder = $maxSortOrder + 1;
 
                 try {
