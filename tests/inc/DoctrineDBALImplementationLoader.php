@@ -56,7 +56,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\AddMethodsTest::testAddPropertyWrongType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/18
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
                     'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
-                    'Writing\\DeleteMethodsTest::testRemoveNodeConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/20
                     'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/21
 
                     // TODO: enable and look at the exception you get as starting point
