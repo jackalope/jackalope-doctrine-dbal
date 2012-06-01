@@ -481,17 +481,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select('max(n.sort_order)')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent');
                 
                 $sql = $qb->getSql();
-                $stmnt = $this->conn->executeQuery($sql, array('parent' => $parent));
-                $maxSortOrder = $stmnt->fetchColumn();
-                $newNodeSortOrder = $maxSortOrder + 1;
 
                 try {
-                    $this->conn->insert('phpcr_nodes', array(
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;                               
+                    $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
                         'path'          => $path,
@@ -500,7 +498,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'parent'        => $parent,
                         'workspace_id'  => $this->workspaceId,
                         'props'         => $propsData['dom']->saveXML(),
-                        'sort_order'    => $newNodeSortOrder,
                     ));
                 } catch (\PDOException $ex) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
