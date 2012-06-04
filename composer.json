@@ -18,12 +18,17 @@
         "doctrine/dbal": "2.2.*"
     },
     "provide": {
-        "jackalope/jackalope-transport": "dev-master"
+        "jackalope/jackalope-transport": "1.0.0-alpha1"
     },
     "require-dev": {
         "phpcr/phpcr-api-tests": "dev-master"
     },
     "autoload": {
         "psr-0": { "Jackalope\\": "src/" }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-master": "1.0-dev"
+        }
     }
 }
