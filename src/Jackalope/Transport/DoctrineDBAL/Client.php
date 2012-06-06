@@ -1123,6 +1123,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         */
 
         // Retrieve an array of siblings names in the original order.
+        $this->conn->beginTransaction();
         $qb = $this->conn->createQueryBuilder();
 
         $qb->select('n.local_name')
@@ -1130,7 +1131,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
            ->where('n.parent = :absPath')
            ->orderBy('n.sort_order', 'ASC');
 
-        $query = $qb->getSql();
+        $query = $qb->getSql() . " FOR UPDATE";
 
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
 
@@ -1168,8 +1169,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         try {
-            $this->conn->beginTransaction();
-            
             $values[':absPath'] = $absPath;            
             $sql = "UPDATE phpcr_nodes SET sort_order = CASE local_name";
             $i = 0;
