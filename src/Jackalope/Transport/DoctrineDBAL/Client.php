@@ -1131,10 +1131,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
            ->orderBy('n.sort_order', 'ASC');
 
         $query = $qb->getSql();
+
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
-        
+
         while ($row = $stmnt->fetchColumn()) {
-            $original[] = $row;  
+            $original[] = $row; 
         }
 
         // Flip to access via the name.
@@ -1168,19 +1169,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->beginTransaction();
+            
+            $values[':absPath'] = $absPath;            
+            $sql = "UPDATE phpcr_nodes SET sort_order = CASE local_name";
+            $i = 0;
 
             foreach ($modified as $name => $order) {
-                if ($original[$order] != $name) {
-                    $qb = $this->conn->createQueryBuilder();                    
-                    $qb->update('phpcr_nodes')
-                       ->set('sort_order', ':order')
-                       ->where('parent = :absPath')
-                       ->andWhere('local_name = :name');                   
-                    $query = $qb->getSql();
-                    $this->conn->executeUpdate($query, array('absPath' => $absPath, 'name' => $name, 'order' => $order));             
-                }
+                $values[':name' . $i] = $name;
+                $values[':order' . $i] = $order;
+                $sql .= " WHEN :name" . $i . " THEN :order" . $i;
+                $i++;
             }
-
+            
+            $sql .= " ELSE sort_order END WHERE parent = :absPath";
+            
+            $this->conn->executeUpdate($sql, $values);             
             $this->conn->commit();
 
         } catch (\Exception $e) {
