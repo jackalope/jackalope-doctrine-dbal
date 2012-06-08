@@ -254,11 +254,12 @@ foreach ($ri as $file) {
                 $parent = '/';
             }
 
-            if (strpos(':', $attr)) {
-                list($namespace, $local_name) = explode(':', $attr);
+            $name = $node->getAttributeNS('http://www.jcp.org/jcr/sv/1.0', 'name');
+            if (false !== strpos($name, ':')) {
+                list($namespace, $local_name) = explode(':', $name);
             } else {
                 $namespace = '';
-                $local_name = $attr;
+                $local_name = $name;
             }
             $dataSetBuilder->addRow('phpcr_nodes', array(
                 'id' => $nodeId,
