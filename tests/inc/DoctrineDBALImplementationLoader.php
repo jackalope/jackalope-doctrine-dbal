@@ -36,7 +36,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
                     'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
                     'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
-                    'Reading\\PropertyReadMethodsTest::testJcrCreated', // TODO: fails because NodeTypeDefinitions do not work inside DoctrineDBAL transport yet.
+                    'Reading\\PropertyReadMethodsTest::testJcrCreated', // TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/34
 
                     //TODO: implement getQuery method in Jackalope QueryManager
                     'Query\\QueryManagerTest::testGetQuery',
@@ -52,11 +52,9 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     // https://github.com/phpcr/phpcr-api-tests/issues/22
                     'Query\\NodeViewTest::testSeekable',
 
-                    'Writing\\AddMethodsTest::testAddNodeIllegalType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/16
-                    'Writing\\AddMethodsTest::testAddPropertyWrongType', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/18
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
                     'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
-                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/21
+                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/34
 
                     // TODO: enable and look at the exception you get as starting point
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved',
