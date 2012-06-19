@@ -48,7 +48,7 @@ To run the tests:
     cd /path/to/jackalope/tests
     cp phpunit.xml.dist phpunit.xml
     # adjust phpunit.xml as necessary
-    ./generate_doctrine_dbal_fixture.php
+    ./generate_fixtures.php
     phpunit
 
 
