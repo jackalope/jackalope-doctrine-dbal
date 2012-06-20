@@ -1126,7 +1126,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->conn->beginTransaction();
         $qb = $this->conn->createQueryBuilder();
 
-        $qb->select('n.local_name')
+        $qb->select("CONCAT(n.namespace,(CASE namespace WHEN '' THEN '' ELSE ':' END), n.local_name)")
            ->from('phpcr_nodes', 'n')
            ->where('n.parent = :absPath')
            ->orderBy('n.sort_order', 'ASC');
@@ -1170,7 +1170,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $values[':absPath'] = $absPath;            
-            $sql = "UPDATE phpcr_nodes SET sort_order = CASE local_name";
+            $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
+              namespace,
+              (CASE namespace WHEN '' THEN '' ELSE ':' END),
+              local_name
+            )";
+
             $i = 0;
 
             foreach ($modified as $name => $order) {
