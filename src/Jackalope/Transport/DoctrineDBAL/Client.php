@@ -480,8 +480,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             if ($isNewNode) {
                 list($namespace, $localName) = $this->getJcrName($path);
 
+                $qb = $this->conn->createQueryBuilder();
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
+                   ->from('phpcr_nodes', 'n')
+                   ->where('n.parent = :parent');
+                
+                $sql = $qb->getSql();
+
                 try {
-                    $this->conn->insert('phpcr_nodes', array(
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;                               
+                    $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
                         'path'          => $path,
@@ -795,7 +803,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $data->{'jcr:primaryType'} = $row['type'];
         $this->nodeIdentifiers[$path] = $row['identifier'];
 
-        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ?';
+        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ? ORDER BY sort_order ASC';
         $children = $this->conn->fetchAll($query, array($path, $this->workspaceId));
 
         foreach ($children as $child) {
@@ -1105,8 +1113,88 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function reorderNodes($absPath, $reorders)
     {
         $this->assertLoggedIn();
+       
+       /* Solution:
+        * - Determine the current order (from DB query).
+        * - Use the $reorders to calculate the new order.
+        * - Compare the old and new sequences to generate the required update statements.
+        * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the 
+        * last sibling to being the first, could result in the need to update the sort_order of every sibling. 
+        */
 
-        throw new NotImplementedException("Moving nodes is not yet implemented");
+        // Retrieve an array of siblings names in the original order.
+        $this->conn->beginTransaction();
+        $qb = $this->conn->createQueryBuilder();
+
+        $qb->select("CONCAT(n.namespace,(CASE namespace WHEN '' THEN '' ELSE ':' END), n.local_name)")
+           ->from('phpcr_nodes', 'n')
+           ->where('n.parent = :absPath')
+           ->orderBy('n.sort_order', 'ASC');
+
+        $query = $qb->getSql() . " FOR UPDATE";
+
+        $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
+
+        while ($row = $stmnt->fetchColumn()) {
+            $original[] = $row; 
+        }
+
+        // Flip to access via the name.
+        $modified = array_flip($original);
+
+        foreach ($reorders as $reorder) {
+            if (null === $reorder[1]) { 
+                // Case: need to move node to the end of the array.
+                // Remove from old position and append to end.
+                unset($modified[$reorder[0]]);
+                $modified = array_flip($modified);
+                $modified[] = $reorder[0];
+                
+                // Resequence keys and flip back so we can access via name again. 
+                $modified = array_values($modified);
+                $modified = array_flip($modified);
+            } else { 
+                // Case: need to move node to before the specified target.
+                // Remove from old position, resequence the keys and flip back so we can access by name again. 
+                unset($modified[$reorder[0]]);
+                $modified = array_keys($modified);
+                $modified = array_flip($modified);
+                
+                // Get target position and splice in.
+                $targetPos = $modified[$reorder[1]];
+                $modified = array_flip($modified);
+                array_splice($modified, $targetPos, 0, $reorder[0]);
+                $modified = array_flip($modified);
+            }
+        }
+
+        try {
+            $values[':absPath'] = $absPath;            
+            $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
+              namespace,
+              (CASE namespace WHEN '' THEN '' ELSE ':' END),
+              local_name
+            )";
+
+            $i = 0;
+
+            foreach ($modified as $name => $order) {
+                $values[':name' . $i] = $name;
+                $values[':order' . $i] = $order;
+                $sql .= " WHEN :name" . $i . " THEN :order" . $i;
+                $i++;
+            }
+            
+            $sql .= " ELSE sort_order END WHERE parent = :absPath";
+            
+            $this->conn->executeUpdate($sql, $values);             
+            $this->conn->commit();
+
+        } catch (\Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
+
     }
 
     /**
