@@ -9,6 +9,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 use Doctrine\DBAL\Connection;
 
+use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+
 /**
  * Init doctrine dbal
  *
@@ -28,6 +30,10 @@ class InitDoctrineDbalCommand extends Command
                 new InputOption(
                     'dump-sql', null, InputOption::VALUE_NONE,
                     'Instead of try to apply generated SQLs to the database, output them.'
+                ),
+                new InputOption(
+                    'drop', null, InputOption::VALUE_NONE,
+                    'Drop any existing tables before trying to create the new tables.'
                 )
             ))
             ->setHelp(<<<EOT
@@ -53,8 +59,18 @@ EOT
             $output->write('ATTENTION: This operation should not be executed in a production environment.' . PHP_EOL . PHP_EOL);
         }
 
-        $schema = \Jackalope\Transport\DoctrineDBAL\RepositorySchema::create();
+        $schema = RepositorySchema::create();
         try {
+            if ($input->getOption('drop')) {
+                foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
+                    if (true === $input->getOption('dump-sql')) {
+                        $output->writeln($sql);
+                    } else {
+                        $connection->exec($sql);
+                    }
+                }
+            }
+
             foreach ($schema->toSql($connection->getDatabasePlatform()) as $sql) {
                 if (true === $input->getOption('dump-sql')) {
                     $output->writeln($sql);
@@ -71,7 +87,7 @@ EOT
         }
 
         if (true !== $input->getOption('dump-sql')) {
-            $output->writeln("Jackalope Doctrine DBAL tables have been initialized successfully and 'default' workspace created.");
+            $output->writeln("Jackalope Doctrine DBAL tables have been initialized successfully.");
         }
     }
 }
