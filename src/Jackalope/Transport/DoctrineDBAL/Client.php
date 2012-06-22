@@ -1110,61 +1110,66 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->beginTransaction();
-
             $sql = "
-                UPDATE phpcr_nodes
+                UPDATE phpcr_nodes n
                 SET
-                    path = REPLACE(path, :srcAbsPath, :dstAbsPath),
-                    parent =
+                    n.path = REPLACE(n.path, :srcAbsPath, :dstAbsPath),
+                    n.parent = @parent :=
                         CASE
                             /* WHEN the string has no '/', return a '.' */
-                            WHEN INSTR(REPLACE(path, :srcAbsPath, :dstAbsPath), '/') = 0
+                            WHEN INSTR(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/') = 0
                             THEN '.'
                             
                             /* WHEN it is just '/', return '/' */
-                            WHEN REPLACE(path, :srcAbsPath, :dstAbsPath) = '/'
+                            WHEN REPLACE(n.path, :srcAbsPath, :dstAbsPath) = '/'
                             THEN '/'
 
                             /* WHEN ends with a '/' and there is only one '/' in the string , return a '.' */
                             WHEN
-                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '%/'
-                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) <2
+                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '%/'
+                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) <2
                             THEN '.'
                             
                             /* WHEN there are two '/' and they are the start and end, return '/' */
                             WHEN
-                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '/%/'
-                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) = 2
+                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '/%/'
+                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) = 2
                             THEN '/'
                             
                             /* WHEN there is one '/' at the begining of the string, return '/' */
                             WHEN
-                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '/%'
-                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) = 1
+                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '/%'
+                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) = 1
                             THEN '/'
 
                             /* WHEN the new path ends with a '/' return the substr up to the penultimate '/' */
-                            WHEN REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '%/'
+                            WHEN REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '%/'
                             THEN SUBSTRING_INDEX(
-                                REPLACE(path, :srcAbsPath, :dstAbsPath),
+                                REPLACE(n.path, :srcAbsPath, :dstAbsPath),
                                 '/', 
-                                LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', '')) - 1
+                                LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', '')) - 1
                             )
                                     
                             /* WHEN '/' appears within the string, and not terminated by a '/' (already covered above), return substr up to the final '/' */
-
                             ELSE SUBSTRING_INDEX(
-                                REPLACE(path, :srcAbsPath, :dstAbsPath), 
+                                REPLACE(n.path, :srcAbsPath, :dstAbsPath), 
                                 '/',
-                                LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))
+                                LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))
                             )
-                        END
-                WHERE path LIKE :srcAbsPathTree OR path = :srcAbsPath AND workspace_id = :workspaceId
+                        END,
+                    sort_order = (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = @parent) y)  
+                WHERE n.path LIKE :srcAbsPathTree OR n.path = :srcAbsPath AND n.workspace_id = :workspaceId
             ";
 
-            $this->conn->executeUpdate($sql, array('srcAbsPath' => $srcAbsPath, 'srcAbsPathTree' => $srcAbsPath . '/%', 'dstAbsPath' => $dstAbsPath, 'workspaceId' => $this->workspaceId));             
-            $this->conn->commit();
+            $values = array(
+                'srcAbsPath'     => $srcAbsPath, 
+                'srcAbsPathTree' => $srcAbsPath . '/%', 
+                'dstAbsPath'     => $dstAbsPath, 
+                'workspaceId'    => $this->workspaceId
+            );
 
+            $this->conn->executeUpdate($sql, $values);             
+            $this->conn->commit();
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
