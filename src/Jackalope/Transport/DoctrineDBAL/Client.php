@@ -1108,35 +1108,63 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Parent of the destination path '" . $this->getParentPath($dstAbsPath) . "' has to exist.");
         }
 
-        // Algorithm:
-        // 1. Select all nodes with path $srcAbsPath."%" and iterate them
-        // 2. update the path and parent path of all nodes
-
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ?';
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
+            $sql = "
+                UPDATE phpcr_nodes
+                SET
+                    path = REPLACE(path, :srcAbsPath, :dstAbsPath),
+                    parent =
+                        CASE
+                            /* WHEN the string has no '/', return a '.' */
+                            WHEN INSTR(REPLACE(path, :srcAbsPath, :dstAbsPath), '/') = 0
+                            THEN '.'
+                            
+                            /* WHEN it is just '/', return '/' */
+                            WHEN REPLACE(path, :srcAbsPath, :dstAbsPath) = '/'
+                            THEN '/'
 
-            /*
-             * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
-             * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
-             * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
-             * rather than raw sql, to make it work on a maximum of platforms.
-             *
-             * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
-             * we can ask the doctrine community how to do the substring operation.
-             * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
-             */
+                            /* WHEN ends with a '/' and there is only one '/' in the string , return a '.' */
+                            WHEN
+                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '%/'
+                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) <2
+                            THEN '.'
+                            
+                            /* WHEN there are two '/' and they are the start and end, return '/' */
+                            WHEN
+                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '/%/'
+                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) = 2
+                            THEN '/'
+                            
+                            /* WHEN there is one '/' at the begining of the string, return '/' */
+                            WHEN
+                                REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '/%'
+                                AND (LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))) = 1
+                            THEN '/'
 
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-                $newParent = dirname($newPath);
-                $nodeId = $row['id'];
-                $query = "UPDATE phpcr_nodes SET path = ? , parent = ? WHERE id = ?";
-                $this->conn->executeUpdate($query, array($newPath, $newParent, $nodeId));
-            }
+                            /* WHEN the new path ends with a '/' return the substr up to the penultimate '/' */
+                            WHEN REPLACE(path, :srcAbsPath, :dstAbsPath) LIKE '%/'
+                            THEN SUBSTRING_INDEX(
+                                REPLACE(path, :srcAbsPath, :dstAbsPath),
+                                '/', 
+                                LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', '')) - 1
+                            )
+                                    
+                            /* WHEN '/' appears within the string, and not terminated by a '/' (already covered above), return substr up to the final '/' */
+
+                            ELSE SUBSTRING_INDEX(
+                                REPLACE(path, :srcAbsPath, :dstAbsPath), 
+                                '/',
+                                LENGTH(REPLACE(path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(path, :srcAbsPath, :dstAbsPath), '/', ''))
+                            )
+                        END
+                WHERE path LIKE :srcAbsPathTree OR path = :srcAbsPath AND workspace_id = :workspaceId
+            ";
+
+            $this->conn->executeUpdate($sql, array('srcAbsPath' => $srcAbsPath, 'srcAbsPathTree' => $srcAbsPath . '/%', 'dstAbsPath' => $dstAbsPath, 'workspaceId' => $this->workspaceId));             
             $this->conn->commit();
+
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
