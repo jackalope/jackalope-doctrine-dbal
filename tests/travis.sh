@@ -10,5 +10,3 @@ git submodule update --init --recursive
 pyrus install phpunit/DBUnit
 
 php $DIR/generate_fixtures.php
-
-php $DIR/create_database.php $DIR/$DB.phpunit.xml.dist --force-drop-database
