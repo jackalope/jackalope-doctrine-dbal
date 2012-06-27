@@ -11,7 +11,8 @@ doc/config/phpdoc.ini
 doc/html
 
 tests/fixtures/doctrine
-tests/phpunit.xml
+tests/pgsql.phpunit.xml
+tests/mysql.phpunit.xml
 
 vendor/
 composer.phar
