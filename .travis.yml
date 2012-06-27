@@ -4,12 +4,16 @@ php:
   - 5.3
   - 5.4
 
+env:
+  - DB=mysql
+  - DB=pgsql
+
 before_script:
   - curl -s http://getcomposer.org/installer | php
   - php composer.phar install --dev
   - ./tests/travis.sh
 
-script: phpunit -c tests/phpunit.xml.dist
+script: phpunit -c tests/$DB.phpunit.xml.dist
 
 notifications:
   irc: "irc.freenode.org#jackalope"

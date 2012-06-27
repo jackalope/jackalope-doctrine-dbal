@@ -7,9 +7,10 @@
  */
 
 if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
-    die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
-        'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
-        'php composer.phar install'.PHP_EOL);
+    echo ('You must set up the project dependencies, run the following commands:' . PHP_EOL .
+        'curl -s http://getcomposer.org/installer | php' . PHP_EOL .
+        'php composer.phar install');
+	exit (127);
 }
 
 $srcDir = __DIR__ . "/../vendor/phpcr/phpcr-api-tests/fixtures";
@@ -124,11 +125,12 @@ foreach ($ri as $file) {
          xmlns:new_prefix="http://a_new_namespace"
          xmlns:jcr="http://www.jcp.org/jcr/1.0"
          xmlns:sv="http://www.jcp.org/jcr/sv/1.0"
-         xmlns:rep="internal" />'
+         xmlns:rep="internal" />',
+			'sort_order' => 0,
         ));
         $nodeIds[$id] = $nodeId;
 
-        foreach ($nodes as $node) {
+        foreach ($nodes as $key => $node) {
             /* @var $node DOMElement */
             $parent = $node;
             $path = "";
@@ -271,6 +273,7 @@ foreach ($ri as $file) {
                 'identifier' => $id,
                 'type' => $attrs['jcr:primaryType']['value'][0],
                 'props' => $dom->saveXML(),
+				'sort_order' => 1 + $key,
             ));
         }
 
