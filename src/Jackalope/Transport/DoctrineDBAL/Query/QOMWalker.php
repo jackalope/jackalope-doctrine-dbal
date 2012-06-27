@@ -3,6 +3,8 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\QOM;
+
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 
 /**
@@ -23,27 +25,41 @@ class QOMWalker
     private $alias = array();
 
     /**
+     * @var Doctrine\DBAL\Connection
+     */
+    private $conn;
+
+    /**
      * @var AbstractPlatform
      */
     private $platform;
 
     private $namespaces;
 
-    public function __construct(NodeTypeManagerInterface $manager, AbstractPlatform $platform, array $namespaces = array())
+    /**
+     * @param \PHPCR\NodeType\NodeTypeManagerInterface $manager
+     * @param Connection $conn
+     * @param array $namespaces
+     */
+    public function __construct(NodeTypeManagerInterface $manager, Connection $conn, array $namespaces = array())
     {
+        $this->conn = $conn;
         $this->nodeTypeManager = $manager;
-        $this->platform = $platform;
+        $this->platform = $conn->getDatabasePlatform();
         $this->namespaces = $namespaces;
     }
 
+    /**
+     * @param $selectorName
+     * @return string
+     */
     private function getTableAlias($selectorName)
     {
         if (strpos($selectorName, ".") === false) {
             return "n";
-        } else {
-            $selectorAlias = array_slice(explode(".", $selectorName), 0, 1);
         }
 
+        $selectorAlias = reset(explode(".", $selectorName));
         if (!isset($this->alias[$selectorAlias])) {
             $this->alias[$selectorAlias] = "n" . count($this->alias);
         }
@@ -238,8 +254,8 @@ class QOMWalker
         } elseif ($operand instanceof QOM\UpperCaseInterface) {
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         } elseif ($operand instanceof QOM\LiteralInterface) {
-            return "'" . trim($operand->getLiteralValue(), '"') . "'";
         } elseif ($operand instanceof QOM\PropertyValueInterface) {
+            return $this->conn->quote(trim($operand->getLiteralValue(), '"'));
             $alias = $this->getTableAlias($operand->getSelectorName());
             $property = $operand->getPropertyName();
             if ($property == "jcr:path") {
