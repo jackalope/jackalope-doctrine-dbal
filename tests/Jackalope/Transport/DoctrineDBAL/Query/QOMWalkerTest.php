@@ -4,6 +4,8 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use Jackalope\Transport\DoctrineDBAL\DoctrineDBALTestCase;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
+use Jackalope\Factory;
+
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 
 class QOMWalkerTest extends DoctrineDBALTestCase
@@ -24,8 +26,8 @@ class QOMWalkerTest extends DoctrineDBALTestCase
 
         $conn = $this->getConnection();
         $this->nodeTypeManager = $this->getMock('Jackalope\NodeType\NodeTypeManager', array(), array(), '', false);
-        $this->factory = new QueryObjectModelFactory(new \Jackalope\Factory);
-        $this->walker = new QOMWalker($this->nodeTypeManager, $conn->getDatabasePlatform());
+        $this->factory = new QueryObjectModelFactory(new Factory);
+        $this->walker = new QOMWalker($this->nodeTypeManager, $conn);
     }
 
     public function testDefaultQuery()
