@@ -64,6 +64,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
 
+                    //TODO: parse cnd https://github.com/phpcr/phpcr-utils/issues/18
+                    'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCnd',
+                    'NodeTypeManagement\\ManipulationTest::testPrimaryItem',
+                    'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCndNoUpdate',
+
                     //TODO: Client::createWorkspace throws a NotImplementedException
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
