@@ -6,6 +6,8 @@
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  */
 
+const DATEFORMAT = 'Y-m-d\TH:i:s.uP';
+
 if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
     die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
         'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
@@ -142,17 +144,30 @@ foreach ($ri as $file) {
             $attrs = array();
             foreach ($node->childNodes as $child) {
                 if ($child instanceof DOMElement && $child->tagName == "sv:property") {
+                    /** @var $child \DOMElement */
                     $name = $child->getAttributeNS('http://www.jcp.org/jcr/sv/1.0', 'name');
 
                     $value = array();
-                    foreach ($child->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'value') as $nodeValue) {
-                        $value[] = $nodeValue->nodeValue;
+                    switch ($name) {
+                        case 'jcr:created':
+                            $value[] = date(DATEFORMAT);
+                            break;
+
+                        default:
+                            foreach ($child->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'value') as $nodeValue) {
+                                $value[] = $nodeValue->nodeValue;
+                            }
+                            break;
                     }
+
+                    $multivalue = $child->hasAttributeNS('http://www.jcp.org/jcr/sv/1.0', 'multiple') ?
+                        $child->getAttributeNS('http://www.jcp.org/jcr/sv/1.0', 'multiple') :
+                        ((in_array($name, array('jcr:mixinTypes'))) || count($value) > 1);
 
                     $attrs[$name] = array(
                         'type' =>  strtolower($child->getAttributeNS('http://www.jcp.org/jcr/sv/1.0', 'type')),
                         'value' => $value,
-                        'multiValued' => (in_array($name, array('jcr:mixinTypes'))) || count($value) > 1,
+                        'multiValued' => $multivalue,
                     );
                 }
             }
@@ -202,8 +217,8 @@ foreach ($ri as $file) {
                                 $value = 'true' === $value ? '1' : '0';
                                 break;
                             case 'date':
-                                $datetime = \DateTime::createFromFormat('Y-m-d\TH:i:s.uP', $value);
-                                $value = $datetime->format('Y-m-d\TH:i:s.uP');
+                                $datetime = \DateTime::createFromFormat(DATEFORMAT, $value);
+                                $value = $datetime->format(DATEFORMAT);
                                 break;
                             case 'weakreference':
                             case 'reference':

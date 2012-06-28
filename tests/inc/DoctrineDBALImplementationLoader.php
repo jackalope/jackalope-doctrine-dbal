@@ -36,7 +36,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
                     'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
                     'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
-                    'Reading\\PropertyReadMethodsTest::testJcrCreated', // TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/34
 
                     //TODO: implement getQuery method in Jackalope QueryManager
                     'Query\\QueryManagerTest::testGetQuery',
@@ -54,7 +53,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
                     'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
-                    'Writing\\DeleteMethodsTest::testNodeRemovePropertyConstraintViolation', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/34
 
                     // TODO: enable and look at the exception you get as starting point
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved',
