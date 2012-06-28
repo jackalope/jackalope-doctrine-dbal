@@ -1700,7 +1700,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new InvalidQueryException($msg);
         }
 
-        $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn->getDatabasePlatform(), $this->getNamespaces());
+        $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
         $sql = $qomWalker->walkQOMQuery($query);
 
         $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
