@@ -484,7 +484,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $qb = $this->conn->createQueryBuilder();
                 $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
                    ->from('phpcr_nodes', 'n')
-                   ->where('n.parent = :parent');
+                   ->where('n.parent = :parent_a');
 
                 $sql = $qb->getSql();
 
@@ -499,6 +499,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'parent'        => $parent,
                         'workspace_id'  => $this->workspaceId,
                         'props'         => $propsData['dom']->saveXML(),
+                        'parent_a'      => $parent,
                     ));
                 } catch (\PDOException $ex) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
