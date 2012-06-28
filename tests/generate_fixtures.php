@@ -10,7 +10,7 @@ if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
     echo ('You must set up the project dependencies, run the following commands:' . PHP_EOL .
         'curl -s http://getcomposer.org/installer | php' . PHP_EOL .
         'php composer.phar install');
-	exit (127);
+    exit (127);
 }
 
 $srcDir = __DIR__ . "/../vendor/phpcr/phpcr-api-tests/fixtures";
@@ -126,7 +126,7 @@ foreach ($ri as $file) {
          xmlns:jcr="http://www.jcp.org/jcr/1.0"
          xmlns:sv="http://www.jcp.org/jcr/sv/1.0"
          xmlns:rep="internal" />',
-			'sort_order' => 0,
+            'sort_order' => 0,
         ));
         $nodeIds[$id] = $nodeId;
 
@@ -273,7 +273,7 @@ foreach ($ri as $file) {
                 'identifier' => $id,
                 'type' => $attrs['jcr:primaryType']['value'][0],
                 'props' => $dom->saveXML(),
-				'sort_order' => 1 + $key,
+                'sort_order' => 1 + $key,
             ));
         }
 
