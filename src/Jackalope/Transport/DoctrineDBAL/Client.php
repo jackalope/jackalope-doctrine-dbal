@@ -484,11 +484,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent');
-                
+
                 $sql = $qb->getSql();
 
                 try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;                               
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;
                     $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
@@ -1113,13 +1113,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function reorderNodes($absPath, $reorders)
     {
         $this->assertLoggedIn();
-       
+
        /* Solution:
         * - Determine the current order (from DB query).
         * - Use the $reorders to calculate the new order.
         * - Compare the old and new sequences to generate the required update statements.
-        * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the 
-        * last sibling to being the first, could result in the need to update the sort_order of every sibling. 
+        * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the
+        * last sibling to being the first, could result in the need to update the sort_order of every sibling.
         */
 
         // Retrieve an array of siblings names in the original order.
@@ -1136,30 +1136,30 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
 
         while ($row = $stmnt->fetchColumn()) {
-            $original[] = $row; 
+            $original[] = $row;
         }
 
         // Flip to access via the name.
         $modified = array_flip($original);
 
         foreach ($reorders as $reorder) {
-            if (null === $reorder[1]) { 
+            if (null === $reorder[1]) {
                 // Case: need to move node to the end of the array.
                 // Remove from old position and append to end.
                 unset($modified[$reorder[0]]);
                 $modified = array_flip($modified);
                 $modified[] = $reorder[0];
-                
-                // Resequence keys and flip back so we can access via name again. 
+
+                // Resequence keys and flip back so we can access via name again.
                 $modified = array_values($modified);
                 $modified = array_flip($modified);
-            } else { 
+            } else {
                 // Case: need to move node to before the specified target.
-                // Remove from old position, resequence the keys and flip back so we can access by name again. 
+                // Remove from old position, resequence the keys and flip back so we can access by name again.
                 unset($modified[$reorder[0]]);
                 $modified = array_keys($modified);
                 $modified = array_flip($modified);
-                
+
                 // Get target position and splice in.
                 $targetPos = $modified[$reorder[1]];
                 $modified = array_flip($modified);
@@ -1169,7 +1169,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         try {
-            $values[':absPath'] = $absPath;            
+            $values[':absPath'] = $absPath;
             $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
               namespace,
               (CASE namespace WHEN '' THEN '' ELSE ':' END),
@@ -1184,10 +1184,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $sql .= " WHEN :name" . $i . " THEN :order" . $i;
                 $i++;
             }
-            
+
             $sql .= " ELSE sort_order END WHERE parent = :absPath";
-            
-            $this->conn->executeUpdate($sql, $values);             
+
+            $this->conn->executeUpdate($sql, $values);
             $this->conn->commit();
 
         } catch (\Exception $e) {
