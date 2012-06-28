@@ -45,7 +45,7 @@ class DoctrineDBALFixtureLoader implements \PHPCR\Test\FixtureLoaderInterface
                 $pdo->exec('SET foreign_key_checks = 1');
             }
 
-            if ($driver == 'pgsql')    {
+            if ($driver == 'pgsql') {
                 // update next serial/autoincrement value to max
                 foreach ($pdo->query("SELECT table_name, column_name FROM information_schema.columns WHERE column_default LIKE 'nextval%';")->fetchAll(PDO::FETCH_ASSOC) as $info) {
                     $query = "SELECT setval((SELECT pg_get_serial_sequence('" . $info['table_name'] . "', '" . $info['column_name'] . "') as sequence), (SELECT max(" . $info['column_name'] . ") FROM " . $info['table_name'] . "));";
