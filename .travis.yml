@@ -11,8 +11,8 @@ env:
 before_script:
   - curl -s http://getcomposer.org/installer | php
   - php composer.phar install --dev
-  - mysql -e 'create database phpcr_tests;'
-  - psql -c 'create database phpcr_tests;' -U postgres
+  - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;" fi
+  - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - ./tests/travis.sh
 
 script: phpunit -c tests/$DB.phpunit.xml.dist
