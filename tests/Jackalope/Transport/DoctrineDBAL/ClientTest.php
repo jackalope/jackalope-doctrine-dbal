@@ -127,11 +127,10 @@ class ClientTest extends DoctrineDBALTestCase
            ->orderBy('n.sort_order', 'ASC');
 
         $query = $qb->getSql();
-        $stmnt = $this->conn->prepare($query);
 
         $stmnt = $this->conn->executeQuery($query, array('name' => 'page3', 'parent' => '/topic'));        
         $row = $stmnt->fetch();
-        $this->assertEquals(0, $row['sort_order']);   
+        $this->assertEquals(0, $row['sort_order']);
 
         $stmnt = $this->conn->executeQuery($query, array('name' => 'page4', 'parent' => '/topic'));        
 
