@@ -482,7 +482,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, COALESCE(MAX(n.sort_order), 0) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent_a');
 
