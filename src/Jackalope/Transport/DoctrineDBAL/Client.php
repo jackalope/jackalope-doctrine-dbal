@@ -1360,6 +1360,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($node as $child) {
             if ($child->isNew()) {
                 //could be existing node moved to this location
+                // TODO dont we need to store children here?
                 $this->storeNode($child);
             }
         }
