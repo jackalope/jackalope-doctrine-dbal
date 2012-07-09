@@ -41,11 +41,15 @@ suite, you need to remove composer.lock before running composer again with the
 
 ## Create a repository
 
-Set up a new database supported by Doctrine DBAL (i.e. mysql or postgres). You
-can use your favorite GUI frontend or just do something like this:
+Set up a new database supported by Doctrine DBAL. You can use your favorite GUI frontend or just do something like this:
 
+### MySQL
     mysqladmin -u root -p  create jackalope
     echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
+
+### PostgreSQL
+    psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
+    psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
 
 ## phpunit Tests
 
@@ -104,9 +108,9 @@ is set up (see above "Enable the commands"). Now you can run:
 Once these steps are done, you can bootstrap the library. A minimalist
 sample code to get a PHPCR session with the doctrine-dbal backend:
 
-    $driver   = 'pdo_mysql';
+    $driver   = 'pdo_mysql'; // pdo_pgsql
     $host     = 'localhost';
-    $user     = 'root';
+    $user     = 'jackalope';
     $password = '';
     $database = 'jackalope';
     $workspace  = 'default';
