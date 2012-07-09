@@ -1358,11 +1358,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($node as $child) {
+            /** @var $child Node */
             if ($child->isNew()) {
-                //could be existing node moved to this location
-                // TODO dont we need to store children here?
+                // recursively call ourselves
                 $this->storeNode($child);
             }
+            // else this is an existing node moved to this location
         }
         return true;
     }
