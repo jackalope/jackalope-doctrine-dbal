@@ -14,7 +14,7 @@ its tests folder.
 
 ## API test suite
 
-The phpunit.xml.dist is configured to run all tests. You can limit the tests
+The mysql.phpunit.xml.dist and pgsql.phpunit.xml.dist are configured to run all tests. You can limit the tests
 to run by specifying the path to those tests to phpunit.
 
 Note that the phpcr-api tests are skipped for features not implemented in
@@ -32,9 +32,13 @@ database is dropped each time you run a test.**
 
 You can use your favorite GUI frontend or just do something like this:
 
+### MySQL
     mysqladmin -u root -p  create phpcr_tests
     echo "grant all privileges on phpcr_tests.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
+### PostgreSQL
+    psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
+    psql -c "CREATE DATABASE phpcr_tests WITH OWNER = jackalope;" -U postgres
 
 Test fixtures for functional tests are written in the JCR System XML format. Use
 the converter script ``tests/generate_fixtures.php`` to prepare the fixtures
@@ -45,8 +49,8 @@ them whenever you update the vendors through composer.
 
 To run the tests:
 
-    cd /path/to/jackalope/tests
-    cp phpunit.xml.dist phpunit.xml
+    cd /path/to/jackalope-doctrine-dbal/tests
+    cp mysql.phpunit.xml.dist phpunit.xml
     # adjust phpunit.xml as necessary
     ./generate_fixtures.php
     phpunit
