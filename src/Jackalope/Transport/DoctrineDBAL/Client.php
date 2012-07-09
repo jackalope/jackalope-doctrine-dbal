@@ -482,9 +482,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, max(n.sort_order) + 1')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, COALESCE(MAX(n.sort_order), 0) + 1')
                    ->from('phpcr_nodes', 'n')
-                   ->where('n.parent = :parent');
+                   ->where('n.parent = :parent_a');
 
                 $sql = $qb->getSql();
 
@@ -499,6 +499,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'parent'        => $parent,
                         'workspace_id'  => $this->workspaceId,
                         'props'         => $propsData['dom']->saveXML(),
+                        'parent_a'      => $parent,
                     ));
                 } catch (\PDOException $ex) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
@@ -1357,10 +1358,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($node as $child) {
+            /** @var $child Node */
             if ($child->isNew()) {
-                //could be existing node moved to this location
+                // recursively call ourselves
                 $this->storeNode($child);
             }
+            // else this is an existing node moved to this location
         }
         return true;
     }

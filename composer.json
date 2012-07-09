@@ -5,6 +5,7 @@
     "keywords": ["transport implementation", "doctrine-dbal"],
     "homepage": "http://jackalope.github.com",
     "license": "MIT",
+    "minimum-stability": "dev",
     "authors": [
         {
             "name": "Jackalope Community",
