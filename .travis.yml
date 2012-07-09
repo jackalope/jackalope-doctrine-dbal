@@ -4,12 +4,18 @@ php:
   - 5.3
   - 5.4
 
+env:
+  - DB=mysql
+  - DB=pgsql
+
 before_script:
   - curl -s http://getcomposer.org/installer | php
   - php composer.phar install --dev
+  - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
+  - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - ./tests/travis.sh
 
-script: phpunit -c tests/phpunit.xml.dist
+script: phpunit -c tests/$DB.phpunit.xml.dist
 
 notifications:
   irc: "irc.freenode.org#jackalope"
