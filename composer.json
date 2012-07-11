@@ -14,8 +14,8 @@
     ],
     "require": {
         "php": ">=5.3.2",
-        "phpcr/phpcr": "dev-master",
-        "jackalope/jackalope": "dev-master",
+        "phpcr/phpcr": ">=2.1.0-beta3",
+        "jackalope/jackalope": "1.0.*",
         "doctrine/dbal": ">=2.2.0,<2.4"
     },
     "provide": {
