@@ -27,7 +27,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
         $this->unsupportedCases = array(
                     'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
-                    'Query\\Sql1' //TODO: Query language 'sql' not yet implemented
+                    'Query\\Sql1', //TODO: Query language 'sql' not yet implemented
         );
 
         $this->unsupportedTests = array(
@@ -76,6 +76,9 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
+
+                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/37
+                    'OrderableChildNodes\\OrderBeforeTest::testNodeOrderAfterOrderAndMove',
         );
     }
 
