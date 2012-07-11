@@ -1,14 +1,10 @@
 #!/usr/bin/env php
 <?php
 
-$autoload_dist = __DIR__.'/../src/autoload.dist.php';
-$autoload = __DIR__.'/../src/autoload.php';
-if (file_exists($autoload)) {
-    require_once($autoload);
-} elseif (file_exists($autoload_dist)) {
-    require_once($autoload_dist);
-} else {
-    die("Please copy the autoload dist file in src/ to $autoload and adjust as needed\n");
+if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
+    die('You must set up the project dependencies, run the following commands:'.PHP_EOL.
+        'curl -s http://getcomposer.org/installer | php'.PHP_EOL.
+        'php composer.phar install'.PHP_EOL);
 }
 
 $configFile = getcwd() . DIRECTORY_SEPARATOR . 'cli-config.php';
@@ -42,6 +38,7 @@ $cli->setCatchExceptions(true);
 $cli->setHelperSet($helperSet);
 $cli->addCommands(array(
     new \PHPCR\Util\Console\Command\CreateWorkspaceCommand(),
+    new \PHPCR\Util\Console\Command\ImportXmlCommand(),
     new \PHPCR\Util\Console\Command\DumpCommand(),
     new \PHPCR\Util\Console\Command\PurgeCommand(),
     new \PHPCR\Util\Console\Command\RegisterNodeTypesCommand(),
