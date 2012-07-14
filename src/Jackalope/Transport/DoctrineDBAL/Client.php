@@ -1156,7 +1156,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
            ->where('n.parent = :absPath')
            ->orderBy('n.sort_order', 'ASC');
 
-        $query = $qb->getSql() . $this->conn->getDatabasePlatform()->getForUpdateSQL();
+        $query = $qb->getSql() . ' ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
 
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
 
