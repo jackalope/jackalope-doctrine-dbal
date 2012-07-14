@@ -21,11 +21,12 @@ require 'inc/DoctrineDBALImplementationLoader.php';
  * set up the backend connection
  */
 $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
-    'driver'    => $GLOBALS['phpcr.doctrine.dbal.driver'],
-    'host'      => $GLOBALS['phpcr.doctrine.dbal.host'],
-    'user'      => $GLOBALS['phpcr.doctrine.dbal.username'],
-    'password'  => $GLOBALS['phpcr.doctrine.dbal.password'],
-    'dbname'    => $GLOBALS['phpcr.doctrine.dbal.dbname']
+    'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
+    'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
+    'host'      => @$GLOBALS['phpcr.doctrine.dbal.host'],
+    'user'      => @$GLOBALS['phpcr.doctrine.dbal.username'],
+    'password'  => @$GLOBALS['phpcr.doctrine.dbal.password'],
+    'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']
 ));
 
 // TODO: refactor this into the command (a --reset option) and use the command instead
@@ -39,7 +40,7 @@ foreach ($schema->toDropSql($dbConn->getDatabasePlatform()) as $sql) {
 }
 foreach ($schema->toSql($dbConn->getDatabasePlatform()) as $sql) {
     try {
-    $dbConn->exec($sql);
+        $dbConn->exec($sql);
     } catch(PDOException $e) {
         echo $e->getMessage();
     }
