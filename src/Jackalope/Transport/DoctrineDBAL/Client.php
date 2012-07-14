@@ -149,7 +149,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         
         // @todo: don't know if this place is right...
         if ($this->conn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
-            $this->conn->getWrappedConnection()->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
+            $sqliteConnection = $this->conn->getWrappedConnection();
+
+            $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
                 $xml = new \SimpleXMLElement($string);
                 $result = $xml->xpath($expression);
 
@@ -162,6 +164,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 // @todo: don't know if return value is right
                 return null;
             }, 2);
+
+            $sqliteConnection->sqliteCreateFunction('CONCAT', function () {
+                return implode('', func_get_args());
+            });
         }
     }
 
