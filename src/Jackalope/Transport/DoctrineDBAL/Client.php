@@ -146,6 +146,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
         $this->cache = $cache ?: new ArrayCache();
+        
+        // @todo: don't know if this place is right...
+        if ($this->conn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+            $this->conn->getWrappedConnection()->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
+                $xml = new \SimpleXMLElement($string);
+                $result = $xml->xpath($expression);
+
+                // @todo: don't know if there are expressions returning more then one row
+                if (isset($result) && count($result) > 0) {
+                    list(, $node) = each($result);
+                    return $node->__toString();
+                }
+
+                // @todo: don't know if return value is right
+                return null;
+            }, 2);
+        }
     }
 
     /**
