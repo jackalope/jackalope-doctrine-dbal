@@ -23,7 +23,9 @@ use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\ArrayCache;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\PDOConnection;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 use Jackalope\Node;
 use Jackalope\Property;
@@ -147,20 +149,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->cache = $cache ?: new ArrayCache();
 
-        // @todo: move to "\Doctrine\DBAL\Platforms\SqlitePlatform" and rename to "registerExtraFunctions"?
-        if ($this->conn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+        // @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
             $this->registerSqliteFunctions($this->conn->getWrappedConnection());
         }
     }
 
     /**
-     * @todo: move to "\Doctrine\DBAL\Platforms\SqlitePlatform" and rename to "registerExtraFunctions"?
+     * @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
      *
-     * @param \Doctrine\DBAL\Driver\PDOConnection $sqliteConnection
+     * @param PDOConnection $sqliteConnection
      *
-     * @return \Jackalope\Transport\DoctrineDBAL\Client
+     * @return Client
      */
-    private function registerSqliteFunctions(\Doctrine\DBAL\Driver\PDOConnection $sqliteConnection)
+    private function registerSqliteFunctions(PDOConnection $sqliteConnection)
     {
         $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
             $dom = new \DOMDocument('1.0', 'UTF-8');
