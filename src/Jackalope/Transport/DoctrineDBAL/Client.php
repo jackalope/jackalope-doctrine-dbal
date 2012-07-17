@@ -146,29 +146,42 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
         $this->cache = $cache ?: new ArrayCache();
-        
-        // @todo: don't know if this place is right...
+
+        // @todo: move to "\Doctrine\DBAL\Platforms\SqlitePlatform" and rename to "registerExtraFunctions"?
         if ($this->conn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
-            $sqliteConnection = $this->conn->getWrappedConnection();
-
-            $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
-                $xml = new \SimpleXMLElement($string);
-                $result = $xml->xpath($expression);
-
-                // @todo: don't know if there are expressions returning more then one row
-                if (isset($result) && count($result) > 0) {
-                    list(, $node) = each($result);
-                    return $node->__toString();
-                }
-
-                // @todo: don't know if return value is right
-                return null;
-            }, 2);
-
-            $sqliteConnection->sqliteCreateFunction('CONCAT', function () {
-                return implode('', func_get_args());
-            });
+            $this->registerSqliteFunctions($this->conn->getWrappedConnection());
         }
+    }
+
+    /**
+     * @todo: move to "\Doctrine\DBAL\Platforms\SqlitePlatform" and rename to "registerExtraFunctions"?
+     *
+     * @param \Doctrine\DBAL\Driver\PDOConnection $sqliteConnection
+     *
+     * @return \Jackalope\Transport\DoctrineDBAL\Client
+     */
+    private function registerSqliteFunctions(\Doctrine\DBAL\Driver\PDOConnection $sqliteConnection)
+    {
+        $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->loadXML($string);
+            $xpath = new \DOMXPath($dom);
+            $list = $xpath->query($expression);
+
+            // @todo: don't know if there are expressions returning more then one row
+            if ($list->length > 0) {
+                return $list->item(0)->textContent;
+            }
+
+            // @todo: don't know if return value is right
+            return null;
+        }, 2);
+
+        $sqliteConnection->sqliteCreateFunction('CONCAT', function () {
+            return implode('', func_get_args());
+        });
+
+        return $this;
     }
 
     /**
