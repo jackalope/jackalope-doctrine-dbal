@@ -427,7 +427,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
             $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceId));
 
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
                 $dom = new \DOMDocument('1.0', 'UTF-8');
