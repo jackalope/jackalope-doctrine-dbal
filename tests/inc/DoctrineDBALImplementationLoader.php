@@ -61,7 +61,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
-                    'Transactions\\TransactionMethodsTest::testTransactionRollback',
 
                     //TODO: parse cnd https://github.com/phpcr/phpcr-utils/issues/18
                     'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCnd',
@@ -83,7 +82,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         );
     }
 
-    public static function getInstance()
     {
         if (null === self::$instance) {
             self::$instance = new ImplementationLoader();
