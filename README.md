@@ -23,7 +23,7 @@ Please see the file LICENSE in this folder.
 
 # Installation
 
-To install jackalope, run the following in the parent directory of where you want jackalope
+To install jackalope, run the following in the parent directory of where you want jackalope:
 
     # get source
     git clone git://github.com/jackalope/jackalope-doctrine-dbal.git
@@ -55,8 +55,8 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 
 ## phpunit Tests
 
-If you want to run the tests , please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
-and check if you told composer to install the suggested dependencies (see Installation)
+If you want to run the tests, please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
+and check if you told composer to install the suggested dependencies (see Installation).
 
 
 ## Enable the commands
@@ -65,7 +65,7 @@ There are a couple of useful commands to interact with the repository.
 
 To use the console, copy cli-config.php.dist to cli-config.php and configure
 the connection parameters.
-Then you can run the commands from the jackalope directory with ``./bin/jackalope
+Then you can run the commands from the jackalope directory with ``./bin/jackalope``
 
 NOTE: If you are using PHPCR inside of **Symfony**, the DoctrinePHPCRBundle
 provides the commands inside the normal Symfony console and you don't need to
