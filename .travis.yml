@@ -16,9 +16,10 @@ before_script:
   - php composer.phar install --dev
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
-  - ./tests/travis.sh
+  - pyrus install phpunit/DBUnit
+  - tests/generate_travis_config.php
 
-script: phpunit -c tests/$DB.phpunit.xml.dist
+script: phpunit
 
 notifications:
   irc: "irc.freenode.org#jackalope"

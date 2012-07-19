@@ -11,12 +11,10 @@ doc/config/phpdoc.ini
 doc/html
 
 tests/fixtures/doctrine
-tests/phpunit.xml
-tests/pgsql.phpunit.xml
-tests/mysql.phpunit.xml
-tests/sqlite.phpunit.xml
+phpunit.xml
 
 phpcr_tests.db
+phpcr_tests.db-journal
 
 vendor/
 composer.phar
