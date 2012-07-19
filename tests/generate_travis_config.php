@@ -1,7 +1,7 @@
-#!/usr/bin/env php
 <?php
+
 /**
- * create database specific phpunit config file (phpunit.xml) for travis
+ * create database specific phpunit.xml for travis
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
@@ -29,7 +29,7 @@ $config = array(
 );
 
 if (!in_array(@$_SERVER['DB'], array_keys($config))) {
-    die('Error: Database "' . @$_SERVER['DB'] . '" not supported!' . "\n" . 'Try: export DB=mysql');
+    die('Error: Database "' . @$_SERVER['DB'] . '" not supported!' . "\n" . 'Try: export DB=mysql' . "\n");
 }
 
 $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -54,4 +54,4 @@ foreach ($config[$_SERVER['DB']] as $key => $value) {
     $parent->appendChild($node);
 }
 
-$dom->save('phpunit.xml');
+$dom->save(str_replace('phpunit.xml.dist', 'phpunit.xml', $source));
