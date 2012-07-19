@@ -24,6 +24,7 @@ use Doctrine\Common\Cache\ArrayCache;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
+use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 
@@ -1723,8 +1724,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $limit = $query->getLimit();
         $offset = $query->getOffset();
 
-        //hack to avoid a bug in Doctrine DBAL with MySQL, see http://www.doctrine-project.org/jira/browse/DBAL-256
-        if ($this->conn->getDatabasePlatform()->getName() === 'mysql' && null !== $offset && null == $limit) {
+        if (null !== $offset && null == $limit &&
+            ($this->conn->getDatabasePlatform() instanceof MySqlPlatform ||
+            $this->conn->getDatabasePlatform() instanceof SqlitePlatform)) {
             $limit = PHP_INT_MAX;
         }
 
