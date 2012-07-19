@@ -150,14 +150,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->cache = $cache ?: new ArrayCache();
 
-        // @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+        // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
             $this->registerSqliteFunctions($this->conn->getWrappedConnection());
         }
     }
 
     /**
-     * @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+     * @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
      *
      * @param PDOConnection $sqliteConnection
      *
@@ -171,12 +171,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $xpath = new \DOMXPath($dom);
             $list = $xpath->query($expression);
 
-            // @todo: don't know if there are expressions returning more then one row
+            // @TODO: don't know if there are expressions returning more then one row
             if ($list->length > 0) {
                 return $list->item(0)->textContent;
             }
 
-            // @todo: don't know if return value is right
+            // @TODO: don't know if return value is right
             return null;
         }, 2);
 
@@ -1725,8 +1725,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $offset = $query->getOffset();
 
         if (null !== $offset && null == $limit &&
-            ($this->conn->getDatabasePlatform() instanceof MySqlPlatform ||
-            $this->conn->getDatabasePlatform() instanceof SqlitePlatform)) {
+            ($this->conn->getDatabasePlatform() instanceof MySqlPlatform
+            || $this->conn->getDatabasePlatform() instanceof SqlitePlatform)
+        ) {
             $limit = PHP_INT_MAX;
         }
 

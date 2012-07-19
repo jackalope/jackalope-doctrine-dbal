@@ -10,6 +10,9 @@ use Jackalope\NotImplementedException;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 /**
  * Converts QOM to SQL Statements for the Doctrine DBAL database backend.
@@ -203,6 +206,10 @@ class QOMWalker
         return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $constraint->getAncestorPath() . "/%'";
     }
 
+    /**
+     * @param \PHPCR\Query\QOM\ChildNodeInterface $constraint
+     * @return string
+     */
     public function walkChildNodeConstraint(QOM\ChildNodeInterface $constraint)
     {
         return $this->getTableAlias($constraint->getSelectorName()) . ".parent = '" . $constraint->getParentPath() . "'";
@@ -362,13 +369,13 @@ class QOMWalker
      */
     private function sqlXpathValueExists($alias, $property)
     {
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($this->platform instanceof MySqlPlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSqlPlatform) {
             return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+        if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
         
@@ -384,13 +391,13 @@ class QOMWalker
      */
     private function sqlXpathExtractValue($alias, $property)
     {
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\MySqlPlatform) {
+        if ($this->platform instanceof MySqlPlatform) {
             return "EXTRACTVALUE($alias.props, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
-        if ($this->platform instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+        if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.props, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
 

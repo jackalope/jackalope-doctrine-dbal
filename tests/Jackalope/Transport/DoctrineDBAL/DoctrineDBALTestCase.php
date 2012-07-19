@@ -12,6 +12,7 @@ abstract class DoctrineDBALTestCase extends TestCase
     protected function getConnection()
     {
         if ($this->conn === null) {
+            // @TODO see https://github.com/jackalope/jackalope-doctrine-dbal/issues/48
             global $dbConn;
             $this->conn = $dbConn;
 
