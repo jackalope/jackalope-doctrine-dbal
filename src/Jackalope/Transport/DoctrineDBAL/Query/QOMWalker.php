@@ -368,7 +368,10 @@ class QOMWalker
         if ($this->platform instanceof \Doctrine\DBAL\Platforms\PostgreSqlPlatform) {
             return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
-
+        if ($this->platform instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+            return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
+        }
+        
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
 
@@ -386,6 +389,9 @@ class QOMWalker
         }
         if ($this->platform instanceof \Doctrine\DBAL\Platforms\PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
+        }
+        if ($this->platform instanceof \Doctrine\DBAL\Platforms\SqlitePlatform) {
+            return "EXTRACTVALUE($alias.props, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");

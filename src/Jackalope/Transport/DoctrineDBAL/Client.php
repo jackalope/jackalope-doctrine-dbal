@@ -23,7 +23,10 @@ use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\ArrayCache;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver\PDOConnection;
+use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 use Jackalope\Node;
 use Jackalope\Property;
@@ -146,6 +149,42 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
         $this->cache = $cache ?: new ArrayCache();
+
+        // @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            $this->registerSqliteFunctions($this->conn->getWrappedConnection());
+        }
+    }
+
+    /**
+     * @todo: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+     *
+     * @param PDOConnection $sqliteConnection
+     *
+     * @return Client
+     */
+    private function registerSqliteFunctions(PDOConnection $sqliteConnection)
+    {
+        $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->loadXML($string);
+            $xpath = new \DOMXPath($dom);
+            $list = $xpath->query($expression);
+
+            // @todo: don't know if there are expressions returning more then one row
+            if ($list->length > 0) {
+                return $list->item(0)->textContent;
+            }
+
+            // @todo: don't know if return value is right
+            return null;
+        }, 2);
+
+        $sqliteConnection->sqliteCreateFunction('CONCAT', function () {
+            return implode('', func_get_args());
+        });
+
+        return $this;
     }
 
     /**
@@ -404,7 +443,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
             $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceId));
 
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
                 $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -1133,7 +1172,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
            ->where('n.parent = :absPath')
            ->orderBy('n.sort_order', 'ASC');
 
-        $query = $qb->getSql() . " FOR UPDATE";
+        $query = $qb->getSql() . ' ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
 
         $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
 
@@ -1685,8 +1724,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $limit = $query->getLimit();
         $offset = $query->getOffset();
 
-        //hack to avoid a bug in Doctrine DBAL with MySQL, see http://www.doctrine-project.org/jira/browse/DBAL-256
-        if ($this->conn->getDatabasePlatform()->getName() === 'mysql' && null !== $offset && null == $limit) {
+        if (null !== $offset && null == $limit &&
+            ($this->conn->getDatabasePlatform() instanceof MySqlPlatform ||
+            $this->conn->getDatabasePlatform() instanceof SqlitePlatform)) {
             $limit = PHP_INT_MAX;
         }
 
