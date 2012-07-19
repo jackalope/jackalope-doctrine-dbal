@@ -17,9 +17,9 @@ before_script:
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - pyrus install phpunit/DBUnit
-  - php tests/generate_travis_config.php
+  - php tests/generate_travis_config.php $DB
 
-script: phpunit
+script: phpunit -c $DB.phpunit.xml
 
 notifications:
   irc: "irc.freenode.org#jackalope"

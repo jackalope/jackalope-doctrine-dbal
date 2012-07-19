@@ -1,7 +1,8 @@
 <?php
 
 /**
- * create database specific phpunit.xml for travis
+ * create database specific phpunit.xml config file for travis.
+ * e.g. sqlite.phpunit.xml
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
@@ -28,8 +29,9 @@ $config = array(
     ),
 );
 
-if (!in_array(@$_SERVER['DB'], array_keys($config))) {
-    die('Error: Database "' . @$_SERVER['DB'] . '" not supported!' . "\n" . 'Try: export DB=mysql' . "\n");
+if (!in_array(@$argv[1], array_keys($config))) {
+    die('Error:' . "\n\t" . 'Database "' . @$argv[1] . '" not supported.' . PHP_EOL .
+        'Usage:' . "\n\t" . 'php tests/' . basename(__FILE__) . ' [' . implode('|', array_keys($config)) . ']' . "\n");
 }
 
 $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -47,11 +49,14 @@ foreach ($nodes as $node) {
     $parent->removeChild($node);
 }
 
-foreach ($config[$_SERVER['DB']] as $key => $value) {
+foreach ($config[$argv[1]] as $key => $value) {
     $node = $dom->createElement('var');
     $node->setAttribute('name', $key);
     $node->setAttribute('value', $value);
     $parent->appendChild($node);
 }
 
-$dom->save(str_replace('phpunit.xml.dist', 'phpunit.xml', $source));
+$destination = str_replace('phpunit.xml.dist', $argv[1] . '.phpunit.xml', $source);
+$dom->save($destination);
+
+echo 'Created:' . "\n\t" . realpath($destination). "\n";

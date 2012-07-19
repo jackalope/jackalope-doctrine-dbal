@@ -12,6 +12,9 @@ doc/html
 
 tests/fixtures/doctrine
 phpunit.xml
+mysql.phpunit.xml
+pgsql.phpunit.xml
+sqlite.phpunit.xml
 
 phpcr_tests.db
 phpcr_tests.db-journal
