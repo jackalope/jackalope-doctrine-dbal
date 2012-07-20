@@ -10,7 +10,7 @@ if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
         'php composer.phar install --dev' . PHP_EOL);
 }
 
-require_once 'generate_fixtures.php';
+require_once __DIR__ . '/generate_fixtures.php';
 
 $loader->add('Jackalope', __DIR__.'/../vendor/jackalope/jackalope/tests');
 

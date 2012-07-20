@@ -63,7 +63,7 @@ and check if you told composer to install the suggested dependencies (see Instal
 
 There are a couple of useful commands to interact with the repository.
 
-To use the console, copy cli-config.php.dist to cli-config.php and configure
+To use the console, copy ``cli-config.php.dist`` to ``cli-config.php`` and configure
 the connection parameters.
 Then you can run the commands from the jackalope directory with ``./bin/jackalope``
 

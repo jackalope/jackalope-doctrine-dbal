@@ -30,7 +30,7 @@ $config = array(
 );
 
 if (!in_array(@$argv[1], array_keys($config))) {
-    die('Error:' . "\n\t" . 'Database "' . @$argv[1] . '" not supported.' . PHP_EOL .
+    die('Error:' . "\n\t" . 'Database "' . @$argv[1] . '" not supported.' . "\n" .
         'Usage:' . "\n\t" . 'php tests/' . basename(__FILE__) . ' [' . implode('|', array_keys($config)) . ']' . "\n");
 }
 
