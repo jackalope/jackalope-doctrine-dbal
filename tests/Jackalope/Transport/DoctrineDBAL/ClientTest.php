@@ -3,8 +3,9 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\DriverManager;
+use Jackalope\Transport\DoctrineDBAL\Test\TestCase;
 
-class ClientTest extends DoctrineDBALTestCase
+class ClientTest extends TestCase
 {
     private $transport;
     /**
@@ -108,7 +109,7 @@ class ClientTest extends DoctrineDBALTestCase
         $topic->addNode('page2');
         $topic->addNode('page3');
         $topic->addNode('page4');
-        $topic->addNode('page5');                        
+        $topic->addNode('page5');
 
         $this->session->save();
 
@@ -117,7 +118,7 @@ class ClientTest extends DoctrineDBALTestCase
 
         $this->session->save();
 
-        $conn = $this->getConnection();       
+        $conn = $this->getConnection();
         $qb = $conn->createQueryBuilder();
 
         $qb->select('local_name, sort_order')
@@ -128,11 +129,11 @@ class ClientTest extends DoctrineDBALTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, array('name' => 'page3', 'parent' => '/topic'));        
+        $stmnt = $this->conn->executeQuery($query, array('name' => 'page3', 'parent' => '/topic'));
         $row = $stmnt->fetch();
         $this->assertEquals(0, $row['sort_order']);
 
-        $stmnt = $this->conn->executeQuery($query, array('name' => 'page4', 'parent' => '/topic'));        
+        $stmnt = $this->conn->executeQuery($query, array('name' => 'page4', 'parent' => '/topic'));
 
         $row = $stmnt->fetch();
         $this->assertEquals(4, $row['sort_order']);

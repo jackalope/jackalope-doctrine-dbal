@@ -1,7 +1,7 @@
 <?php
 
-/** make sure we get ALL infos from php */
-error_reporting(E_ALL | E_STRICT);
+// make sure we get ALL infos from php
+error_reporting(-1);
 
 if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
     die('You must set up the project dependencies, run the following commands:' . PHP_EOL .
@@ -10,19 +10,22 @@ if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
         'php composer.phar install --dev' . PHP_EOL);
 }
 
+$loader->add('Jackalope', __DIR__ . '/../vendor/jackalope/jackalope/tests');
+
+// @TODO: move FixtureLoaderInterface to some autoload-able path
+require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/FixtureLoaderInterface.php';
+// @TODO: change phpcr-api-tests/inc/BaseCase to use namespaced ImplementationLoader
+require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
+require_once __DIR__ . '/../src/Jackalope/Transport/DoctrineDBAL/Test/ImplementationLoader.php';
 require_once __DIR__ . '/generate_fixtures.php';
 
-$loader->add('Jackalope', __DIR__.'/../vendor/jackalope/jackalope/tests');
+// generate fixtures
+generate_fixtures(
+    __DIR__ . '/../vendor/phpcr/phpcr-api-tests/fixtures',
+    __DIR__ . '/fixtures/doctrine'
+);
 
-### Load classes needed for jackalope unit tests ###
-require 'Jackalope/Transport/DoctrineDBAL/DoctrineDBALTestCase.php';
-
-### Load the implementation loader class ###
-require 'inc/DoctrineDBALImplementationLoader.php';
-
-/**
- * set up the backend connection
- */
+// set up the backend connection
 $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
     'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
@@ -32,34 +35,20 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']
 ));
 
-// TODO: refactor this into the command (a --reset option) and use the command instead
-echo "Updating schema...";
-$schema = \Jackalope\Transport\DoctrineDBAL\RepositorySchema::create();
-foreach ($schema->toDropSql($dbConn->getDatabasePlatform()) as $sql) {
-    try {
-        $dbConn->exec($sql);
-    } catch(PDOException $e) {
-    }
-}
-foreach ($schema->toSql($dbConn->getDatabasePlatform()) as $sql) {
-    try {
-        $dbConn->exec($sql);
-    } catch(PDOException $e) {
-        echo $e->getMessage();
-    }
-}
+// recreate database schema
+$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($dbConn);
+$repositorySchema->reset();
 
-echo "done.\n";
-
-/** some constants */
-
-define('SPEC_VERSION_DESC', 'jcr.specification.version');
-define('SPEC_NAME_DESC', 'jcr.specification.name');
-define('REP_VENDOR_DESC', 'jcr.repository.vendor');
-define('REP_VENDOR_URL_DESC', 'jcr.repository.vendor.url');
-define('REP_NAME_DESC', 'jcr.repository.name');
-define('REP_VERSION_DESC', 'jcr.repository.version');
+// some constants
+define('SPEC_VERSION_DESC',             'jcr.specification.version');
+define('SPEC_NAME_DESC',                'jcr.specification.name');
+define('REP_VENDOR_DESC',               'jcr.repository.vendor');
+define('REP_VENDOR_URL_DESC',           'jcr.repository.vendor.url');
+define('REP_NAME_DESC',                 'jcr.repository.name');
+define('REP_VERSION_DESC',              'jcr.repository.version');
 define('OPTION_TRANSACTIONS_SUPPORTED', 'option.transactions.supported');
-define('OPTION_VERSIONING_SUPPORTED', 'option.versioning.supported');
-define('OPTION_OBSERVATION_SUPPORTED', 'option.observation.supported');
-define('OPTION_LOCKING_SUPPORTED', 'option.locking.supported');
+define('OPTION_VERSIONING_SUPPORTED',   'option.versioning.supported');
+define('OPTION_OBSERVATION_SUPPORTED',  'option.observation.supported');
+define('OPTION_LOCKING_SUPPORTED',      'option.locking.supported');
+
+//@TODO: do not pollute global space

@@ -1,11 +1,9 @@
 <?php
+namespace Jackalope\Transport\DoctrineDBAL\Test;
 
-namespace Jackalope\Transport\DoctrineDBAL;
-
-use Jackalope\TestCase;
 use Doctrine\DBAL\DriverManager;
 
-abstract class DoctrineDBALTestCase extends TestCase
+abstract class TestCase extends \Jackalope\TestCase
 {
     protected $conn;
 
