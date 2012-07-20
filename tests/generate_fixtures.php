@@ -21,7 +21,8 @@ function generate_fixtures($srcDir, $destDir)
         if ($nodes->length < 1) {
             continue;
         }
-
+var_dump($srcDir, $destDir, $srcFile->getPathname());
+die(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom = new \Jackalope\Transport\DoctrineDBAL\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom->addDataset();
         $destDom->addWorkspace(1, 'tests');
