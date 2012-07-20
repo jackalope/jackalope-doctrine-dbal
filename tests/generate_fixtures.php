@@ -7,9 +7,8 @@
  */
 function generate_fixtures($srcDir, $destDir)
 {
-    // normalize paths as we use them in str_replace
-    $srcDir  = realpath($srcDir);
-    $destDir = realpath($destDir);
+    $srcDir  = $srcDir;
+    $destDir = $destDir;
 
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir)) as $srcFile) {
         if (!$srcFile->isFile()) {
@@ -21,8 +20,7 @@ function generate_fixtures($srcDir, $destDir)
         if ($nodes->length < 1) {
             continue;
         }
-var_dump($srcDir, $destDir, $srcFile->getPathname());
-die(str_replace($srcDir, $destDir, $srcFile->getPathname()));
+
         $destDom = new \Jackalope\Transport\DoctrineDBAL\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom->addDataset();
         $destDom->addWorkspace(1, 'tests');
