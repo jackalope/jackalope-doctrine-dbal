@@ -41,7 +41,7 @@ You can use your favorite GUI frontend or just do something like this:
     psql -c "CREATE DATABASE phpcr_tests WITH OWNER = jackalope;" -U postgres
 
 Test fixtures for functional tests are written in the JCR System XML format.
-The converted fixtures are not tracked in the repository, and gets regenerate
+The converted fixtures are not tracked in the repository, and get regenerated 
 on each testrun.
 
 To run the tests:

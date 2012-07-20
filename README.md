@@ -2,9 +2,9 @@
 
 A powerful implementation of the [PHPCR API](http://phpcr.github.com).
 
-Jackalope binding for relational databases with the DoctrineDBAL. Works with any
-database supported by doctrine (mysql, postgres, sqlite, ...) and has no dependency
-on java or jackrabbit. For the moment, it is less feature complete.
+Jackalope binding for relational databases with the DoctrineDBAL. Tested to work
+with MySQL, PostgreSQL and SQLite and has no dependency on java or jackrabbit.
+For the moment, it is less feature complete.
 
 Discuss on jackalope-dev@googlegroups.com
 or visit #jackalope on irc.freenode.net
@@ -51,7 +51,7 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
     psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
 
 ### SQLite
-    Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db").
+    Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Databasename is not needed.
 
 ## phpunit Tests
 
