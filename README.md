@@ -53,6 +53,9 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 ### SQLite
     Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Databasename is not needed.
 
+For further details, please see Doctrine configuration page.
+http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+
 ## phpunit Tests
 
 If you want to run the tests, please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
@@ -110,6 +113,8 @@ is set up (see above "Enable the commands"). Now you can run:
 Once these steps are done, you can bootstrap the library. A minimalist
 sample code to get a PHPCR session with the doctrine-dbal backend:
 
+    // For further details, please see Doctrine configuration page.
+    // http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
     $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
     $host      = 'localhost';
     $user      = 'jackalope';

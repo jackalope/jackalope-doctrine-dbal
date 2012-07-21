@@ -26,6 +26,8 @@ generate_fixtures(
 );
 
 // set up the backend connection
+// For further details, please see Doctrine configuration page.
+// http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
 $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
     'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
