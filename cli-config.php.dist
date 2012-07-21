@@ -14,7 +14,10 @@ function bootstrapDoctrineDbal()
 {
     global $repository, $user, $pass, $dbConn;
 
-    /* additional doctrine dbal configuration */
+    /* additional doctrine dbal configuration
+     * For further details, please see Doctrine configuration page.
+     * http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+     */
     $driver   = 'pdo_mysql';
     $host     = 'localhost';
     $database = 'jackalope';

@@ -2,6 +2,7 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Connection;
 
 /**
  * Class to handle setup the RDBMS tables for the Doctrine DBAL transport.
@@ -105,4 +106,30 @@ class RepositorySchema
 
         return $schema;
     }
+
+    /**
+     * @var Connection
+     */
+    private $connection;
+
+    public function __construct(Connection $connection)
+    {
+        $this->connection = $connection;
+    }
+
+    public function reset()
+    {
+        $schema = self::create();
+
+        $this->connection->getWrappedConnection()->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);
+        foreach ($schema->toDropSql($this->connection->getDatabasePlatform()) as $sql) {
+            $this->connection->exec($sql);
+        }
+
+        $this->connection->getWrappedConnection()->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        foreach ($schema->toSql($this->connection->getDatabasePlatform()) as $sql) {
+            $this->connection->exec($sql);
+        }
+    }
+
 }

@@ -14,7 +14,7 @@ its tests folder.
 
 ## API test suite
 
-The mysql.phpunit.xml.dist and pgsql.phpunit.xml.dist are configured to run all tests. You can limit the tests
+The phpunit.xml.dist is configured to run all tests. You can limit the tests
 to run by specifying the path to those tests to phpunit.
 
 Note that the phpcr-api tests are skipped for features not implemented in
@@ -40,21 +40,16 @@ You can use your favorite GUI frontend or just do something like this:
     psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
     psql -c "CREATE DATABASE phpcr_tests WITH OWNER = jackalope;" -U postgres
 
-Test fixtures for functional tests are written in the JCR System XML format. Use
-the converter script ``tests/generate_fixtures.php`` to prepare the fixtures
-for the tests.
-The converted fixtures are written into tests/fixtures/doctrine. The
-converted fixtures are not tracked in the repository, you should regenerate
-them whenever you update the vendors through composer.
+Test fixtures for functional tests are written in the JCR System XML format.
+The converted fixtures are not tracked in the repository, and get regenerated 
+on each testrun.
 
 To run the tests:
 
-    cd /path/to/jackalope-doctrine-dbal/tests
-    cp mysql.phpunit.xml.dist phpunit.xml
+    cd /path/to/jackalope-doctrine-dbal
+    # cp phpunit.xml.dist phpunit.xml
     # adjust phpunit.xml as necessary
-    ./generate_fixtures.php
     phpunit
-
 
 ## Note on JCR
 

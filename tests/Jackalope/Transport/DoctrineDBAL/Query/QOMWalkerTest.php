@@ -2,13 +2,13 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
-use Jackalope\Transport\DoctrineDBAL\DoctrineDBALTestCase;
+use Jackalope\Transport\DoctrineDBAL\Test\TestCase;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Factory;
 
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 
-class QOMWalkerTest extends DoctrineDBALTestCase
+class QOMWalkerTest extends TestCase
 {
     /**
      *
