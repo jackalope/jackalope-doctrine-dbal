@@ -1,6 +1,8 @@
 <?php
+// @TODO: change BaseCase to use namespaced loader
+#namespace Jackalope\Transport\DoctrineDBAL\Test;
 
-require_once __DIR__.'/../../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
+use Doctrine\DBAL\Connection;
 
 /**
  * Implementation loader for jackalope-doctrine-dbal
@@ -9,9 +11,33 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 {
     private static $instance = null;
 
-    protected function __construct()
+    public static function getInstance()
+    {
+        if (null === self::$instance) {
+            global $dbConn;
+            $fixturePath = realpath(__DIR__ . '/../../../../../tests/fixtures/doctrine');
+            self::$instance = new ImplementationLoader($dbConn, $fixturePath);
+        }
+
+        return self::$instance;
+    }
+
+    /**
+     * @var Connection
+     */
+    private $connection;
+
+    /**
+     * @var string
+     */
+    private $fixturePath;
+
+    protected function __construct(Connection $connection, $fixturePath)
     {
         parent::__construct('Jackalope\RepositoryFactoryDoctrineDBAL', $GLOBALS['phpcr.workspace']);
+
+        $this->connection   = $connection;
+        $this->fixturePath  = $fixturePath;
 
         $this->unsupportedChapters = array(
                     'ShareableNodes', //TODO: Not implemented, no test currently written for it
@@ -82,18 +108,15 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         );
     }
 
-    public static function getInstance()
+    public function getConnection()
     {
-        if (null === self::$instance) {
-            self::$instance = new ImplementationLoader();
-        }
-        return self::$instance;
+        return $this->connection;
     }
 
     public function getRepositoryFactoryParameters()
     {
-        global $dbConn; // initialized in bootstrap_doctrine_dbal.php
-        return array('jackalope.doctrine_dbal_connection' => $dbConn);
+        // initialized in bootstrap_doctrine_dbal.php
+        return array('jackalope.doctrine_dbal_connection' => $this->connection);
     }
 
     public function getCredentials()
@@ -116,11 +139,9 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         return $GLOBALS['phpcr.user'];
     }
 
-    function getRepository()
+    public function getRepository()
     {
-        global $dbConn;
-
-        $transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory, $dbConn);
+        $transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory, $this->connection);
         try {
             $transport->createWorkspace($GLOBALS['phpcr.workspace']);
         } catch (\PHPCR\RepositoryException $e) {
@@ -132,10 +153,18 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         return new \Jackalope\Repository(null, $transport);
     }
 
-    function getFixtureLoader()
+    public function getFixtureLoader()
     {
-        global $dbConn;
-        require_once "DoctrineDBALFixtureLoader.php";
-        return new DoctrineDBALFixtureLoader($dbConn->getWrappedConnection(), __DIR__ . "/../fixtures/doctrine/");
+        $testerClass = '\\Jackalope\\Transport\\DoctrineDBAL\\Test\\Tester\\' . ucfirst(strtolower($this->connection->getWrappedConnection()->getAttribute(PDO::ATTR_DRIVER_NAME)));
+        if (!class_exists($testerClass)) {
+            // load Generic Tester if no database specific Tester class found
+            $testerClass = '\\Jackalope\\Transport\\DoctrineDBAL\\Test\\Tester\\Generic';
+        }
+
+        return new $testerClass(
+            new \PHPUnit_Extensions_Database_DB_DefaultDatabaseConnection($this->connection->getWrappedConnection(), "tests"),
+            $this->fixturePath
+        );
     }
+
 }

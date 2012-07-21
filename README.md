@@ -2,9 +2,9 @@
 
 A powerful implementation of the [PHPCR API](http://phpcr.github.com).
 
-Jackalope binding for relational databases with the DoctrineDBAL. Works with any
-database supported by doctrine (mysql, postgres, ...) and has no dependency
-on java or jackrabbit. For the moment, it is less feature complete.
+Jackalope binding for relational databases with the DoctrineDBAL. Tested to work
+with MySQL, PostgreSQL and SQLite and has no dependency on java or jackrabbit.
+For the moment, it is less feature complete.
 
 Discuss on jackalope-dev@googlegroups.com
 or visit #jackalope on irc.freenode.net
@@ -23,21 +23,20 @@ Please see the file LICENSE in this folder.
 
 # Installation
 
-If you do not yet have composer, install it like this
+To install jackalope, run the following in the parent directory of where you want jackalope:
 
-    curl -s http://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin
-
-To install jackalope itselves, run the following in the parent directory of where you want jackalope
-
+    # get source
     git clone git://github.com/jackalope/jackalope-doctrine-dbal.git
     cd jackalope-doctrine-dbal
-    php /usr/local/bin/composer.phar install --dev
 
-Note that the --dev parameter is only needed if you want to be
-able to run the test suite. If you already installed jackalope without the test
-suite, you need to remove composer.lock before running composer again with the
---dev parameter.
+    # install dependencies
+    curl -s http://getcomposer.org/installer | php
+    php composer.phar install
 
+    # install tests dependencies
+    php composer.phar install --dev
+
+Note that the --dev parameter is only needed if you want to be able to run the test suite.
 
 ## Create a repository
 
@@ -51,19 +50,25 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
     psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
     psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
 
+### SQLite
+    Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Databasename is not needed.
+
+For further details, please see Doctrine configuration page.
+http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+
 ## phpunit Tests
 
-If you want to run the tests , please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
-and check if you told composer to install the suggested dependencies (see Installation)
+If you want to run the tests, please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
+and check if you told composer to install the suggested dependencies (see Installation).
 
 
 ## Enable the commands
 
 There are a couple of useful commands to interact with the repository.
 
-To use the console, copy cli-config.php.dist to cli-config.php and configure
+To use the console, copy ``cli-config.php.dist`` to ``cli-config.php`` and configure
 the connection parameters.
-Then you can run the commands from the jackalope directory with ``./bin/jackalope
+Then you can run the commands from the jackalope directory with ``./bin/jackalope``
 
 NOTE: If you are using PHPCR inside of **Symfony**, the DoctrinePHPCRBundle
 provides the commands inside the normal Symfony console and you don't need to
@@ -108,12 +113,14 @@ is set up (see above "Enable the commands"). Now you can run:
 Once these steps are done, you can bootstrap the library. A minimalist
 sample code to get a PHPCR session with the doctrine-dbal backend:
 
-    $driver   = 'pdo_mysql'; // pdo_pgsql
-    $host     = 'localhost';
-    $user     = 'jackalope';
-    $password = '';
-    $database = 'jackalope';
-    $workspace  = 'default';
+    // For further details, please see Doctrine configuration page.
+    // http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+    $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
+    $host      = 'localhost';
+    $user      = 'jackalope';
+    $password  = '';
+    $database  = 'jackalope'; // $path = 'jackalope.db'; // for SQLite
+    $workspace = 'default';
 
     // Bootstrap Doctrine
     $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
@@ -122,6 +129,7 @@ sample code to get a PHPCR session with the doctrine-dbal backend:
         'user'      => $user,
         'password'  => $pass,
         'dbname'    => $database,
+        // 'path'   => $path, // for SQLite
     ));
 
     $repository = \Jackalope\RepositoryFactoryDoctrineDBAL::getRepository(
