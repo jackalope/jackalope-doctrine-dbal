@@ -181,7 +181,7 @@ generate the phpdoc.
 # TODO
 
 The best overview of what needs to be done are the skipped API tests.
-Have a look at [DoctrineDBALImplementationLoader](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/inc/DoctrineDBALImplementationLoader.php)
+Have a look at [DoctrineDBALImplementationLoader](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/src/Jackalope/Transport/DoctrineDBAL/Test/ImplementationLoader.php)
 to see what is currently not working and start hacking :-)
 
 
