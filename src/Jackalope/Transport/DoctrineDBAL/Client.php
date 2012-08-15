@@ -27,6 +27,7 @@ use Doctrine\DBAL\Driver\PDOConnection;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\DBALException;
 
 use Jackalope\Node;
 use Jackalope\Property;
@@ -285,9 +286,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $id = $this->conn->fetchColumn($query, array($workspaceName));
         } catch (\Exception $e) {
-            if ($e instanceof \Doctrine\DBAL\DBALException
-                || $e instanceof \PdoException
-            ) {
+            if ($e instanceof DBALException || $e instanceof \PDOException) {
                 if (1045 == $e->getCode()) {
                     throw new \PHPCR\LoginException('Access denied with your credentials: '.$e->getMessage());
                 }
@@ -548,7 +547,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     ));
                 } catch (\PDOException $e) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                } catch (\Doctrine\DBAL\DBALException $e) {
+                } catch (DBALException $e) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
                 }
 
