@@ -284,15 +284,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
 
             $id = $this->conn->fetchColumn($query, array($workspaceName));
-        } catch (\PDOException $e) {
-            if (1045 == $e->getCode()) {
-                throw new \PHPCR\LoginException('Access denied with your credentials: '.$e->getMessage());
-            }
-            if ('42S02' == $e->getCode()) {
-                throw new \PHPCR\RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
+        } catch (\Exception $e) {
+            if ($e instanceof \Doctrine\DBAL\DBALException
+                || $e instanceof \PdoException
+            ) {
+                if (1045 == $e->getCode()) {
+                    throw new \PHPCR\LoginException('Access denied with your credentials: '.$e->getMessage());
+                }
+                if ('42S02' == $e->getCode()) {
+                    throw new \PHPCR\RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
+                }
+
+                throw new \PHPCR\RepositoryException('Unexpected error talking to the backend: '.$e->getMessage());
             }
 
-            throw new \PHPCR\RepositoryException('Unexpected error talking to the backend: '.$e->getMessage());
+            throw $e;
         }
 
         return $id;
@@ -540,7 +546,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'props'         => $propsData['dom']->saveXML(),
                         'parent_a'      => $parent,
                     ));
-                } catch (\PDOException $ex) {
+                } catch (\PDOException $e) {
+                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                } catch (\Doctrine\DBAL\DBALException $e) {
                     throw new ItemExistsException('Item ' . $path . ' already exists in the database');
                 }
 
