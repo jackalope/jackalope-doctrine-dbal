@@ -11,8 +11,8 @@ env:
 
 before_script:
 # duplicate install to work around https://github.com/composer/composer/issues/789
-  - php composer install
-  - php composer install --dev
+  - composer install
+  - composer install --dev
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - pyrus install phpunit/DBUnit
