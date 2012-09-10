@@ -28,6 +28,7 @@ use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Cache\QueryCacheProfile;
 
 use Jackalope\Node;
 use Jackalope\Property;
@@ -137,9 +138,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var Doctrine\Common\Cache\Cache
      */
+    private $memoryCache;
+
+    /**
+     * @var Doctrine\Common\Cache\Cache
+     */
     private $cache;
 
-    public function __construct(FactoryInterface $factory, Connection $conn, array $indexes = array(), Cache $cache = null)
+    public function __construct(FactoryInterface $factory, Connection $conn, array $indexes = array(), Cache $memoryCache = null)
     {
         $this->factory = $factory;
         $this->conn = $conn;
@@ -149,12 +155,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->sequenceNodeName = 'phpcr_nodes_id_seq';
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
-        $this->cache = $cache ?: new ArrayCache();
 
         // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
             $this->registerSqliteFunctions($this->conn->getWrappedConnection());
         }
+
+// TODO this needs to be handled by DoctrineBundle see https://github.com/doctrine/DoctrineBundle/issues/114
+$cache = new \Doctrine\Common\Cache\FilesystemCache('/Users/lsmith/htdocs/symfony-cmf-standard/app/cache/dev/doctrine/dbal/result_cache');
+$config = $this->conn->getConfiguration();
+$config->setResultCacheImpl($cache);
+
+        $this->cache = $config->getResultCacheImpl();
+        $this->memoryCache = $memoryCache ?: ($this->cache ?: new ArrayCache());
     }
 
     /**
@@ -228,6 +241,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'props' => '<?xml version="1.0" encoding="UTF-8"?>
 <sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
         ));
+
+        if ($this->cache) {
+            $this->cache->delete('phpcr_workspaces');
+        }
     }
 
     /**
@@ -283,8 +300,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         try {
             $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-
-            $id = $this->conn->fetchColumn($query, array($workspaceName));
+            $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces: $workspaceName"));
+            $data = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            if (empty($data)) {
+                throw new \PHPCR\RepositoryException("Could not find a workspace named '$workspaceName'");
+            }
+            $stmt->closeCursor();
+            $id = reset($data);
         } catch (\Exception $e) {
             if ($e instanceof DBALException || $e instanceof \PDOException) {
                 if (1045 == $e->getCode()) {
@@ -384,8 +406,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNamespaces()
     {
         if ($this->fetchedNamespaces === false) {
-            $data = $this->conn->fetchAll('SELECT * FROM phpcr_namespaces');
             $this->fetchedNamespaces = true;
+            $query = 'SELECT * FROM phpcr_namespaces';
+            $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_namespaces"));
+            $data = $stmt->fetchAll();
+            $stmt->closeCursor();
 
             $this->namespaces = array(
                 NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
@@ -400,6 +425,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($data as $row) {
                 $this->namespaces[$row['prefix']] = $row['uri'];
             }
+
+            $this->memoryCache->save('namespaces', true);
         }
 
         return $this->namespaces;
@@ -826,11 +853,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getAccessibleWorkspaceNames()
     {
         $workspaceNames = array();
-        foreach ($this->conn->fetchAll("SELECT DISTINCT name FROM phpcr_workspaces") as $row) {
-            $workspaceNames[] = $row['name'];
-        }
-
-        return $workspaceNames;
+        $query = "SELECT DISTINCT name FROM phpcr_workspaces";
+        $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces"));
+        $workspaces = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+        $stmt->closeCursor();
+        return $workspaces;
     }
 
     /**
@@ -1538,7 +1565,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function fetchUserNodeTypes()
     {
-        if (!$this->inTransaction && $result = $this->cache->fetch('phpcr_nodetypes')) {
+        if (!$this->inTransaction && $result = $this->memoryCache->fetch('type_nodes')) {
             return $result;
         }
 
@@ -1560,7 +1587,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $query = 'SELECT * FROM phpcr_type_props WHERE node_type_id = ?';
             $props = $this->conn->fetchAll($query, array($data['node_type_id']));
-
             foreach ($props as $propertyData) {
                 $result[$name]['declaredPropertyDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
@@ -1603,9 +1629,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 );
             }
         }
+        $stmt->closeCursor();
 
         if (!$this->inTransaction) {
-            $this->cache->save('phpcr_nodetype', $result);
+            $this->memoryCache->save('type_nodes', $result);
         }
 
         return $result;
@@ -1672,6 +1699,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     ));
                 }
             }
+        }
+
+        if (!$this->inTransaction) {
+            $this->memoryCache->delete('type_nodes');
         }
     }
 
@@ -1853,6 +1884,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             ));
 
             $this->conn->commit();
+            if ($this->cache) {
+                $this->cache->delete('phpcr_namespaces');
+            }
         } catch (\Exception $e) {
             $this->conn->rollback();
 
