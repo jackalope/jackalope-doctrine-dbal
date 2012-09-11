@@ -220,6 +220,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         ));
 
         $this->caches['meta']->delete('phpcr_workspaces');
+        $this->caches['meta']->save("workspace: $name", $workspaceId);
     }
 
     /**
@@ -275,13 +276,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         try {
             $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-            $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces: $workspaceName", $this->caches['meta']));
-            $data = $stmt->fetchAll(\PDO::FETCH_COLUMN);
-            if (empty($data)) {
-                throw new \PHPCR\RepositoryException("Could not find a workspace named '$workspaceName'");
+            $id = $this->conn->fetchColumn($query, array($workspaceName));
+            if ($id) {
+                $this->caches['meta']->save("workspace: $workspaceName", $id);
             }
-            $stmt->closeCursor();
-            $id = reset($data);
         } catch (\Exception $e) {
             if ($e instanceof DBALException || $e instanceof \PDOException) {
                 if (1045 == $e->getCode()) {
