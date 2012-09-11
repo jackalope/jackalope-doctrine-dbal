@@ -93,11 +93,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var bool
      */
-    private $fetchedNamespaces = false;
-
-    /**
-     * @var bool
-     */
     private $inTransaction = false;
 
     /**
@@ -112,13 +107,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @var array
      */
     private $namespaces = array();
-
-    /**
-     * Indexes
-     *
-     * @var array
-     */
-    private $indexes;
 
     /**
      * @var string|null
@@ -136,20 +124,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $sequenceTypeName;
 
     /**
-     * @var Doctrine\Common\Cache\Cache
+     * @var array Doctrine\Common\Cache\Cache
      */
-    private $memoryCache;
+    private $caches;
 
-    /**
-     * @var Doctrine\Common\Cache\Cache
-     */
-    private $cache;
-
-    public function __construct(FactoryInterface $factory, Connection $conn, array $indexes = array(), Cache $memoryCache = null)
+    public function __construct(FactoryInterface $factory, Connection $conn, array $caches)
     {
         $this->factory = $factory;
         $this->conn = $conn;
-        $this->indexes = $indexes;
         if ($conn->getDatabasePlatform() instanceof PostgreSqlPlatform) {
             $this->sequenceWorkspaceName = 'phpcr_workspaces_id_seq';
             $this->sequenceNodeName = 'phpcr_nodes_id_seq';
@@ -161,13 +143,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->registerSqliteFunctions($this->conn->getWrappedConnection());
         }
 
-// TODO this needs to be handled by DoctrineBundle see https://github.com/doctrine/DoctrineBundle/issues/114
-$cache = new \Doctrine\Common\Cache\FilesystemCache('/Users/lsmith/htdocs/symfony-cmf-standard/app/cache/dev/doctrine/dbal/result_cache');
-$config = $this->conn->getConfiguration();
-$config->setResultCacheImpl($cache);
-
+        $caches['meta'] = isset($caches['meta']) ? $caches['meta'] : new ArrayCache();
+        $this->caches = $caches;
+        $config = $this->conn->getConfiguration();
         $this->cache = $config->getResultCacheImpl();
-        $this->memoryCache = $memoryCache ?: ($this->cache ?: new ArrayCache());
     }
 
     /**
@@ -242,9 +221,7 @@ $config->setResultCacheImpl($cache);
 <sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
         ));
 
-        if ($this->cache) {
-            $this->cache->delete('phpcr_workspaces');
-        }
+        $this->caches['meta']->delete('phpcr_workspaces');
     }
 
     /**
@@ -300,7 +277,7 @@ $config->setResultCacheImpl($cache);
     {
         try {
             $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-            $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces: $workspaceName"));
+            $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces: $workspaceName", $this->caches['meta']));
             $data = $stmt->fetchAll(\PDO::FETCH_COLUMN);
             if (empty($data)) {
                 throw new \PHPCR\RepositoryException("Could not find a workspace named '$workspaceName'");
@@ -405,28 +382,31 @@ $config->setResultCacheImpl($cache);
      */
     public function getNamespaces()
     {
-        if ($this->fetchedNamespaces === false) {
-            $this->fetchedNamespaces = true;
-            $query = 'SELECT * FROM phpcr_namespaces';
-            $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_namespaces"));
-            $data = $stmt->fetchAll();
-            $stmt->closeCursor();
+        if (empty($this->namespaces)) {
+            if ($result = $this->caches['meta']->fetch('namespaces')) {
+                $this->namespaces = $result;
+            } else {
+                $query = 'SELECT * FROM phpcr_namespaces';
+                $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_namespaces", $this->caches['meta']));
+                $data = $stmt->fetchAll();
+                $stmt->closeCursor();
 
-            $this->namespaces = array(
-                NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
-                NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
-                NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
-                NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
-                NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
-                NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
-                'phpcr' => 'http://github.com/jackalope/jackalope', // TODO: Namespace?
-            );
+                $this->namespaces = array(
+                    NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
+                    NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
+                    NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
+                    NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
+                    NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
+                    NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
+                    'phpcr' => 'http://github.com/jackalope/jackalope', // TODO: Namespace?
+                );
 
-            foreach ($data as $row) {
-                $this->namespaces[$row['prefix']] = $row['uri'];
+                foreach ($data as $row) {
+                    $this->namespaces[$row['prefix']] = $row['uri'];
+                }
+
+                $this->caches['meta']->save('namespaces', $this->namespaces);
             }
-
-            $this->memoryCache->save('namespaces', true);
         }
 
         return $this->namespaces;
@@ -491,6 +471,9 @@ $config->setResultCacheImpl($cache);
             }
 
             $this->conn->commit();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
@@ -602,6 +585,9 @@ $config->setResultCacheImpl($cache);
             $this->syncUserIndexes();
 
             $this->conn->commit();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollback();
             throw $e;
@@ -853,7 +839,7 @@ $config->setResultCacheImpl($cache);
     public function getAccessibleWorkspaceNames()
     {
         $query = "SELECT DISTINCT name FROM phpcr_workspaces";
-        $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_workspaces"));
+        $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_workspaces", $this->caches['meta']));
         $workspaces = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         $stmt->closeCursor();
         return $workspaces;
@@ -868,10 +854,15 @@ $config->setResultCacheImpl($cache);
         $this->assertLoggedIn();
 
         $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_id = ?';
-        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceId));
-        if (!$row) {
+        $params = array($path, $this->workspaceId);
+        $qcp = isset($this->caches['nodes']) ? new QueryCacheProfile(0, "phpcr_nodes: ".serialize($params), $this->caches['nodes']) : null;
+        $stmt = $this->conn->executeQuery($query, $params, array(), $qcp);
+        $all = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
+        if (!$all) {
             throw new ItemNotFoundException("Item ".$path." not found in workspace ".$this->workspaceName);
         }
+        $row = reset($all);
 
         return $this->getNodeData($path, $row);
     }
@@ -883,8 +874,11 @@ $config->setResultCacheImpl($cache);
         $this->nodeIdentifiers[$path] = $row['identifier'];
 
         $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ? ORDER BY sort_order ASC';
-        $children = $this->conn->fetchAll($query, array($path, $this->workspaceId));
-
+        $params = array($path, $this->workspaceId);
+        $qcp = isset($this->caches['nodes']) ? new QueryCacheProfile(0, "phpcr_nodes[children]: ".serialize($params), $this->caches['nodes']) : null;
+        $stmt = $this->conn->executeQuery($query, $params, array(), $qcp);
+        $children = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $stmt->closeCursor();
         foreach ($children as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
@@ -1050,6 +1044,9 @@ $config->setResultCacheImpl($cache);
         try {
             $this->conn->executeUpdate($query, $params);
             $this->conn->commit();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollBack();
 
@@ -1127,6 +1124,9 @@ $config->setResultCacheImpl($cache);
         try {
             $this->conn->executeUpdate($query, $params);
             $this->conn->commit();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollBack();
 
@@ -1187,6 +1187,9 @@ $config->setResultCacheImpl($cache);
                 $this->conn->executeUpdate($query, array($newPath, $newParent, $nodeId));
             }
             $this->conn->commit();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
@@ -1275,7 +1278,9 @@ $config->setResultCacheImpl($cache);
 
             $this->conn->executeUpdate($sql, $values);
             $this->conn->commit();
-
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
@@ -1564,7 +1569,7 @@ $config->setResultCacheImpl($cache);
      */
     private function fetchUserNodeTypes()
     {
-        if (!$this->inTransaction && $result = $this->memoryCache->fetch('type_nodes')) {
+        if (!$this->inTransaction && $result = $this->caches['meta']->fetch('type_nodes')) {
             return $result;
         }
 
@@ -1613,7 +1618,6 @@ $config->setResultCacheImpl($cache);
 
             $query = 'SELECT * FROM phpcr_type_childs WHERE node_type_id = ?';
             $childs = $this->conn->fetchAll($query, array($data['node_type_id']));
-
             foreach ($childs as $childData) {
                 $result[$name]['declaredNodeDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
@@ -1628,10 +1632,9 @@ $config->setResultCacheImpl($cache);
                 );
             }
         }
-        $stmt->closeCursor();
 
         if (!$this->inTransaction) {
-            $this->memoryCache->save('type_nodes', $result);
+            $this->caches['meta']->save('type_nodes', $result);
         }
 
         return $result;
@@ -1701,7 +1704,7 @@ $config->setResultCacheImpl($cache);
         }
 
         if (!$this->inTransaction) {
-            $this->memoryCache->delete('type_nodes');
+            $this->caches['meta']->delete('type_nodes');
         }
     }
 
@@ -1883,17 +1886,16 @@ $config->setResultCacheImpl($cache);
             ));
 
             $this->conn->commit();
-            if ($this->cache) {
-                $this->cache->delete('phpcr_namespaces');
-            }
+            $this->caches['meta']->delete('phpcr_namespaces');
         } catch (\Exception $e) {
             $this->conn->rollback();
 
             throw $e;
         }
 
-        if ($this->fetchedNamespaces) {
+        if (!empty($this->namespaces)) {
             $this->namespaces[$prefix] = $uri;
+            $this->caches['meta']->save('namespaces', $this->namespaces);
         }
     }
 
@@ -1904,8 +1906,9 @@ $config->setResultCacheImpl($cache);
     {
         $this->conn->delete('phpcr_namespaces', array('prefix' => $prefix));
 
-        if ($this->fetchedNamespaces) {
+        if (!empty($this->namespaces)) {
             unset($this->namespaces[$prefix]);
+            $this->caches['meta']->save('namespaces', $this->namespaces);
         }
     }
 
@@ -1990,6 +1993,10 @@ $config->setResultCacheImpl($cache);
             $this->inTransaction = false;
 
             $this->conn->commit();
+            $this->caches['meta']->deleteAll();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             throw new RepositoryException('Commit transaction failed: ' . $e->getMessage());
         }
@@ -2008,9 +2015,13 @@ $config->setResultCacheImpl($cache);
 
         try {
             $this->inTransaction = false;
-            $this->fetchedNamespaces = false;
+            $this->namespaces = array();
 
             $this->conn->rollback();
+            $this->caches['meta']->deleteAll();
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->deleteAll();
+            }
         } catch (\Exception $e) {
             throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage());
         }
