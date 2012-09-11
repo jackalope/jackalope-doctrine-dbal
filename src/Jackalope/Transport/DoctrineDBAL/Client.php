@@ -145,8 +145,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $caches['meta'] = isset($caches['meta']) ? $caches['meta'] : new ArrayCache();
         $this->caches = $caches;
-        $config = $this->conn->getConfiguration();
-        $this->cache = $config->getResultCacheImpl();
     }
 
     /**
