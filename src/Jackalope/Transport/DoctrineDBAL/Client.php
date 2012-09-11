@@ -275,9 +275,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function getWorkspaceId($workspaceName)
     {
         try {
-            $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-            $id = $this->conn->fetchColumn($query, array($workspaceName));
-            if ($id) {
+            if (!($id = $this->caches['meta']->fetch("workspace: $workspaceName"))) {
+                $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
+                $id = $this->conn->fetchColumn($query, array($workspaceName));
                 $this->caches['meta']->save("workspace: $workspaceName", $id);
             }
         } catch (\Exception $e) {
@@ -849,18 +849,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertValidPath($path);
         $this->assertLoggedIn();
 
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes: $path")) {
+            return $result;
+        }
+
         $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_id = ?';
-        $params = array($path, $this->workspaceId);
-        $qcp = isset($this->caches['nodes']) ? new QueryCacheProfile(0, "phpcr_nodes: ".serialize($params), $this->caches['nodes']) : null;
-        $stmt = $this->conn->executeQuery($query, $params, array(), $qcp);
-        $all = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
-        if (!$all) {
+        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceId));
+        if (!$row) {
             throw new ItemNotFoundException("Item ".$path." not found in workspace ".$this->workspaceName);
         }
-        $row = reset($all);
 
-        return $this->getNodeData($path, $row);
+        $node = $this->getNodeData($path, $row);
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->save("nodes: $path", $node);
+        }
+
+        return $node;
     }
 
     private function getNodeData($path, $row)
@@ -870,11 +874,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->nodeIdentifiers[$path] = $row['identifier'];
 
         $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ? ORDER BY sort_order ASC';
-        $params = array($path, $this->workspaceId);
-        $qcp = isset($this->caches['nodes']) ? new QueryCacheProfile(0, "phpcr_nodes[children]: ".serialize($params), $this->caches['nodes']) : null;
-        $stmt = $this->conn->executeQuery($query, $params, array(), $qcp);
-        $children = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-        $stmt->closeCursor();
+        $children = $this->conn->fetchAll($query, array($path, $this->workspaceId));
         foreach ($children as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
@@ -957,31 +957,31 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNodes($paths)
     {
-        foreach ($paths as $path) {
-            $this->assertValidPath($path);
-        }
-        $this->assertLoggedIn();
-
-        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_id, identifier, type, props, sort_order
-                FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
-        $params = array($this->workspaceId, $paths);
-        $qcp = isset($this->caches['nodes']) && count($paths) < 5 ? new QueryCacheProfile(0, "phpcr_nodes: ".serialize($params), $this->caches['nodes']) : null;
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY), $qcp);
-        if ($qcp) {
-            $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-            $all = array();
-            foreach ($data as $row) {
-                $all[$row['arraykey']] = $row;
+        $nodes = array();
+        if (isset($this->caches['nodes'])) {
+            foreach ($paths as $key => $path) {
+                try {
+                    $nodes[$key] = $this->getNode($path);
+                } catch (\PHPCR\ItemNotFoundException $e) {
+                    // ignore
+                }
             }
         } else {
-            $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
-        }
-        $stmt->closeCursor();
+            foreach ($paths as $path) {
+                $this->assertValidPath($path);
+            }
+            $this->assertLoggedIn();
 
-        $nodes = array();
-        foreach ($paths as $key => $path) {
-            if (isset($all[$path])) {
-                $nodes[$key] = $this->getNodeData($path, $all[$path]);
+            $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_id, identifier, type, props, sort_order
+                FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
+            $params = array($this->workspaceId, $paths);
+            $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
+            $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+
+            foreach ($paths as $key => $path) {
+                if (isset($all[$path])) {
+                    $nodes[$key] = $this->getNodeData($path, $all[$path]);
+                }
             }
         }
 
