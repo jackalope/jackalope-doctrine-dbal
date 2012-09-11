@@ -1089,8 +1089,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
                 if ($propertyNode->hasAttribute('sv:type') &&
-                    ('reference' == $propertyNode->getAttribute('sv:type') ||
-                        'weakreference' == $propertyNode->getAttribute('sv:type'))
+                    ('reference' == $propertyNode->getAttribute('sv:type')
+                        || 'weakreference' == $propertyNode->getAttribute('sv:type')
+                    )
                 ) {
                     $query =
                         'DELETE FROM phpcr_nodes_foreignkeys
