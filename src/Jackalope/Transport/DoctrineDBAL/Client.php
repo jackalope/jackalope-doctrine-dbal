@@ -826,7 +826,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getAccessibleWorkspaceNames()
     {
         $workspaceNames = array();
-        foreach ($this->conn->fetchAll("SELECT name FROM phpcr_workspaces") as $row) {
+        foreach ($this->conn->fetchAll("SELECT DISTINCT name FROM phpcr_workspaces") as $row) {
             $workspaceNames[] = $row['name'];
         }
 
