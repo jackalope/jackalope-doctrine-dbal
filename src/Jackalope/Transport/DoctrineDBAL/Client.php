@@ -941,6 +941,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNodes($paths)
     {
+        foreach ($paths as $path) {
+            $this->assertValidPath($path);
+        }
+        $this->assertLoggedIn();
+
         $query = 'SELECT path AS arraykey, * FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
         $params = array($this->workspaceId, $paths);
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
