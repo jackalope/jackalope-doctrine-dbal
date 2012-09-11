@@ -967,7 +967,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $params = array($this->workspaceId, $paths);
         $qcp = isset($this->caches['nodes']) && count($paths) < 5 ? new QueryCacheProfile(0, "phpcr_nodes: ".serialize($params), $this->caches['nodes']) : null;
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY), $qcp);
-        $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+        if ($qcp) {
+            $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+            $all = array();
+            foreach ($data as $row) {
+                $all[$row['arraykey']] = $row;
+            }
+        } else {
+            $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+        }
         $stmt->closeCursor();
 
         $nodes = array();
