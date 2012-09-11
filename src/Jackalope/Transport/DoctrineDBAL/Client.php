@@ -847,6 +847,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ItemNotFoundException("Item ".$path." not found in workspace ".$this->workspaceName);
         }
 
+        return $this->getNodeData($path, $row);
+    }
+
+    private function getNodeData($path, $row)
+    {
         $data = new \stdClass();
         $data->{'jcr:primaryType'} = $row['type'];
         $this->nodeIdentifiers[$path] = $row['identifier'];
@@ -932,18 +937,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * TODO: optimize
-     *
      * {@inheritDoc}
      */
     public function getNodes($paths)
     {
+        $query = 'SELECT path AS arraykey, * FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
+        $params = array($this->workspaceId, $paths);
+        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
+        $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+
         $nodes = array();
         foreach ($paths as $key => $path) {
-            try {
-                $nodes[$key] = $this->getNode($path);
-            } catch (\PHPCR\ItemNotFoundException $e) {
-                // ignore
+            if (isset($all[$path])) {
+                $nodes[$key] = $this->getNodeData($path, $all[$path]);
             }
         }
 
