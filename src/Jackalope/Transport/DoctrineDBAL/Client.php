@@ -128,7 +128,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $caches;
 
-    public function __construct(FactoryInterface $factory, Connection $conn, array $caches)
+    public function __construct(FactoryInterface $factory, Connection $conn, array $caches = array())
     {
         $this->factory = $factory;
         $this->conn = $conn;
