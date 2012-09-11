@@ -852,9 +852,8 @@ $config->setResultCacheImpl($cache);
      */
     public function getAccessibleWorkspaceNames()
     {
-        $workspaceNames = array();
         $query = "SELECT DISTINCT name FROM phpcr_workspaces";
-        $stmt = $this->conn->executeCacheQuery($query, array($workspaceName), array(), new QueryCacheProfile(0, "phpcr_workspaces"));
+        $stmt = $this->conn->executeCacheQuery($query, array(), array(), new QueryCacheProfile(0, "phpcr_workspaces"));
         $workspaces = $stmt->fetchAll(\PDO::FETCH_COLUMN);
         $stmt->closeCursor();
         return $workspaces;
