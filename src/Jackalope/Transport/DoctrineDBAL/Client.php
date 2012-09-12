@@ -946,7 +946,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->assertLoggedIn();
 
-        $query = 'SELECT path AS arraykey, * FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
+        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_id, identifier, type, props, sort_order
+                FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
         $params = array($this->workspaceId, $paths);
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
