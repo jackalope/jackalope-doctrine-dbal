@@ -19,9 +19,6 @@ use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
 
-use Doctrine\Common\Cache\Cache;
-use Doctrine\Common\Cache\ArrayCache;
-
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
@@ -51,6 +48,7 @@ use Jackalope\FactoryInterface;
  * @license http://www.apache.org/licenses/LICENSE-2.0  Apache License Version 2.0, January 2004
  *
  * @author Benjamin Eberlei <kontakt@beberlei.de>
+ * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
@@ -92,12 +90,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var bool
      */
-    private $fetchedNamespaces = false;
-
-    /**
-     * @var bool
-     */
-    private $inTransaction = false;
+    protected $inTransaction = false;
 
     /**
      * Check if an initial request on login should be send to check if repository exists
@@ -110,14 +103,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var array
      */
-    private $namespaces = array();
-
-    /**
-     * Indexes
-     *
-     * @var array
-     */
-    private $indexes;
+    protected $namespaces = array();
 
     /**
      * @var string|null
@@ -134,22 +120,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $sequenceTypeName;
 
-    /**
-     * @var Doctrine\Common\Cache\Cache
-     */
-    private $cache;
-
-    public function __construct(FactoryInterface $factory, Connection $conn, array $indexes = array(), Cache $cache = null)
+    public function __construct(FactoryInterface $factory, Connection $conn)
     {
         $this->factory = $factory;
         $this->conn = $conn;
-        $this->indexes = $indexes;
         if ($conn->getDatabasePlatform() instanceof PostgreSqlPlatform) {
             $this->sequenceWorkspaceName = 'phpcr_workspaces_id_seq';
             $this->sequenceNodeName = 'phpcr_nodes_id_seq';
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
-        $this->cache = $cache ?: new ArrayCache();
 
         // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
@@ -228,6 +207,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'props' => '<?xml version="1.0" encoding="UTF-8"?>
 <sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
         ));
+
+        return $workspaceId;
     }
 
     /**
@@ -279,11 +260,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->checkLoginOnServer = $bool;
     }
 
-    private function getWorkspaceId($workspaceName)
+    protected function getWorkspaceId($workspaceName)
     {
         try {
             $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-
             $id = $this->conn->fetchColumn($query, array($workspaceName));
         } catch (\Exception $e) {
             if ($e instanceof DBALException || $e instanceof \PDOException) {
@@ -383,9 +363,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNamespaces()
     {
-        if ($this->fetchedNamespaces === false) {
-            $data = $this->conn->fetchAll('SELECT * FROM phpcr_namespaces');
-            $this->fetchedNamespaces = true;
+        if (empty($this->namespaces)) {
+            $query = 'SELECT * FROM phpcr_namespaces';
+            $data = $this->conn->fetchAll($query);
 
             $this->namespaces = array(
                 NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
@@ -492,7 +472,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return array($namespaces[$alias], $name);
     }
 
-
     /**
      * @param string $uuid node uuid
      * @param string $path absolute path of the node
@@ -506,7 +485,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    protected function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -825,12 +804,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getAccessibleWorkspaceNames()
     {
-        $workspaceNames = array();
-        foreach ($this->conn->fetchAll("SELECT DISTINCT name FROM phpcr_workspaces") as $row) {
-            $workspaceNames[] = $row['name'];
-        }
-
-        return $workspaceNames;
+        $query = "SELECT DISTINCT name FROM phpcr_workspaces";
+        $stmt = $this->conn->executeQuery($query);
+        return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
     /**
@@ -858,7 +834,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ? ORDER BY sort_order ASC';
         $children = $this->conn->fetchAll($query, array($path, $this->workspaceId));
-
         foreach ($children as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
@@ -947,7 +922,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_id, identifier, type, props, sort_order
-                FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
+            FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
         $params = array($this->workspaceId, $paths);
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
@@ -1070,8 +1045,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
                 if ($propertyNode->hasAttribute('sv:type') &&
-                    ('reference' == $propertyNode->getAttribute('sv:type') ||
-                        'weakreference' == $propertyNode->getAttribute('sv:type'))
+                    ('reference' == $propertyNode->getAttribute('sv:type')
+                        || 'weakreference' == $propertyNode->getAttribute('sv:type')
+                    )
                 ) {
                     $query =
                         'DELETE FROM phpcr_nodes_foreignkeys
@@ -1249,7 +1225,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $this->conn->executeUpdate($sql, $values);
             $this->conn->commit();
-
         } catch (\Exception $e) {
             $this->conn->rollBack();
             throw $e;
@@ -1536,12 +1511,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param string $name
      * @return array
      */
-    private function fetchUserNodeTypes()
+    protected function fetchUserNodeTypes()
     {
-        if (!$this->inTransaction && $result = $this->cache->fetch('phpcr_nodetypes')) {
-            return $result;
-        }
-
         $result = array();
         $query = "SELECT * FROM phpcr_type_nodes";
         foreach ($this->conn->fetchAll($query) as $data) {
@@ -1560,7 +1531,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $query = 'SELECT * FROM phpcr_type_props WHERE node_type_id = ?';
             $props = $this->conn->fetchAll($query, array($data['node_type_id']));
-
             foreach ($props as $propertyData) {
                 $result[$name]['declaredPropertyDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
@@ -1588,7 +1558,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $query = 'SELECT * FROM phpcr_type_childs WHERE node_type_id = ?';
             $childs = $this->conn->fetchAll($query, array($data['node_type_id']));
-
             foreach ($childs as $childData) {
                 $result[$name]['declaredNodeDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
@@ -1602,10 +1571,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'requiredPrimaryTypeNames' => array_filter(explode(" ", $childData['primary_types'])),
                 );
             }
-        }
-
-        if (!$this->inTransaction) {
-            $this->cache->save('phpcr_nodetype', $result);
         }
 
         return $result;
@@ -1859,7 +1824,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw $e;
         }
 
-        if ($this->fetchedNamespaces) {
+        if (!empty($this->namespaces)) {
             $this->namespaces[$prefix] = $uri;
         }
     }
@@ -1871,7 +1836,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->conn->delete('phpcr_namespaces', array('prefix' => $prefix));
 
-        if ($this->fetchedNamespaces) {
+        if (!empty($this->namespaces)) {
             unset($this->namespaces[$prefix]);
         }
     }
@@ -1975,7 +1940,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->inTransaction = false;
-            $this->fetchedNamespaces = false;
+            $this->namespaces = array();
 
             $this->conn->rollback();
         } catch (\Exception $e) {
