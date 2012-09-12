@@ -916,7 +916,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNodes($paths)
     {
-        $nodes = array();
         foreach ($paths as $path) {
             $this->assertValidPath($path);
         }
@@ -928,6 +927,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
+        $nodes = array();
         foreach ($paths as $key => $path) {
             if (isset($all[$path])) {
                 $nodes[$key] = $this->getNodeData($path, $all[$path]);
