@@ -38,7 +38,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         'jackalope.check_login_on_server' => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
         'jackalope.disable_transactions' => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
         'jackalope.disable_stream_wrapper' => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
-        'jackalope.data_caches' => 'array: if set and not empty and array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
+        'jackalope.data_caches' => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
     );
 
     /**
@@ -77,9 +77,10 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 
         $dbConn = $parameters['jackalope.doctrine_dbal_connection'];
 
-        $caches = empty($parameters['jackalope.data_caches']) ? array() : $parameters['jackalope.data_caches'];
-        unset($parameters['jackalope.data_caches']);
-        $transport = $factory->get('Transport\DoctrineDBAL\Client', array($dbConn, $caches));
+        $transport = isset($parameters['jackalope.data_caches'])
+            ? $factory->get('Transport\DoctrineDBAL\CachedClient', array($dbConn, $parameters['jackalope.data_caches']))
+            : $factory->get('Transport\DoctrineDBAL\Client', array($dbConn));
+
         if (isset($parameters['jackalope.check_login_on_server'])) {
             $transport->setCheckLoginOnServer($parameters['jackalope.check_login_on_server']);
         }
