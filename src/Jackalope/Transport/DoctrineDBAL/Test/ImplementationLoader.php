@@ -3,6 +3,7 @@
 #namespace Jackalope\Transport\DoctrineDBAL\Test;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\Common\Cache\ArrayCache;
 
 /**
  * Implementation loader for jackalope-doctrine-dbal
@@ -115,8 +116,19 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
     public function getRepositoryFactoryParameters()
     {
-        // initialized in bootstrap_doctrine_dbal.php
-        return array('jackalope.doctrine_dbal_connection' => $this->connection);
+        if (empty($GLOBALS['data_caches'])) {
+            $caches = null;
+        } else {
+            $caches = array();
+            foreach (explode(',', $GLOBALS['data_caches']) as $key) {
+                $caches[$key] = new ArrayCache();
+            }
+        }
+
+        return array(
+            'jackalope.doctrine_dbal_connection' => $this->connection,
+            'jackalope.data_caches' => $caches,
+        );
     }
 
     public function getCredentials()
