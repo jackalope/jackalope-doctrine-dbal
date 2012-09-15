@@ -1110,65 +1110,35 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->beginTransaction();
-            $sql = "
-                UPDATE phpcr_nodes n
-                SET
-                    n.path = REPLACE(n.path, :srcAbsPath, :dstAbsPath),
-                    n.parent = @parent :=
-                        CASE
-                            /* WHEN the string has no '/', return a '.' */
-                            WHEN INSTR(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/') = 0
-                            THEN '.'
-                            
-                            /* WHEN it is just '/', return '/' */
-                            WHEN REPLACE(n.path, :srcAbsPath, :dstAbsPath) = '/'
-                            THEN '/'
 
-                            /* WHEN ends with a '/' and there is only one '/' in the string , return a '.' */
-                            WHEN
-                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '%/'
-                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) <2
-                            THEN '.'
-                            
-                            /* WHEN there are two '/' and they are the start and end, return '/' */
-                            WHEN
-                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '/%/'
-                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) = 2
-                            THEN '/'
-                            
-                            /* WHEN there is one '/' at the begining of the string, return '/' */
-                            WHEN
-                                REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '/%'
-                                AND (LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))) = 1
-                            THEN '/'
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ?';
+            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
 
-                            /* WHEN the new path ends with a '/' return the substr up to the penultimate '/' */
-                            WHEN REPLACE(n.path, :srcAbsPath, :dstAbsPath) LIKE '%/'
-                            THEN SUBSTRING_INDEX(
-                                REPLACE(n.path, :srcAbsPath, :dstAbsPath),
-                                '/', 
-                                LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', '')) - 1
-                            )
-                                    
-                            /* WHEN '/' appears within the string, and not terminated by a '/' (already covered above), return substr up to the final '/' */
-                            ELSE SUBSTRING_INDEX(
-                                REPLACE(n.path, :srcAbsPath, :dstAbsPath), 
-                                '/',
-                                LENGTH(REPLACE(n.path, :srcAbsPath, :dstAbsPath)) - LENGTH(REPLACE(REPLACE(n.path, :srcAbsPath, :dstAbsPath), '/', ''))
-                            )
-                        END,
-                    sort_order = (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = @parent) y)  
-                WHERE n.path LIKE :srcAbsPathTree OR n.path = :srcAbsPath AND n.workspace_id = :workspaceId
-            ";
+            /*
+             * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
+             * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
+             * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
+             * rather than raw sql, to make it work on a maximum of platforms.
+             *
+             * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
+             * we can ask the doctrine community how to do the substring operation.
+             * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
+             */
 
-            $values = array(
-                'srcAbsPath'     => $srcAbsPath, 
-                'srcAbsPathTree' => $srcAbsPath . '/%', 
-                'dstAbsPath'     => $dstAbsPath, 
-                'workspaceId'    => $this->workspaceId
-            );
+            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+                $newParent = dirname($newPath);
+                $newLocalName = basename($newPath); 
+                $nodeId = $row['id'];
+                $query = "UPDATE phpcr_nodes SET path = :newPath, 
+                  sort_order = (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :newParent) y),
+                  parent = :newParent,
+                  local_name = :newLocalName
+                  WHERE id = :nodeId";
 
-            $this->conn->executeUpdate($sql, $values);             
+                $this->conn->executeUpdate($query, array('newPath' => $newPath, 'newParent' => $newParent, 'newLocalName' => $newLocalName, 'nodeId' => $nodeId));
+            }
+
             $this->conn->commit();
         } catch (\Exception $e) {
             $this->conn->rollBack();
