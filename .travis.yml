@@ -16,7 +16,7 @@ before_script:
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - pyrus set auto_discover 1
-  - pyrus install phpunit/DBUnit
+  - pyrus install phpunit/DBUnit-1.1.2
   - php tests/generate_phpunit_config.php $DB
 
 script: phpunit -c $DB.phpunit.xml
