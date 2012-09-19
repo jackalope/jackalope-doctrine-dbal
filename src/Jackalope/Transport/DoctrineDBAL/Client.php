@@ -283,7 +283,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $id;
     }
 
-    private function assertLoggedIn()
+    protected function assertLoggedIn()
     {
         if (!$this->loggedIn) {
             if (!$this->checkLoginOnServer && $this->workspaceName) {
