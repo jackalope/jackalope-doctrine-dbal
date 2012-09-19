@@ -283,7 +283,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $id;
     }
 
-    private function assertLoggedIn()
+    protected function assertLoggedIn()
     {
         if (!$this->loggedIn) {
             if (!$this->checkLoginOnServer && $this->workspaceName) {
@@ -603,7 +603,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
                 foreach ($values as $value) {
                     try {
-                        $targetId = $this->pathExists($this->getNodePathForIdentifier($value));
+                        $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
 
                         $this->conn->insert('phpcr_nodes_foreignkeys', array(
                             'source_id' => $nodeId,

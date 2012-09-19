@@ -122,6 +122,8 @@ class CachedClient extends Client
      */
     public function getNode($path)
     {
+        $this->assertLoggedIn();
+
         if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes: $path")) {
             return $result;
         }
@@ -215,6 +217,26 @@ class CachedClient extends Client
         }
 
         return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodePathForIdentifier($uuid)
+    {
+        $this->assertLoggedIn();
+
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes by uuid: $uuid")) {
+            return $result;
+        }
+
+        $path = parent::getNodePathForIdentifier($uuid);
+
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->save("nodes by uuid: $uuid", $path);
+        }
+
+        return $path;
     }
 
     /**
