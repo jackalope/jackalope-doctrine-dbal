@@ -20,9 +20,8 @@ class RepositorySchema
         $namespace->setPrimaryKey(array('prefix'));
 
         $workspace = $schema->createTable('phpcr_workspaces');
-        $workspace->addColumn('id', 'integer', array('autoincrement' => true));
         $workspace->addColumn('name', 'string');
-        $workspace->setPrimaryKey(array('id'));
+        $workspace->setPrimaryKey(array('name'));
 
         // TODO increase the size of 'path' and 'parent' but this causes issues on MySQL due to key length
         $nodes = $schema->createTable('phpcr_nodes');
@@ -31,13 +30,13 @@ class RepositorySchema
         $nodes->addColumn('parent', 'string');
         $nodes->addColumn('local_name', 'string');
         $nodes->addColumn('namespace', 'string');
-        $nodes->addColumn('workspace_id', 'integer');
+        $nodes->addColumn('workspace_name', 'string');
         $nodes->addColumn('identifier', 'string');
         $nodes->addColumn('type', 'string');
         $nodes->addColumn('props', 'text');
         $nodes->addColumn('sort_order', 'integer', array('notnull' => false));
         $nodes->setPrimaryKey(array('id'));
-        $nodes->addUniqueIndex(array('path', 'workspace_id'));
+        $nodes->addUniqueIndex(array('path', 'workspace_name'));
         $nodes->addUniqueIndex(array('identifier'));
         $nodes->addIndex(array('parent'));
         $nodes->addIndex(array('type'));
@@ -52,11 +51,11 @@ class RepositorySchema
         $binary->addColumn('id', 'integer', array('autoincrement' => true));
         $binary->addColumn('node_id', 'integer');
         $binary->addColumn('property_name', 'string');
-        $binary->addColumn('workspace_id', 'integer');
+        $binary->addColumn('workspace_name', 'string');
         $binary->addColumn('idx', 'integer', array('default' => 0));
         $binary->addColumn('data', 'text'); // TODO BLOB!
         $binary->setPrimaryKey(array('id'));
-        $binary->addUniqueIndex(array('node_id', 'property_name', 'workspace_id', 'idx'));
+        $binary->addUniqueIndex(array('node_id', 'property_name', 'workspace_name', 'idx'));
 
         $foreignKeys = $schema->createTable('phpcr_nodes_foreignkeys');
         $foreignKeys->addColumn('source_id', 'integer');
