@@ -524,9 +524,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             list($namespace, $localName) = $this->getJcrName($path);
 
             $qb = $this->conn->createQueryBuilder();
+
             $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-                ->from('phpcr_nodes', 'n')
-                ->where('n.parent = :parent_a');
+               ->from('phpcr_nodes', 'n')
+               ->where('n.parent = :parent_a');
 
             $sql = $qb->getSql();
 
@@ -1504,9 +1505,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (isset($this->nodeIdentifiers[$path])) {
             return $this->nodeIdentifiers[$path];
         }
+
         if (isset($properties['jcr:uuid'])) {
             return $properties['jcr:uuid']->getValue();
         }
+
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
         return UUIDHelper::generateUUID();
     }
@@ -1533,6 +1536,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $path,
             $node->getPropertyValue('jcr:primaryType'),
             false,
+            $node->getDepth(),
             $properties
         );
 
