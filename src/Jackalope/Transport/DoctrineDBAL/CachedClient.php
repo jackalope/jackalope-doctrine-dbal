@@ -296,6 +296,24 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
+    protected function getNodeReferences($path, $name = null, $weakReference = false)
+    {
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes references: $path, $name, $weakReference")) {
+            return $result;
+        }
+
+        $references = parent::getNodeReferences($path, $name, $weakReference);
+
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->save("nodes references: $path, $name, $weakReference", $references);
+        }
+
+        return $references;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function commitTransaction()
     {
         parent::commitTransaction();
