@@ -124,7 +124,7 @@ class CachedClient extends Client
     {
         $this->assertLoggedIn();
 
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes: $path, ".$this->workspaceId)) {
+        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch("nodes: $path, ".$this->workspaceId)))) {
             return $result;
         }
 
@@ -226,7 +226,7 @@ class CachedClient extends Client
     {
         $this->assertLoggedIn();
 
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes by uuid: $uuid, ".$this->workspaceId)) {
+        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch("nodes by uuid: $uuid, ".$this->workspaceId)))) {
             return $result;
         }
 
@@ -298,7 +298,7 @@ class CachedClient extends Client
      */
     protected function getNodeReferences($path, $name = null, $weakReference = false)
     {
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes references: $path, $name, $weakReference, ".$this->workspaceId)) {
+        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch("nodes references: $path, $name, $weakReference, ".$this->workspaceId)))) {
             return $result;
         }
 
