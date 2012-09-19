@@ -1111,7 +1111,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ?';
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ? FOR UPDATE';
             $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
 
             /*
@@ -1125,20 +1125,45 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
              * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
              */
 
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-                $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-                $newParent = dirname($newPath);
-                $newLocalName = basename($newPath); 
-                $nodeId = $row['id'];
-                $query = "UPDATE phpcr_nodes SET path = :newPath, 
-                  sort_order = (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :newParent) y),
-                  parent = :newParent,
-                  local_name = :newLocalName
-                  WHERE id = :nodeId";
+            $ids                 = '';
+            $query               = "UPDATE phpcr_nodes SET ";
+            $updatePathCase      = "path = CASE ";
+            $updateParentCase    = "parent = CASE ";
+            $updateLocalNameCase = "local_name = CASE ";
+            $updateSortOrderCase = "sort_order = CASE ";
 
-                $this->conn->executeUpdate($query, array('newPath' => $newPath, 'newParent' => $newParent, 'newLocalName' => $newLocalName, 'nodeId' => $nodeId));
+            $i = 0;
+
+            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+
+                $values[':id' . $i]     = $row['id'];
+                $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+                $values[':parent' . $i] = dirname($values[':path' . $i]);
+
+                $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
+                $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " "; 
+
+                if ($srcAbsPath === $row['path']) {
+                    $values[':localname' . $i] = basename($values[':path' . $i]);
+
+                    $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
+                    $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
+                }
+
+                $ids .= $row['id'] . ',';
+
+                $i ++;
             }
 
+            $ids = rtrim($ids, ',');
+
+            $updateLocalNameCase .= "ELSE local_name END, ";
+            $updateSortOrderCase .= "ELSE sort_order END ";
+
+            $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase; 
+            $query .= "WHERE id IN (" . $ids . ")";
+
+            $this->conn->executeUpdate($query, $values);
             $this->conn->commit();
         } catch (\Exception $e) {
             $this->conn->rollBack();
