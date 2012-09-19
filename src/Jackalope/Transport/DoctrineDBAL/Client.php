@@ -440,7 +440,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $propsData = array('dom' => $dom);
             // when copying a node, the copy is always a new node. set $isNewNode to true
-            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, array(), $propsData);
+            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, substr_count($newPath, "/"), array(), $propsData);
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -491,7 +491,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $depth, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -507,10 +507,38 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if ($isNewNode) {
             list($namespace, $localName) = $this->getJcrName($path);
 
-            $qb = $this->conn->createQueryBuilder();
-            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-                ->from('phpcr_nodes', 'n')
-                ->where('n.parent = :parent_a');
+            if ($isNewNode) {
+                list($namespace, $localName) = $this->getJcrName($path);
+
+                $qb = $this->conn->createQueryBuilder();
+
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
+                   ->from('phpcr_nodes', 'n')
+                   ->where('n.parent = :parent_a');
+
+                $sql = $qb->getSql();
+
+                try {
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
+                    $this->conn->executeUpdate($insert, array(
+                        'identifier'    => $uuid,
+                        'type'          => $type,
+                        'path'          => $path,
+                        'local_name'    => $localName,
+                        'namespace'     => $namespace,
+                        'parent'        => $parent,
+                        'workspace_name'  => $this->workspaceName,
+                        'props'         => $propsData['dom']->saveXML(),
+                        // TODO compute proper value
+                        'depth'         => 0,
+                        'parent_a'      => $parent,
+                    ));
+                } catch (\PDOException $e) {
+                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                } catch (DBALException $e) {
+                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                }
+            }
 
             $sql = $qb->getSql();
 
@@ -1429,7 +1457,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, $properties);
+        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, substr_count($path, "/"), $properties);
 
         return true;
     }
@@ -1447,9 +1475,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (isset($this->nodeIdentifiers[$path])) {
             return $this->nodeIdentifiers[$path];
         }
+
         if (isset($properties['jcr:uuid'])) {
             return $properties['jcr:uuid']->getValue();
         }
+
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
         return UUIDHelper::generateUUID();
     }
@@ -1477,6 +1507,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             PathHelper::getParentPath($path),
             $node->getPropertyValue('jcr:primaryType'),
             false,
+            $node->getDepth(),
             $properties
         );
 
