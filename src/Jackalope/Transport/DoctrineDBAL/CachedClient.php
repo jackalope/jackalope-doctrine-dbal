@@ -124,13 +124,13 @@ class CachedClient extends Client
     {
         $this->assertLoggedIn();
 
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes: $path")) {
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes: $path, ".$this->workspaceId)) {
             return $result;
         }
 
         $node = parent::getNode($path);
         if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save("nodes: $path", $node);
+            $this->caches['nodes']->save("nodes: $path, ".$this->workspaceId, $node);
         }
 
         return $node;
@@ -226,14 +226,14 @@ class CachedClient extends Client
     {
         $this->assertLoggedIn();
 
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes by uuid: $uuid")) {
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes by uuid: $uuid, ".$this->workspaceId)) {
             return $result;
         }
 
         $path = parent::getNodePathForIdentifier($uuid);
 
         if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save("nodes by uuid: $uuid", $path);
+            $this->caches['nodes']->save("nodes by uuid: $uuid, ".$this->workspaceId, $path);
         }
 
         return $path;
@@ -298,14 +298,14 @@ class CachedClient extends Client
      */
     protected function getNodeReferences($path, $name = null, $weakReference = false)
     {
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes references: $path, $name, $weakReference")) {
+        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch("nodes references: $path, $name, $weakReference, ".$this->workspaceId)) {
             return $result;
         }
 
         $references = parent::getNodeReferences($path, $name, $weakReference);
 
         if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save("nodes references: $path, $name, $weakReference", $references);
+            $this->caches['nodes']->save("nodes references: $path, $name, $weakReference, ".$this->workspaceId, $references);
         }
 
         return $references;

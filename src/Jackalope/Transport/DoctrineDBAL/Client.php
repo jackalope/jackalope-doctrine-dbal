@@ -70,7 +70,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var int|string
      */
-    private $workspaceId;
+    protected $workspaceId;
 
     /**
      * @var string
