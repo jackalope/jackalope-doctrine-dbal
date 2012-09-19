@@ -1111,7 +1111,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ? FOR UPDATE';
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
             $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
 
             /*
