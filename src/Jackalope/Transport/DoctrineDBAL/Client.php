@@ -420,7 +420,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
                 $propsData = array('dom' => $dom, 'binaryData' => array());
                 //when copying a node, it is always a new node, then $isNewNode is set to true
-                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
+                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, substr_count($newPath, "/"), array(), $propsData);
 
                 $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                     '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -469,7 +469,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $depth, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -1404,7 +1404,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $properties);
+        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $node->getDepth(), $properties);
 
         if (!$saveChildren) {
             return true;
