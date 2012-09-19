@@ -225,6 +225,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'type'          => 'nt:unstructured',
             'local_name'    => '',
             'namespace'     => '',
+            'depth'         => 0,
             'props' => '<?xml version="1.0" encoding="UTF-8"?>
 <sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
         ));
@@ -456,7 +457,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
                 $propsData = array('dom' => $dom, 'binaryData' => array());
                 //when copying a node, it is always a new node, then $isNewNode is set to true
-                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
+                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, substr_count($newPath, "/"), array(), $propsData);
 
                 $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_id, idx, data)'.
                     '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -506,7 +507,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $depth, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -526,14 +527,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, COALESCE(MAX(n.sort_order), 0) + 1')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :depth, :props, COALESCE(MAX(n.sort_order), 0) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent_a');
 
                 $sql = $qb->getSql();
 
                 try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, depth,  props, sort_order) " . $sql;
                     $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
@@ -542,6 +543,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'namespace'     => $namespace,
                         'parent'        => $parent,
                         'workspace_id'  => $this->workspaceId,
+                        'depth'         => $depth,
                         'props'         => $propsData['dom']->saveXML(),
                         'parent_a'      => $parent,
                     ));
@@ -1397,7 +1399,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $properties);
+        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $node->getDepth(), $properties);
 
         if (!$saveChildren) {
             return true;
