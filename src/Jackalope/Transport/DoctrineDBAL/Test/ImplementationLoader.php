@@ -103,9 +103,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
                     'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
-
-                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/37
-                    'OrderableChildNodes\\OrderBeforeTest::testNodeOrderAfterOrderAndMove',
         );
     }
 
