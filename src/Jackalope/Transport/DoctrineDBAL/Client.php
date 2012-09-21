@@ -3,6 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\PropertyType;
+use PHPCR\Query\QOM\QueryObjectModelInterface;
 use PHPCR\Query\QueryInterface;
 use PHPCR\RepositoryException;
 use PHPCR\NamespaceException;
@@ -1738,20 +1739,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $limit = PHP_INT_MAX;
         }
 
-        $language = $query->getLanguage();
-        if ($language === QueryInterface::JCR_SQL2) {
+        if (!$query instanceof QueryObjectModelInterface) {
             $parser = new Sql2ToQomQueryConverter($this->factory->get('Query\QOM\QueryObjectModelFactory'));
             try {
                 $query = $parser->parse($query->getStatement());
             } catch (\Exception $e) {
                 throw new InvalidQueryException('Invalid query: '.$query->getStatement());
             }
-
-            $language = QueryInterface::JCR_JQOM;
-        }
-
-        if ($language !== QueryInterface::JCR_JQOM) {
-            throw new NotImplementedException("Query language '$language' not yet implemented.");
         }
 
         $source   = $query->getSource();
