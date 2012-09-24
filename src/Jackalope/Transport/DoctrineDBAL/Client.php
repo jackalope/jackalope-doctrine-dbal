@@ -4,6 +4,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\PropertyType;
 use PHPCR\Query\QOM\QueryObjectModelInterface;
+use PHPCR\Query\QOM\SelectorInterface;
 use PHPCR\Query\QueryInterface;
 use PHPCR\RepositoryException;
 use PHPCR\NamespaceException;
@@ -324,7 +325,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             RepositoryInterface::NODE_TYPE_MANAGEMENT_PROPERTY_TYPES => true,
             RepositoryInterface::NODE_TYPE_MANAGEMENT_RESIDUAL_DEFINITIONS_SUPPORTED => false,
             RepositoryInterface::NODE_TYPE_MANAGEMENT_SAME_NAME_SIBLINGS_SUPPORTED => false,
-            RepositoryInterface::NODE_TYPE_MANAGEMENT_UPDATE_IN_USE_SUPORTED => false,
+            RepositoryInterface::NODE_TYPE_MANAGEMENT_UPDATE_IN_USE_SUPPORTED => false,
             RepositoryInterface::NODE_TYPE_MANAGEMENT_VALUE_CONSTRAINTS_SUPPORTED => false,
             RepositoryInterface::OPTION_ACCESS_CONTROL_SUPPORTED => false,
             RepositoryInterface::OPTION_ACTIVITIES_SUPPORTED => false,
@@ -1137,7 +1138,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $values[':parent' . $i] = dirname($values[':path' . $i]);
 
                 $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
-                $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " "; 
+                $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
 
                 if ($srcAbsPath === $row['path']) {
                     $values[':localname' . $i] = basename($values[':path' . $i]);
@@ -1156,7 +1157,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $updateLocalNameCase .= "ELSE local_name END, ";
             $updateSortOrderCase .= "ELSE sort_order END ";
 
-            $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase; 
+            $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
             $query .= "WHERE id IN (" . $ids . ")";
 
             $this->conn->executeUpdate($query, $values);
@@ -1749,6 +1750,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $source   = $query->getSource();
+
+        if (!($source instanceof SelectorInterface)) {
+            throw new NotImplementedException("Only Selector Sources are supported for now, but no Join.");
+        }
+
+        // TODO: this check is only relevant for Selector, not for Join. should we push it into the walker?
         $nodeType = $source->getNodeTypeName();
 
         if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
@@ -1769,9 +1776,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         // The list of columns is required to filter each records props
         $columns = array();
-        foreach ($query->getColumns() AS $column) {
+        /** @var $column \PHPCR\Query\QOM\ColumnInterface */
+        foreach ($query->getColumns() as $column) {
             $columns[$column->getPropertyName()] = $column->getSelectorName();
         }
+
+        // TODO: this needs update once we implement join
 
         $selector = $source->getSelectorName();
         if (null === $selector) {
