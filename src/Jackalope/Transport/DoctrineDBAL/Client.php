@@ -70,14 +70,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $credentials;
 
     /**
-     * @var int|string
-     */
-    protected $workspaceId;
-
-    /**
      * @var string
      */
-    private $workspaceName;
+    protected $workspaceName;
 
     /**
      * @var array
@@ -187,30 +182,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new NotImplementedException();
         }
 
-        $workspaceId = $this->getWorkspaceId($name);
-        if ($workspaceId !== false) {
+        try {
+            $this->conn->insert('phpcr_workspaces', array('name' => $name));
+        } catch (\Exception $e) {
             throw new RepositoryException("Workspace '$name' already exists");
-        }
-
-        $this->conn->insert('phpcr_workspaces', array('name' => $name));
-        $workspaceId = $this->conn->lastInsertId($this->sequenceWorkspaceName);
-        if (!$workspaceId) {
-            throw new RepositoryException('Workspace creation fails.');
         }
 
         $this->conn->insert('phpcr_nodes', array(
             'path'          => '/',
             'parent'        => '',
-            'workspace_id'  => $workspaceId,
+            'workspace_name'=> $name,
             'identifier'    => UUIDHelper::generateUUID(),
             'type'          => 'nt:unstructured',
             'local_name'    => '',
             'namespace'     => '',
             'props' => '<?xml version="1.0" encoding="UTF-8"?>
-<sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
+<sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />',
+            // TODO compute proper value
+            'depth'         => 0,
         ));
-
-        return $workspaceId;
     }
 
     /**
@@ -225,16 +215,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return true;
         }
 
-        $this->workspaceId = $this->getWorkspaceId($workspaceName);
+        if (!$this->workspaceExists($workspaceName)) {
+            if ('default' !== $workspaceName) {
+                throw new NoSuchWorkspaceException("Requested workspace: $workspaceName");
+            }
 
-        // create default workspace if it not exists
-        if (!$this->workspaceId && 'default' === $workspaceName) {
+            // create default workspace if it not exists
             $this->createWorkspace($workspaceName);
-            $this->workspaceId = $this->getWorkspaceId($workspaceName);
-        }
-
-        if (!$this->workspaceId) {
-            throw new NoSuchWorkspaceException("Requested workspace: $workspaceName");
         }
 
         $this->loggedIn = true;
@@ -262,11 +249,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->checkLoginOnServer = $bool;
     }
 
-    protected function getWorkspaceId($workspaceName)
+    protected function workspaceExists($workspaceName)
     {
         try {
-            $query = 'SELECT id FROM phpcr_workspaces WHERE name = ?';
-            $id = $this->conn->fetchColumn($query, array($workspaceName));
+            $query = 'SELECT 1 FROM phpcr_workspaces WHERE name = ?';
+            $result = $this->conn->fetchColumn($query, array($workspaceName));
         } catch (\Exception $e) {
             if ($e instanceof DBALException || $e instanceof \PDOException) {
                 if (1045 == $e->getCode()) {
@@ -282,18 +269,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw $e;
         }
 
-        return $id;
+        return $result;
     }
 
     protected function assertLoggedIn()
     {
         if (!$this->loggedIn) {
             if (!$this->checkLoginOnServer && $this->workspaceName) {
-                $credentials = $this->credentials;
-                $workspaceName = $this->workspaceName;
-                $this->credentials = $this->workspaceName = null;
                 $this->checkLoginOnServer = true;
-                if ($this->login($credentials, $workspaceName)) {
+                if ($this->login($this->credentials, $this->workspaceName)) {
                     return;
                 }
             }
@@ -389,10 +373,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $workspaceId = $this->workspaceId;
+        $workspaceName = $this->workspaceName;
         if (null !== $srcWorkspace) {
-            $workspaceId = $this->getWorkspaceId($srcWorkspace);
-            if ($workspaceId === false) {
+            if (!$this->workspaceExists($srcWorkspace)) {
                 throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
             }
         }
@@ -422,8 +405,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_id = ?';
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceId));
+            $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_name = ?';
+            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceName));
 
             foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
                 $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
@@ -435,9 +418,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 //when copying a node, it is always a new node, then $isNewNode is set to true
                 $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
 
-                $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_id, idx, data)'.
+                $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                     '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
-                $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceId, $srcNodeId));
+                $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
             }
 
             $this->conn->commit();
@@ -482,7 +465,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    protected function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -502,14 +485,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_id, :props, COALESCE(MAX(n.sort_order), 0) + 1')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent_a');
 
                 $sql = $qb->getSql();
 
                 try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_id, props, sort_order) " . $sql;
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
                     $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
@@ -517,8 +500,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'local_name'    => $localName,
                         'namespace'     => $namespace,
                         'parent'        => $parent,
-                        'workspace_id'  => $this->workspaceId,
+                        'workspace_name'  => $this->workspaceName,
                         'props'         => $propsData['dom']->saveXML(),
+                        // TODO compute proper value
+                        'depth'         => 0,
                         'parent_a'      => $parent,
                     ));
                 } catch (\PDOException $e) {
@@ -573,19 +558,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         foreach ($binaryData as $propertyName => $binaryValues) {
             foreach ($binaryValues as $idx => $data) {
-                $this->conn->delete('phpcr_binarydata', array(
+                // TODO verify in which cases we can just update
+                $params = array(
                     'node_id'       => $nodeId,
                     'property_name' => $propertyName,
-                    'workspace_id'  => $this->workspaceId,
-                ));
-                $this->conn->insert('phpcr_binarydata', array(
-                    'node_id'       => $nodeId,
-                    'property_name' => $propertyName,
-                    'workspace_id'  => $this->workspaceId,
-                    'idx'           => $idx,
-                    'data'          => $data,
-                ));
-            }
+                    'workspace_name'  => $this->workspaceName,
+                );
+                $this->conn->delete('phpcr_binarydata', $params);
+
+                $params['idx'] = $idx;
+                $params['data'] = $data;
+                $types = array(
+                    \PDO::PARAM_INT,
+                    \PDO::PARAM_STR,
+                    \PDO::PARAM_STR,
+                    \PDO::PARAM_INT,
+                    \PDO::PARAM_LOB
+                );
+                $this->conn->insert('phpcr_binarydata', $params, $types);
+        }
         }
     }
 
@@ -814,10 +805,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertValidPath($path);
         $this->assertLoggedIn();
 
-        $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_id = ?';
-        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceId));
+        $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceName));
         if (!$row) {
-            throw new ItemNotFoundException("Item ".$path." not found in workspace ".$this->workspaceName);
+            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
         return $this->getNodeData($path, $row);
@@ -829,8 +820,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $data->{'jcr:primaryType'} = $row['type'];
         $this->nodeIdentifiers[$path] = $row['identifier'];
 
-        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_id = ? ORDER BY sort_order ASC';
-        $children = $this->conn->fetchAll($query, array($path, $this->workspaceId));
+        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_name = ? ORDER BY sort_order ASC';
+        $children = $this->conn->fetchAll($query, array($path, $this->workspaceName));
         foreach ($children as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
@@ -918,10 +909,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->assertLoggedIn();
 
-        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_id, identifier, type, props, sort_order
-            FROM phpcr_nodes WHERE workspace_id = ? AND path IN (?)';
-        $params = array($this->workspaceId, $paths);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_STR_ARRAY));
+        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+            FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
+        $params = array($this->workspaceName, $paths);
+        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
@@ -936,8 +927,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     private function pathExists($path)
     {
-        $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_id = ?';
-        if ($nodeId = $this->conn->fetchColumn($query, array($path, $this->workspaceId))) {
+        $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+        if ($nodeId = $this->conn->fetchColumn($query, array($path, $this->workspaceName))) {
             return $nodeId;
         }
 
@@ -960,14 +951,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (!$nodeId) {
             throw new ItemNotFoundException("No node found at ".$path);
         }
-        $params = array($path, $path."/%", $this->workspaceId);
+        $params = array($path, $path."/%", $this->workspaceName);
 
         $query =
-            'SELECT count(*)
+            'SELECT COUNT(*)
              FROM phpcr_nodes_foreignkeys fk
                INNER JOIN phpcr_nodes n ON n.id = fk.target_id
              WHERE (n.path = ? OR n.path LIKE ?)
-               AND workspace_id = ?
+               AND workspace_name = ?
                AND fk.type = ' . PropertyType::REFERENCE;
         $fkReferences = $this->conn->fetchColumn($query, $params);
         if ($fkReferences > 0) {
@@ -979,7 +970,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                    INNER JOIN phpcr_nodes n ON n.id = fk.target_id
                    INNER JOIN phpcr_nodes f ON f.id = fk.source_id
                  WHERE (n.path = ? OR n.path LIKE ?)
-                   AND n.workspace_id = ?
+                   AND n.workspace_name = ?
                    AND fk.type = ' . PropertyType::REFERENCE;
             $paths = $this->conn->fetchAssoc($query, $params);
             */
@@ -989,7 +980,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query =
             'DELETE FROM phpcr_nodes
              WHERE (path = ? OR path LIKE ?)
-               AND workspace_id = ?';
+               AND workspace_name = ?';
 
         $this->conn->beginTransaction();
 
@@ -1108,8 +1099,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->beginTransaction();
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_id = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceId));
+            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
+            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
 
             /*
              * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
@@ -1502,7 +1493,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $path = $this->conn->fetchColumn("SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_id = ?", array($uuid, $this->workspaceId));
+        $path = $this->conn->fetchColumn("SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?", array($uuid, $this->workspaceName));
         if (!$path) {
             throw new ItemNotFoundException("no item found with uuid ".$uuid);
         }
@@ -1519,6 +1510,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach (StandardNodeTypes::getNodeTypeData() as $nodeTypeData) {
             $standardTypes[$nodeTypeData['name']] = $nodeTypeData;
         }
+
         $userTypes = $this->fetchUserNodeTypes();
 
         if ($nodeTypes) {
@@ -1693,15 +1685,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeId = $this->pathExists($nodePath);
 
         $data = $this->conn->fetchAll(
-            'SELECT data, idx FROM phpcr_binarydata WHERE node_id = ? AND property_name = ? AND workspace_id = ?',
-            array($nodeId, $propertyName, $this->workspaceId)
+            'SELECT data, idx FROM phpcr_binarydata WHERE node_id = ? AND property_name = ? AND workspace_name = ?',
+            array($nodeId, $propertyName, $this->workspaceName)
         );
 
         $streams = array();
         foreach ($data as $row) {
-            $stream = fopen('php://memory', 'rwb+');
-            fwrite($stream, $row['data']);
-            rewind($stream);
+            if (is_resource($row['data'])) {
+                $stream = $row['data'];
+            } else {
+                $stream = fopen('php://memory', 'rwb+');
+                fwrite($stream, $row['data']);
+                rewind($stream);
+            }
 
             $streams[] = $stream;
         }
@@ -1772,7 +1768,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
 
-        $data = $this->conn->fetchAll($sql, array($this->workspaceId));
+        $data = $this->conn->fetchAll($sql, array($this->workspaceName));
 
         // The list of columns is required to filter each records props
         $columns = array();
@@ -1891,7 +1887,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @return array list of paths to nodes that reference $path
      */
-    protected function getNodeReferences($path, $name = null, $weakReference = false)
+    private function getNodeReferences($path, $name = null, $weakReference = false)
     {
         $targetId = $this->pathExists($path);
 
@@ -1912,11 +1908,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Initiates a "local transaction" on the root node
-     *
-     * @return string The received transaction token
-     *
-     * @throws \PHPCR\RepositoryException If no transaction token received.
+     * {@inheritDoc}
      */
     public function beginTransaction()
     {
@@ -1935,7 +1927,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Commits a transaction started with {@link beginTransaction()}
+     * {@inheritDoc}
      */
     public function commitTransaction()
     {
@@ -1955,7 +1947,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Rolls back a transaction started with {@link beginTransaction()}
+     * {@inheritDoc}
      */
     public function rollbackTransaction()
     {
@@ -1990,7 +1982,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-
     public function finishSave()
     {
     }
