@@ -34,6 +34,7 @@ class RepositorySchema
         $nodes->addColumn('identifier', 'string');
         $nodes->addColumn('type', 'string');
         $nodes->addColumn('props', 'text');
+        $nodes->addColumn('depth', 'integer', array('notnull' => false));
         $nodes->addColumn('sort_order', 'integer', array('notnull' => false));
         $nodes->setPrimaryKey(array('id'));
         $nodes->addUniqueIndex(array('path', 'workspace_name'));
@@ -53,7 +54,7 @@ class RepositorySchema
         $binary->addColumn('property_name', 'string');
         $binary->addColumn('workspace_name', 'string');
         $binary->addColumn('idx', 'integer', array('default' => 0));
-        $binary->addColumn('data', 'text'); // TODO BLOB!
+        $binary->addColumn('data', 'blob');
         $binary->setPrimaryKey(array('id'));
         $binary->addUniqueIndex(array('node_id', 'property_name', 'workspace_name', 'idx'));
 

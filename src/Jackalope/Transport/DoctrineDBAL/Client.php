@@ -197,7 +197,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'local_name'    => '',
             'namespace'     => '',
             'props' => '<?xml version="1.0" encoding="UTF-8"?>
-<sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />'
+<sv:node xmlns:mix="http://www.jcp.org/jcr/mix/1.0" xmlns:nt="http://www.jcp.org/jcr/nt/1.0" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" />',
+            // TODO compute proper value
+            'depth'         => 0,
         ));
     }
 
@@ -483,14 +485,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 list($namespace, $localName) = $this->getJcrName($path);
 
                 $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, COALESCE(MAX(n.sort_order), 0) + 1')
+                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
                    ->from('phpcr_nodes', 'n')
                    ->where('n.parent = :parent_a');
 
                 $sql = $qb->getSql();
 
                 try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, sort_order) " . $sql;
+                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
                     $this->conn->executeUpdate($insert, array(
                         'identifier'    => $uuid,
                         'type'          => $type,
@@ -500,6 +502,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'parent'        => $parent,
                         'workspace_name'  => $this->workspaceName,
                         'props'         => $propsData['dom']->saveXML(),
+                        // TODO compute proper value
+                        'depth'         => 0,
                         'parent_a'      => $parent,
                     ));
                 } catch (\PDOException $e) {
@@ -554,19 +558,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         foreach ($binaryData as $propertyName => $binaryValues) {
             foreach ($binaryValues as $idx => $data) {
-                $this->conn->delete('phpcr_binarydata', array(
+                // TODO verify in which cases we can just update
+                $params = array(
                     'node_id'       => $nodeId,
                     'property_name' => $propertyName,
                     'workspace_name'  => $this->workspaceName,
-                ));
-                $this->conn->insert('phpcr_binarydata', array(
-                    'node_id'       => $nodeId,
-                    'property_name' => $propertyName,
-                    'workspace_name'  => $this->workspaceName,
-                    'idx'           => $idx,
-                    'data'          => $data,
-                ));
-            }
+                );
+                $this->conn->delete('phpcr_binarydata', $params);
+
+                $params['idx'] = $idx;
+                $params['data'] = $data;
+                $types = array(
+                    \PDO::PARAM_INT,
+                    \PDO::PARAM_STR,
+                    \PDO::PARAM_STR,
+                    \PDO::PARAM_INT,
+                    \PDO::PARAM_LOB
+                );
+                $this->conn->insert('phpcr_binarydata', $params, $types);
+        }
         }
     }
 
@@ -899,7 +909,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->assertLoggedIn();
 
-        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, sort_order
+        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
         $params = array($this->workspaceName, $paths);
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
@@ -944,7 +954,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $params = array($path, $path."/%", $this->workspaceName);
 
         $query =
-            'SELECT count(*)
+            'SELECT COUNT(*)
              FROM phpcr_nodes_foreignkeys fk
                INNER JOIN phpcr_nodes n ON n.id = fk.target_id
              WHERE (n.path = ? OR n.path LIKE ?)
