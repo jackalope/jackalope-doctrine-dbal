@@ -151,7 +151,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $dom->loadXML($string);
             $xpath = new \DOMXPath($dom);
-            $list = $xpath->query($expression);
+            $list = $xpath->evaluate($expression);
+
+            if (!is_object($list)) {
+                return $list;
+            }
 
             // @TODO: don't know if there are expressions returning more then one row
             if ($list->length > 0) {
