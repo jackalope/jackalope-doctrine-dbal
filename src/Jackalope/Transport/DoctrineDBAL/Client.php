@@ -1691,9 +1691,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $streams = array();
         foreach ($data as $row) {
-            $stream = fopen('php://memory', 'rwb+');
-            fwrite($stream, $row['data']);
-            rewind($stream);
+            if (is_resource($row['data'])) {
+                $stream = $row['data'];
+            } else {
+                $stream = fopen('php://memory', 'rwb+');
+                fwrite($stream, $row['data']);
+                rewind($stream);
+            }
 
             $streams[] = $stream;
         }

@@ -34,7 +34,7 @@ class RepositorySchema
         $nodes->addColumn('identifier', 'string');
         $nodes->addColumn('type', 'string');
         $nodes->addColumn('props', 'text');
-        $nodes->addColumn('depth', 'integer', array('notnull' => false));
+        $nodes->addColumn('depth', 'integer');
         $nodes->addColumn('sort_order', 'integer', array('notnull' => false));
         $nodes->setPrimaryKey(array('id'));
         $nodes->addUniqueIndex(array('path', 'workspace_name'));
