@@ -53,9 +53,9 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    public function addWorkspace($id, $name)
+    public function addWorkspace($name)
     {
-        $this->addRow('phpcr_workspaces', array('id' => $id, 'name' => $name));
+        $this->addRow('phpcr_workspaces', array('name' => $name));
 
         return $this;
     }
@@ -71,16 +71,16 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    public function addNodes(\DOMNodeList $nodes)
+    public function addNodes($workspaceName, \DOMNodeList $nodes)
     {
         foreach ($nodes as $node) {
-            $this->addNode($node);
+            $this->addNode($workspaceName, $node);
         }
 
         return $this;
     }
 
-    public function addRootNode($id, $uuid, $path = '/', $workspaceId = 1)
+    public function addRootNode($id, $uuid, $path = '/', $workspaceName = 'default')
     {
         $this->ids[$uuid] = $id;
 
@@ -90,7 +90,7 @@ class DBUnitFixtureXML extends XMLDocument
             'parent'        => '',
             'local_name'    => '',
             'namespace'     => '',
-            'workspace_id'  => $workspaceId,
+            'workspace_name'=> $workspaceName,
             'identifier'    => $uuid,
             'type'          => 'nt:unstructured',
             'props'         => '<?xml version="1.0" encoding="UTF-8"?>'
@@ -108,11 +108,12 @@ class DBUnitFixtureXML extends XMLDocument
                             . 'xmlns:jcr="http://www.jcp.org/jcr/1.0"'
                             . 'xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
                             . 'xmlns:rep="internal" />',
+            'depth'         => 0,
             'sort_order'    => 0,
         ));
     }
 
-    public function addNode(\DOMElement $node)
+    public function addNode($workspaceName, \DOMElement $node)
     {
         $properties             = $this->getAttributes($node);
         $uuid                   = isset($properties['jcr:uuid']['value'][0]) ? (string)$properties['jcr:uuid']['value'][0] : \PHPCR\Util\UUIDHelper::generateUUID();
@@ -134,7 +135,7 @@ class DBUnitFixtureXML extends XMLDocument
                 throw new \InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
             }
 
-            $rootNode->appendChild($this->createPropertyNode($propertyName, $propertyData, $id, $dom, $rootNode));
+            $rootNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $rootNode));
         }
 
         list ($parentPath, $childPath) = $this->getPath($node);
@@ -151,10 +152,11 @@ class DBUnitFixtureXML extends XMLDocument
             'parent'        => $parentPath,
             'local_name'    => $name,
             'namespace'     => $namespace,
-            'workspace_id'  => 1,
+            'workspace_name'=> $workspaceName,
             'identifier'    => $uuid,
             'type'          => $properties['jcr:primaryType']['value'][0],
             'props'         => $dom->saveXML(),
+            'depth'         => 0,
             'sort_order'    => $id - 2,
         ));
 
@@ -217,7 +219,7 @@ class DBUnitFixtureXML extends XMLDocument
         return array($name, array('type' =>  $type, 'value' => $values, 'multiValued' => $isMultiValue));
     }
 
-    public function createPropertyNode($propertyName, $propertyData, $id, \DOMDocument $dom)
+    public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, \DOMDocument $dom)
     {
         $propertyNode = $dom->createElement('sv:property');
         $propertyNode->setAttribute('sv:name', $propertyName);
@@ -226,17 +228,17 @@ class DBUnitFixtureXML extends XMLDocument
 
         $binaryDataIdx = 0;
         foreach ($propertyData['value'] as $value) {
-            $propertyNode->appendChild($this->createValueNodeByType($propertyData['type'], $value, $id, $propertyName, $binaryDataIdx++, $dom));
+            $propertyNode->appendChild($this->createValueNodeByType($workspaceName, $propertyData['type'], $value, $id, $propertyName, $binaryDataIdx++, $dom));
         }
 
         return $propertyNode;
     }
 
-    public function createValueNodeByType($type, $value, $id, $propertyName, $binaryDataIdx, \DOMDocument $dom)
+    public function createValueNodeByType($workspaceName, $type, $value, $id, $propertyName, $binaryDataIdx, \DOMDocument $dom)
     {
         switch ($type) {
             case 'binary':
-                $value = $this->addBinaryNode($id, $propertyName, 1, $binaryDataIdx, $value);
+                $value = $this->addBinaryNode($id, $propertyName, $workspaceName, $binaryDataIdx, $value);
                 break;
 
             case 'boolean':
@@ -305,20 +307,20 @@ class DBUnitFixtureXML extends XMLDocument
     /**
      * @param   int     $id
      * @param   string  $propertyName
-     * @param   int     $workspaceId
+     * @param   string  $workspaceName
      * @param   int     $idx
      * @param   string  $data
      *
      * @return  int     - length of base64 decoded string
      */
-    public function addBinaryNode($id, $propertyName, $workspaceId, $idx, $data)
+    public function addBinaryNode($id, $propertyName, $workspaceName, $idx, $data)
     {
         $data = base64_decode($data);
 
         $this->addRow('phpcr_binarydata', array(
             'node_id'       => $id,
             'property_name' => $propertyName,
-            'workspace_id'  => $workspaceId,
+            'workspace_name'  => $workspaceName,
             'idx'           => $idx,
             'data'          => $data,
         ));

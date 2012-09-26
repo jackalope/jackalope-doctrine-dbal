@@ -133,7 +133,7 @@ class QOMWalker
         }
 
         $sql = "FROM phpcr_nodes n ".
-               "WHERE n.workspace_id = ? AND n.type IN ('" . $source->getNodeTypeName() ."'";
+               "WHERE n.workspace_name = ? AND n.type IN ('" . $source->getNodeTypeName() ."'";
 
         $subTypes = $this->nodeTypeManager->getSubtypes($source->getNodeTypeName());
         foreach ($subTypes as $subType) {

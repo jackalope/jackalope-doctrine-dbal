@@ -23,10 +23,10 @@ function generate_fixtures($srcDir, $destDir)
 
         $destDom = new \Jackalope\Transport\DoctrineDBAL\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom->addDataset();
-        $destDom->addWorkspace(1, 'tests');
+        $destDom->addWorkspace('tests');
         $destDom->addNamespaces($srcDom->getNamespaces());
-        $destDom->addRootNode(1, \PHPCR\Util\UUIDHelper::generateUUID());
-        $destDom->addNodes($nodes);
+        $destDom->addRootNode(1, \PHPCR\Util\UUIDHelper::generateUUID(), '/', 'tests');
+        $destDom->addNodes('tests', $nodes);
         // delay this to the end to not add entries for weak refs to not existing nodes
         $destDom->addForeignKeys();
         $destDom->save();
