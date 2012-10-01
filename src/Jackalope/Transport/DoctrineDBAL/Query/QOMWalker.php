@@ -171,7 +171,7 @@ class QOMWalker
             return $this->walkChildNodeConstraint($constraint);
         }
         if ($constraint instanceof QOM\PropertyExistenceInterface) {
-            return $this->walkPropertyExistanceConstraint($constraint);
+            return $this->walkPropertyExistenceConstraint($constraint);
         }
         if ($constraint instanceof QOM\SameNodeInterface) {
             return $this->walkSameNodeConstraint($constraint);
@@ -192,7 +192,7 @@ class QOMWalker
     /**
      * @param QOM\PropertyExistenceInterface $constraint
      */
-    public function walkPropertyExistanceConstraint(QOM\PropertyExistenceInterface $constraint)
+    public function walkPropertyExistenceConstraint(QOM\PropertyExistenceInterface $constraint)
     {
         return $this->sqlXpathValueExists($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName());
     }
