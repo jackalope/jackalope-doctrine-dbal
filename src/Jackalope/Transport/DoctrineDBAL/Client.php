@@ -507,38 +507,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if ($isNewNode) {
             list($namespace, $localName) = $this->getJcrName($path);
 
-            if ($isNewNode) {
-                list($namespace, $localName) = $this->getJcrName($path);
+            $qb = $this->conn->createQueryBuilder();
 
-                $qb = $this->conn->createQueryBuilder();
-
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-                   ->from('phpcr_nodes', 'n')
-                   ->where('n.parent = :parent_a');
-
-                $sql = $qb->getSql();
-
-                try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
-                    $this->conn->executeUpdate($insert, array(
-                        'identifier'    => $uuid,
-                        'type'          => $type,
-                        'path'          => $path,
-                        'local_name'    => $localName,
-                        'namespace'     => $namespace,
-                        'parent'        => $parent,
-                        'workspace_name'  => $this->workspaceName,
-                        'props'         => $propsData['dom']->saveXML(),
-                        // TODO compute proper value
-                        'depth'         => 0,
-                        'parent_a'      => $parent,
-                    ));
-                } catch (\PDOException $e) {
-                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                } catch (DBALException $e) {
-                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                }
-            }
+            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
+                ->from('phpcr_nodes', 'n')
+                ->where('n.parent = :parent_a');
 
             $sql = $qb->getSql();
 
@@ -553,8 +526,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'parent'        => $parent,
                     'workspace_name'  => $this->workspaceName,
                     'props'         => $propsData['dom']->saveXML(),
-                    // TODO compute proper value
-                    'depth'         => 0,
+                    'depth'         => $depth,
                     'parent_a'      => $parent,
                 ));
             } catch (\PDOException $e) {
@@ -1242,6 +1214,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
+        $updateDepthCase     = "depth = CASE ";
 
         $i = 0;
         $values = array();
@@ -1251,9 +1224,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN :depth" . $i . " ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = basename($values[':path' . $i]);
@@ -1272,7 +1247,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
 
-        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateDepthCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
         try {
