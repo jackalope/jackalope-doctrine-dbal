@@ -526,8 +526,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $qb = $this->conn->createQueryBuilder();
 
             $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-               ->from('phpcr_nodes', 'n')
-               ->where('n.parent = :parent_a');
+                ->from('phpcr_nodes', 'n')
+                ->where('n.parent = :parent_a');
 
             $sql = $qb->getSql();
 
