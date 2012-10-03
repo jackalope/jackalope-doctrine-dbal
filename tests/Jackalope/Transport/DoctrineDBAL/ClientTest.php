@@ -196,7 +196,7 @@ class ClientTest extends TestCase
         $this->transport->moveNode('/topic2/page2', '/topic1/page1/page2');        
         $this->session->save();
 
-        $this->transport->moveNode('/topic3', '/topic1/page1/page2/topic3');        
+        $this->transport->moveNode('/topic3', '/topic1/page1/page2/topic3');
         $this->session->save();
 
         $conn = $this->getConnection();
@@ -216,6 +216,4 @@ class ClientTest extends TestCase
         $row = $stmnt->fetch(); 
         $this->assertEquals($row['depth'], '5');
     }
-
-
 }
