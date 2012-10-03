@@ -1217,14 +1217,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $i = 0;
         $values = array();
 
+        $ids                 = '';
+        $query               = "UPDATE phpcr_nodes SET ";
+        $updatePathCase      = "path = CASE ";
+        $updateParentCase    = "parent = CASE ";
+        $updateLocalNameCase = "local_name = CASE ";
+        $updateSortOrderCase = "sort_order = CASE ";
+        $updateDepthCase     = "depth = CASE ";
+
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-            $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
+            $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN :depth" . $i . " ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
@@ -1243,7 +1253,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
 
-        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateDepthCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
         try {
