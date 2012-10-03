@@ -1213,31 +1213,32 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
-
-        $i = 0;
-        $values = array();
-
-        $ids                 = '';
-        $query               = "UPDATE phpcr_nodes SET ";
-        $updatePathCase      = "path = CASE ";
-        $updateParentCase    = "parent = CASE ";
-        $updateLocalNameCase = "local_name = CASE ";
-        $updateSortOrderCase = "sort_order = CASE ";
         $updateDepthCase     = "depth = CASE ";
 
+        $i = 0;
+
+        $types = array();
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
-            $values[':id' . $i]     = $row['id'];
-            $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-            $values[':parent' . $i] = dirname($values[':path' . $i]);
-            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
+            $values['id' . $i]     = $row['id'];
+            $types['id' . $i] = \PDO::PARAM_STR;
+
+            $values['path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+            $types['path' . $i] = \PDO::PARAM_STR;
+
+            $values['parent' . $i] = dirname($values['path' . $i]);
+            $types['parent' . $i] = \PDO::PARAM_STR;
+
+            $values['depth' . $i]  = substr_count($values['path' . $i], "/");
+            $types['depth' . $i] = \PDO::PARAM_INT;
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
             $updateDepthCase  .= "WHEN id = :id" . $i . " THEN :depth" . $i . " ";
 
             if ($srcAbsPath === $row['path']) {
-                $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
+                $values['localname' . $i] = basename($values['path' . $i]);
+                $types['localname' . $i] = \PDO::PARAM_STR;
 
                 $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
                 $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
@@ -1257,7 +1258,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query .= "WHERE id IN (" . $ids . ")";
 
         try {
-            $this->conn->executeUpdate($query, $values);
+            $this->conn->executeUpdate($query, $values, $types);
         } catch (DBALException $e) {
             throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
         }
