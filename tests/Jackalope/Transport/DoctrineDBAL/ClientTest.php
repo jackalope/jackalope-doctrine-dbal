@@ -186,12 +186,17 @@ class ClientTest extends TestCase
         $root = $this->session->getNode('/');
         $topic1 = $root->addNode('topic1');
         $topic2 = $root->addNode('topic2');
+        $topic3 = $root->addNode('topic3');
 
         $topic1->addNode('page1');
         $topic2->addNode('page2');
+        $topic3->addNode('page3');
         $this->session->save();
 
         $this->transport->moveNode('/topic2/page2', '/topic1/page1/page2');        
+        $this->session->save();
+
+        $this->transport->moveNode('/topic3', '/topic1/page1/page2/topic3');        
         $this->session->save();
 
         $conn = $this->getConnection();
@@ -205,8 +210,11 @@ class ClientTest extends TestCase
 
         $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2'));
         $row = $stmnt->fetch(); 
-
         $this->assertEquals($row['depth'], '3');
+
+        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2/topic3/page3'));
+        $row = $stmnt->fetch(); 
+        $this->assertEquals($row['depth'], '5');
     }
 
 
