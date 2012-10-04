@@ -1196,6 +1196,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             . $this->conn->getDatabasePlatform()->getForUpdateSQL();
         $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
 
+
         /*
          * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
          * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
@@ -1216,14 +1217,31 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateDepthCase     = "depth = CASE ";
 
         $i = 0;
+        $values = array();
 
-        $types = array();
+        // TODO: Find a better way to do this
+        // Calculate CAST type for CASE statement
+        switch ($this->conn->getDatabasePlatform()->getName()) {
+            case 'pgsql':
+                $intType = 'integer';
+                break;
+            case 'mysql':
+                $intType = 'unsigned';
+                break;
+            default:
+                $intType = 'integer';
+        }
+
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = dirname($values[':path' . $i]);
             $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
+
+            $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
+            $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN CAST(:depth" . $i . " AS " . $intType . ") ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = basename($values[':path' . $i]);
