@@ -1126,6 +1126,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $i = 0;
 
+            // TODO: Find a better way to do this
+            // Calculate CAST type for CASE statement
+            switch ($this->conn->getDatabasePlatform()->getName()) {
+                case 'pgsql':
+                    $intType = 'integer';
+                    break;
+                case 'mysql':
+                    $intType = 'unsigned';
+                    break;
+                default:
+                    $intType = 'integer';
+            }
+
             while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
                 $values[':id' . $i]     = $row['id'];
@@ -1135,7 +1148,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
                 $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
                 $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
-                $updateDepthCase  .= "WHEN id = :id" . $i . " THEN :depth" . $i . " ";
+                $updateDepthCase  .= "WHEN id = :id" . $i . " THEN CAST(:depth" . $i . " AS " . $intType . ") ";
 
                 if ($srcAbsPath === $row['path']) {
                     $values[':localname' . $i] = basename($values[':path' . $i]);
