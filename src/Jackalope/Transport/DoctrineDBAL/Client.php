@@ -845,6 +845,46 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
+    public function getNodeNew($path)
+    {
+        $this->assertValidPath($path);
+        $this->assertLoggedIn();
+
+        $values[':path'] = $path;
+        $values[':pathd'] = rtrim($path,'/') . '/%';
+        $values[':workspace'] = $this->workspaceName;
+        $values[':fetchDepth'] = $this->fetchDepth;
+
+        $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace';
+        
+        $query = 'SELECT * FROM phpcr_nodes WHERE (path LIKE :pathd OR path = :path) AND workspace_name = :workspace AND depth <= ((' . $subquery . ') + :fetchDepth) ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $values);
+
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (count($rows) === 0) {
+            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
+        }
+
+        $nodeData = array();
+
+        foreach ($rows as $row) {
+            if ($row['path'] == $path) {
+                $node = $this->getNodeData($path, $row);
+            } else {
+                $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+                $nodeData[$pathDiff] = $this->getNodeData($path, $row);
+            }
+        }
+
+        foreach ($nodeData as $key => $value) {
+            $node->{$key} = $value;
+        }
+
+        return $node;
+    }
+
     public function getNode($path)
     {
         PathHelper::assertValidAbsolutePath($path);
