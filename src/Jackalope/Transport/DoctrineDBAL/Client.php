@@ -845,7 +845,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function getNodeNew($path)
+    public function getNode($path)
     {
         $this->assertValidPath($path);
         $this->assertLoggedIn();
@@ -883,20 +883,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         return $node;
-    }
-
-    public function getNode($path)
-    {
-        PathHelper::assertValidAbsolutePath($path);
-        $this->assertLoggedIn();
-
-        $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
-        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceName));
-        if (!$row) {
-            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
-        }
-
-        return $this->getNodeData($path, $row);
     }
 
     private function getNodeData($path, $row)
