@@ -928,10 +928,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return array();
         }
 
+        $params[':workspace'] = $this->workspaceName;
+        $params[':fetchDepth'] = $this->fetchDepth;
+
         $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
-            FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
-        $params = array($this->workspaceName, $paths);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
+            FROM phpcr_nodes WHERE workspace_name = :workspace AND (';
+
+        $i = 0;
+        foreach ($paths as $path) {
+            $params[':path'.$i] = $path;
+            $params[':pathd'.$i] = rtrim($path,'/') . '/%';
+            $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
+            $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
+            $i++;
+        } 
+
+        $query = rtrim($query, 'OR ');
+        $query .= ') ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $params);
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
