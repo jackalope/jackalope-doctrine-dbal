@@ -66,7 +66,11 @@ EOT
                     if (true === $input->getOption('dump-sql')) {
                         $output->writeln($sql);
                     } else {
-                        $connection->exec($sql);
+                        try {
+                            $connection->exec($sql);
+                        } catch (\Exception $e) {
+                            $output->writeln($e->getMessage());
+                        }
                     }
                 }
             }
