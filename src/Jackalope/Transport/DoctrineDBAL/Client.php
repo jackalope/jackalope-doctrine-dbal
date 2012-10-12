@@ -832,7 +832,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $node = $this->getNodeData($path, $row);
             } else {
                 $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
-                $nodeData[$pathDiff] = $this->getNodeData($path, $row);
+                $nodeData[$pathDiff] = $this->getNodeData($row['path'], $row);
             }
         }
 
