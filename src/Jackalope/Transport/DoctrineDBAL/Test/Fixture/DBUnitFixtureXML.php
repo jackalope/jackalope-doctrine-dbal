@@ -156,7 +156,7 @@ class DBUnitFixtureXML extends XMLDocument
             'identifier'    => $uuid,
             'type'          => $properties['jcr:primaryType']['value'][0],
             'props'         => $dom->saveXML(),
-            'depth'         => 0,
+            'depth'         => substr_count($childPath, "/"),
             'sort_order'    => $id - 2,
         ));
 
