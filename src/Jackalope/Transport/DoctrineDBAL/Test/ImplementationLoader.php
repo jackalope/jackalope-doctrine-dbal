@@ -85,6 +85,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved',
                     'Writing\\MoveMethodsTest::testSessionMoveReplace',
                     'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
+                    'Writing\\SetPropertyMethodsTest::testSetPropertyNewExistingNode', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/68
 
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
