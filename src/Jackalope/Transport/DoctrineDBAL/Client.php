@@ -781,7 +781,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
 
             foreach ((array)$values as $value) {
-                $propertyNode->appendChild($dom->createElement('sv:value', $value));
+                $element = $propertyNode->appendChild($dom->createElement('sv:value'));
+                $element->appendChild($dom->createTextNode($value));
             }
 
             $rootNode->appendChild($propertyNode);
