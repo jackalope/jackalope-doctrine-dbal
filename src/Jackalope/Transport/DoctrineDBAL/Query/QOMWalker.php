@@ -176,6 +176,9 @@ class QOMWalker
         if ($constraint instanceof QOM\SameNodeInterface) {
             return $this->walkSameNodeConstraint($constraint);
         }
+        if ($constraint instanceof QOM\FullTextSearchInterface) {
+            return $this->walkFullTextSearchConstraint($constraint);
+        }
 
         throw new InvalidQueryException("Constraint " . get_class($constraint) . " not yet supported.");
     }
@@ -187,6 +190,15 @@ class QOMWalker
     public function walkSameNodeConstraint(QOM\SameNodeInterface $constraint)
     {
         return $this->getTableAlias($constraint->getSelectorName()) . ".path = '" . $constraint->getPath() . "'";
+    }
+
+    /**
+     * @param \PHPCR\Query\QOM\FullTextSearchInterface $constraint
+     * @return string
+     */
+    public function walkFullTextSearchConstraint(QOM\FullTextSearchInterface $constraint)
+    {
+        return $this->sqlXpathExtractValue($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName()).' LIKE '. $this->conn->quote('%'.$constraint->getFullTextSearchExpression().'%');
     }
 
     /**
