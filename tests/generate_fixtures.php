@@ -7,9 +7,6 @@
  */
 function generate_fixtures($srcDir, $destDir)
 {
-    $srcDir  = $srcDir;
-    $destDir = $destDir;
-
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir)) as $srcFile) {
         if (!$srcFile->isFile()) {
             continue;
