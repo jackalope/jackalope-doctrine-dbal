@@ -457,6 +457,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Actually write the node into the database
+     *
      * @param string $uuid node uuid
      * @param string $path absolute path of the node
      * @param string $parent absolute path of the parent node
@@ -690,7 +692,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param bool $inlineBinaries
      * @return array ('dom' => $dom, 'binary' => streams)
      */
-    static public function propsToXML($properties, $inlineBinaries = false)
+    public function propsToXML($properties, $inlineBinaries = false)
     {
         $namespaces = array(
             'mix' => "http://www.jcp.org/jcr/mix/1.0",
