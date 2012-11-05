@@ -5,6 +5,8 @@ namespace Jackalope\Test\Fixture;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\UUIDHelper;
 
+use PHPCR\PropertyType;
+
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files.
  *
@@ -14,6 +16,11 @@ use PHPCR\Util\UUIDHelper;
 class DBUnitFixtureXML extends XMLDocument
 {
     const DATEFORMAT = 'Y-m-d\TH:i:s.uP';
+
+    /**
+     * @var integer
+     */
+    static protected $idCounter = 1;
 
     /**
      * @var array
@@ -28,7 +35,7 @@ class DBUnitFixtureXML extends XMLDocument
     /**
      * @var array
      */
-    protected $foreignKeys;
+    protected $references;
 
     /**
      * @var array
@@ -45,7 +52,7 @@ class DBUnitFixtureXML extends XMLDocument
 
         $this->tables           = array();
         $this->ids              = array();
-        $this->foreignKeys      = array();
+        $this->references       = array();
         $this->expectedNodes    = array();
     }
 
@@ -97,7 +104,7 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $node = $nodes->item(0);
         if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
-            $this->addRootNode(1, UUIDHelper::generateUUID(), '/', 'tests');
+            $this->addRootNode('tests');
         }
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
@@ -106,13 +113,14 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    public function addRootNode($id, $uuid, $path = '/', $workspaceName = 'default')
+    public function addRootNode($workspaceName = 'default')
     {
-        $this->ids[$uuid] = $id;
+        $uuid = UUIDHelper::generateUUID();
+        $this->ids[$uuid] = self::$idCounter++;
 
         return $this->addRow('phpcr_nodes', array(
-            'id'            => $id,
-            'path'          => $path,
+            'id'            => $this->ids[$uuid],
+            'path'          => '/',
             'parent'        => '',
             'local_name'    => '',
             'namespace'     => '',
@@ -145,7 +153,7 @@ class DBUnitFixtureXML extends XMLDocument
         $uuid = isset($properties['jcr:uuid']['value'][0])
             ? (string) $properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
         $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])
-            ? $this->expectedNodes[$uuid] : count($this->ids) + 1;
+            ? $this->expectedNodes[$uuid] : self::$idCounter++;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
@@ -199,16 +207,19 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    public function addForeignKeys()
+    public function addReferences()
     {
-        // make sure we have table phpcr_nodes_foreignkeys even if there is not a single entry in it to have it truncated
-        $this->ensureTableExists('phpcr_nodes_foreignkeys', array('source_id', 'source_property_name', 'target_id', 'type'));
+        foreach ($this->references as $type => $references) {
+            $table = 'phpcr_nodes_'.$type.'s';
 
-        // delay this to the end to not add entries for weak refs to not existing nodes
-        foreach($this->foreignKeys as $uuid => $foreignKey) {
-            if (isset($this->ids[$uuid])) {
-                foreach($foreignKey as $data) {
-                    $this->addRow('phpcr_nodes_foreignkeys', $data);
+            // make sure we have the references even if there is not a single entry in it to have it truncated
+            $this->ensureTableExists($table, array('source_id', 'source_property_name', 'target_id'));
+
+            foreach ($references as $uuid => $reference) {
+                if (isset($this->ids[$uuid])) {
+                    foreach ($reference as $data) {
+                        $this->addRow($table, $data);
+                    }
                 }
             }
         }
@@ -292,13 +303,12 @@ class DBUnitFixtureXML extends XMLDocument
                 } elseif (isset($this->expectedNodes[$value])) {
                     $targetId = $this->expectedNodes[$value];
                 } else {
-                    $targetId = $this->expectedNodes[$value] = count($this->ids) + 1;
+                    $targetId = $this->expectedNodes[$value] = self::$idCounter++;
                 }
-                $this->foreignKeys[$value][] = array(
+                $this->references[$type][$value][] = array(
                     'source_id'             => $id,
                     'source_property_name'  => $propertyName,
                     'target_id'             => $targetId,
-                    'type'                  => $this->jcrTypes[$type][0],
                 );
                 break;
         }
@@ -322,7 +332,6 @@ class DBUnitFixtureXML extends XMLDocument
     public function getPath(\DOMElement $node)
     {
         $childPath  = '';
-        $parentPath = '';
 
         $parent = $node;
         do {
@@ -369,11 +378,11 @@ class DBUnitFixtureXML extends XMLDocument
         $this->ensureTableExists($tableName, array_keys($data));
 
         $row = $this->createElement('row');
-        foreach ($data as $k => $v) {
-            if ($v === null) {
+        foreach ($data as $value) {
+            if (null === $value) {
                 $row->appendChild($this->createElement('null'));
             } else {
-                $row->appendChild($this->createElement('value', $v));
+                $row->appendChild($this->createElement('value', $value));
             }
         }
         $this->tables[$tableName]->appendChild($row);

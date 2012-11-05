@@ -24,7 +24,7 @@ function generate_fixtures($srcDir, $destDir)
         $destDom->addNamespaces($srcDom->getNamespaces());
         $destDom->addNodes('tests', $nodes);
         // delay this to the end to not add entries for weak refs to not existing nodes
-        $destDom->addForeignKeys();
+        $destDom->addReferences();
         $destDom->save();
     }
 }
