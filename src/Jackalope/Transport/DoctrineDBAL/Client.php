@@ -997,12 +997,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         || 'weakreference' == $propertyNode->getAttribute('sv:type')
                     )
                 ) {
-                    $query =
-                        'DELETE FROM phpcr_nodes_foreignkeys
+                    $query = 'DELETE FROM phpcr_nodes_foreignkeys
                          WHERE source_id = ?
                             AND source_property_name = ?';
-                        $this->conn->executeUpdate($query, array($nodeId, $propertyName));
-                    }
+                    $this->conn->executeUpdate($query, array($nodeId, $propertyName));
                 }
                 $propertyNode->parentNode->removeChild($propertyNode);
                 break;
