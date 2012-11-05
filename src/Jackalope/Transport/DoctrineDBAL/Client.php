@@ -406,31 +406,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // 4. if a reference is in the properties, either update the uuid based on the map if its inside the copied graph or keep it.
         // 5. "May drop mixin types"
 
-        try {
-            $this->conn->beginTransaction();
+        $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_name = ?';
+        $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceName));
 
-            $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_name = ?';
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceName));
+        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+            $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
-            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
-                $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $dom->loadXML($row['props']);
 
-                $dom = new \DOMDocument('1.0', 'UTF-8');
-                $dom->loadXML($row['props']);
+            $propsData = array('dom' => $dom, 'binaryData' => array());
+            //when copying a node, it is always a new node, then $isNewNode is set to true
+            $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
 
-                $propsData = array('dom' => $dom, 'binaryData' => array());
-                //when copying a node, it is always a new node, then $isNewNode is set to true
-                $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
-
-                $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
-                    '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
-                $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
-            }
-
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollBack();
-            throw $e;
+            $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
+                '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
+            $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
         }
     }
 
@@ -476,88 +467,63 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
 
-        $this->conn->beginTransaction();
-
-        try {
-            if (!$propsData) {
-                $propsData = $this->propsToXML($props);
-            }
-
-            if (null === $uuid) {
-                $uuid = UUIDHelper::generateUUID();
-            }
-
-            if ($isNewNode) {
-                list($namespace, $localName) = $this->getJcrName($path);
-
-                $qb = $this->conn->createQueryBuilder();
-                $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-                   ->from('phpcr_nodes', 'n')
-                   ->where('n.parent = :parent_a');
-
-                $sql = $qb->getSql();
-
-                try {
-                    $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
-                    $this->conn->executeUpdate($insert, array(
-                        'identifier'    => $uuid,
-                        'type'          => $type,
-                        'path'          => $path,
-                        'local_name'    => $localName,
-                        'namespace'     => $namespace,
-                        'parent'        => $parent,
-                        'workspace_name'  => $this->workspaceName,
-                        'props'         => $propsData['dom']->saveXML(),
-                        // TODO compute proper value
-                        'depth'         => 0,
-                        'parent_a'      => $parent,
-                    ));
-                } catch (\PDOException $e) {
-                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                } catch (DBALException $e) {
-                    throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                }
-
-                $nodeId = $this->conn->lastInsertId($this->sequenceNodeName);
-            } else {
-                $nodeId = $this->pathExists($path);
-                if (!$nodeId) {
-                    throw new RepositoryException();
-                }
-                $this->conn->update('phpcr_nodes', array('props' => $propsData['dom']->saveXML()), array('id' => $nodeId));
-            }
-
-            $this->nodeIdentifiers[$path] = $uuid;
-
-            if (isset($propsData['binaryData'])) {
-                $this->syncBinaryData($nodeId, $propsData['binaryData']);
-            }
-
-            // update foreign keys (references)
-            $this->syncForeignKeys($nodeId, $path, $props);
-
-            // Update internal indexes
-            $this->syncInternalIndexes();
-            // Update user indexes
-            $this->syncUserIndexes();
-
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollback();
-            throw $e;
+        if (!$propsData) {
+            $propsData = $this->propsToXML($props);
         }
 
+        if (null === $uuid) {
+            $uuid = UUIDHelper::generateUUID();
+        }
+
+        if ($isNewNode) {
+            list($namespace, $localName) = $this->getJcrName($path);
+
+            $qb = $this->conn->createQueryBuilder();
+            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
+                ->from('phpcr_nodes', 'n')
+                ->where('n.parent = :parent_a');
+
+            $sql = $qb->getSql();
+
+            try {
+                $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
+                $this->conn->executeUpdate($insert, array(
+                    'identifier'    => $uuid,
+                    'type'          => $type,
+                    'path'          => $path,
+                    'local_name'    => $localName,
+                    'namespace'     => $namespace,
+                    'parent'        => $parent,
+                    'workspace_name'  => $this->workspaceName,
+                    'props'         => $propsData['dom']->saveXML(),
+                    // TODO compute proper value
+                    'depth'         => 0,
+                    'parent_a'      => $parent,
+                ));
+            } catch (\PDOException $e) {
+                throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+            } catch (DBALException $e) {
+                throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+            }
+
+            $nodeId = $this->conn->lastInsertId($this->sequenceNodeName);
+        } else {
+            $nodeId = $this->pathExists($path);
+            if (!$nodeId) {
+                throw new RepositoryException();
+            }
+            $this->conn->update('phpcr_nodes', array('props' => $propsData['dom']->saveXML()), array('id' => $nodeId));
+        }
+
+        $this->nodeIdentifiers[$path] = $uuid;
+
+        if (isset($propsData['binaryData'])) {
+            $this->syncBinaryData($nodeId, $propsData['binaryData']);
+        }
+
+        $this->syncForeignKeys($nodeId, $path, $props);
+
         return $nodeId;
-    }
-
-    private function syncInternalIndexes()
-    {
-        // TODO implement syncInternalIndexes()
-    }
-
-    private function syncUserIndexes()
-    {
-        // TODO implement syncUserIndexes()
     }
 
     private function syncBinaryData($nodeId, $binaryData)
@@ -582,7 +548,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     \PDO::PARAM_LOB
                 );
                 $this->conn->insert('phpcr_binarydata', $params, $types);
-        }
+            }
         }
     }
 
@@ -989,18 +955,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
              WHERE (path = ? OR path LIKE ?)
                AND workspace_name = ?';
 
-        $this->conn->beginTransaction();
-
-        try {
-            $this->conn->executeUpdate($query, $params);
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollBack();
-
-            return false;
-        }
-
-        return true;
+        $this->conn->executeUpdate($query, $params);
     }
 
     /**
@@ -1030,8 +985,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->loadXml($xml);
 
-        $this->conn->beginTransaction();
-
         $found = false;
         foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
             if ($propertyName == $propertyNode->getAttribute('sv:name')) {
@@ -1048,12 +1001,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'DELETE FROM phpcr_nodes_foreignkeys
                          WHERE source_id = ?
                             AND source_property_name = ?';
-                    try {
                         $this->conn->executeUpdate($query, array($nodeId, $propertyName));
-                    } catch (\Exception $e) {
-                        $this->conn->rollBack();
-
-                        return false;
                     }
                 }
                 $propertyNode->parentNode->removeChild($propertyNode);
@@ -1061,7 +1009,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
         if (! $found) {
-            $this->conn->rollBack();
             throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
         }
         $xml = $dom->saveXML();
@@ -1069,16 +1016,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
         $params = array($xml, $nodeId);
 
-        try {
-            $this->conn->executeUpdate($query, $params);
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollBack();
-
-            return false;
-        }
-
-        return true;
+        $this->conn->executeUpdate($query, $params);
     }
 
     /**
@@ -1103,67 +1041,59 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Parent of the destination path '" . $this->getParentPath($dstAbsPath) . "' has to exist.");
         }
 
-        try {
-            $this->conn->beginTransaction();
+        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
+        $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
 
-            $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
-            $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
+        /*
+         * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
+         * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
+         * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
+         * rather than raw sql, to make it work on a maximum of platforms.
+         *
+         * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
+         * we can ask the doctrine community how to do the substring operation.
+         * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
+         */
 
-            /*
-             * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
-             * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
-             * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
-             * rather than raw sql, to make it work on a maximum of platforms.
-             *
-             * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
-             * we can ask the doctrine community how to do the substring operation.
-             * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
-             */
+        $ids                 = '';
+        $query               = "UPDATE phpcr_nodes SET ";
+        $updatePathCase      = "path = CASE ";
+        $updateParentCase    = "parent = CASE ";
+        $updateLocalNameCase = "local_name = CASE ";
+        $updateSortOrderCase = "sort_order = CASE ";
 
-            $ids                 = '';
-            $query               = "UPDATE phpcr_nodes SET ";
-            $updatePathCase      = "path = CASE ";
-            $updateParentCase    = "parent = CASE ";
-            $updateLocalNameCase = "local_name = CASE ";
-            $updateSortOrderCase = "sort_order = CASE ";
+        $i = 0;
 
-            $i = 0;
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
-            while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $values[':id' . $i]     = $row['id'];
+            $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+            $values[':parent' . $i] = dirname($values[':path' . $i]);
 
-                $values[':id' . $i]     = $row['id'];
-                $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-                $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
+            $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
 
-                $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
-                $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            if ($srcAbsPath === $row['path']) {
+                $values[':localname' . $i] = basename($values[':path' . $i]);
 
-                if ($srcAbsPath === $row['path']) {
-                    $values[':localname' . $i] = basename($values[':path' . $i]);
-
-                    $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
-                    $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
-                }
-
-                $ids .= $row['id'] . ',';
-
-                $i ++;
+                $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
+                $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
             }
 
-            $ids = rtrim($ids, ',');
+            $ids .= $row['id'] . ',';
 
-            $updateLocalNameCase .= "ELSE local_name END, ";
-            $updateSortOrderCase .= "ELSE sort_order END ";
-
-            $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
-            $query .= "WHERE id IN (" . $ids . ")";
-
-            $this->conn->executeUpdate($query, $values);
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollBack();
-            throw $e;
+            $i ++;
         }
+
+        $ids = rtrim($ids, ',');
+
+        $updateLocalNameCase .= "ELSE local_name END, ";
+        $updateSortOrderCase .= "ELSE sort_order END ";
+
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+        $query .= "WHERE id IN (" . $ids . ")";
+
+        $this->conn->executeUpdate($query, $values);
     }
 
     /**
@@ -1173,22 +1103,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-       /* Solution:
-        * - Determine the current order (from DB query).
-        * - Use the $reorders to calculate the new order.
-        * - Compare the old and new sequences to generate the required update statements.
-        * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the
-        * last sibling to being the first, could result in the need to update the sort_order of every sibling.
-        */
+        /* Solution:
+         * - Determine the current order (from DB query).
+         * - Use the $reorders to calculate the new order.
+         * - Compare the old and new sequences to generate the required update statements.
+         * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the
+         * last sibling to being the first, could result in the need to update the sort_order of every sibling.
+         */
 
         // Retrieve an array of siblings names in the original order.
-        $this->conn->beginTransaction();
         $qb = $this->conn->createQueryBuilder();
 
         $qb->select("CONCAT(n.namespace,(CASE namespace WHEN '' THEN '' ELSE ':' END), n.local_name)")
-           ->from('phpcr_nodes', 'n')
-           ->where('n.parent = :absPath')
-           ->orderBy('n.sort_order', 'ASC');
+            ->from('phpcr_nodes', 'n')
+            ->where('n.parent = :absPath')
+            ->orderBy('n.sort_order', 'ASC');
 
         $query = $qb->getSql() . ' ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
 
@@ -1227,32 +1156,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        try {
-            $values[':absPath'] = $absPath;
-            $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
-              namespace,
-              (CASE namespace WHEN '' THEN '' ELSE ':' END),
-              local_name
-            )";
+        $values[':absPath'] = $absPath;
+        $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
+          namespace,
+          (CASE namespace WHEN '' THEN '' ELSE ':' END),
+          local_name
+        )";
 
-            $i = 0;
+        $i = 0;
 
-            foreach ($modified as $name => $order) {
-                $values[':name' . $i] = $name;
-                $values[':order' . $i] = $order;
-                $sql .= " WHEN :name" . $i . " THEN :order" . $i;
-                $i++;
-            }
-
-            $sql .= " ELSE sort_order END WHERE parent = :absPath";
-
-            $this->conn->executeUpdate($sql, $values);
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollBack();
-            throw $e;
+        foreach ($modified as $name => $order) {
+            $values[':name' . $i] = $name;
+            $values[':order' . $i] = $order;
+            $sql .= " WHEN :name" . $i . " THEN :order" . $i;
+            $i++;
         }
 
+        $sql .= " ELSE sort_order END WHERE parent = :absPath";
+
+        $this->conn->executeUpdate($sql, $values);
     }
 
     /**
@@ -1293,7 +1215,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if ($childDef->isMandatory() && !$childDef->isAutoCreated()) {
                     throw new RepositoryException(
                         "Child " . $childDef->getName() . " is mandatory, but is not present while ".
-                        "saving " . $def->getName() . " at " . $node->getPath()
+                            "saving " . $def->getName() . " at " . $node->getPath()
                     );
                 }
 
@@ -1313,7 +1235,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if ($propertyDef->isMandatory() && !$propertyDef->isAutoCreated()) {
                     throw new RepositoryException(
                         "Property " . $propertyDef->getName() . " is mandatory, but is not present while ".
-                        "saving " . $def->getName() . " at " . $node->getPath()
+                            "saving " . $def->getName() . " at " . $node->getPath()
                     );
                 }
                 if ($propertyDef->isAutoCreated()) {
@@ -1738,7 +1660,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         if (null !== $offset && null == $limit &&
             ($this->conn->getDatabasePlatform() instanceof MySqlPlatform
-            || $this->conn->getDatabasePlatform() instanceof SqlitePlatform)
+                || $this->conn->getDatabasePlatform() instanceof SqlitePlatform)
         ) {
             $limit = PHP_INT_MAX;
         }
@@ -1836,23 +1758,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return;
         }
 
-        $this->conn->beginTransaction();
+        $this->conn->delete('phpcr_namespaces', array('prefix' => $prefix));
+        $this->conn->delete('phpcr_namespaces', array('uri' => $uri));
 
-        try {
-            $this->conn->delete('phpcr_namespaces', array('prefix' => $prefix));
-            $this->conn->delete('phpcr_namespaces', array('uri' => $uri));
-
-            $this->conn->insert('phpcr_namespaces', array(
-                'prefix' => $prefix,
-                'uri' => $uri,
-            ));
-
-            $this->conn->commit();
-        } catch (\Exception $e) {
-            $this->conn->rollback();
-
-            throw $e;
-        }
+        $this->conn->insert('phpcr_namespaces', array(
+            'prefix' => $prefix,
+            'uri' => $uri,
+        ));
 
         if (!empty($this->namespaces)) {
             $this->namespaces[$prefix] = $uri;
@@ -1989,7 +1901,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
+    public function prepareSave()
+    {
+        $this->conn->beginTransaction();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function finishSave()
     {
+        $this->conn->commit();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function rollbackSave()
+    {
+        $this->conn->rollback();
     }
 }
