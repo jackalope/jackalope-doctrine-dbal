@@ -117,6 +117,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $sequenceTypeName;
 
+    /**
+     * @var array
+     */
+    private $tables = array(
+        PropertyType::REFERENCE => 'phpcr_nodes_references',
+        PropertyType::WEAKREFERENCE => 'phpcr_nodes_weakreferences',
+    );
+
+    /**
+     * @var array
+     */
+    private $foreignKeys = array();
+
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
         $this->factory = $factory;
@@ -521,7 +534,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->syncBinaryData($nodeId, $propsData['binaryData']);
         }
 
-        $this->syncForeignKeys($nodeId, $path, $props);
+        $this->foreignKeys[$nodeId] = array('path' => $path, 'props' => $props);
 
         return $nodeId;
     }
@@ -552,30 +565,38 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function syncForeignKeys($nodeId, $path, $props)
+    private function syncForeignKeys()
     {
-        $this->conn->delete('phpcr_nodes_foreignkeys', array('source_id' => $nodeId));
+        if (empty($this->foreignKeys)) {
+            return;
+        }
 
-        foreach ($props as $property) {
-            $type = $property->getType();
-            if (PropertyType::REFERENCE == $type || PropertyType::WEAKREFERENCE == $type) {
-                $values = array_unique( $property->isMultiple() ? $property->getString() : array($property->getString()) );
+        $nodeIds = array_keys($this->foreignKeys);
 
-                foreach ($values as $value) {
-                    try {
-                        $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
+        $query = "DELETE FROM {$this->tables[PropertyType::REFERENCE]} WHERE source_id IN (?)";
+        $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
+        $query = "DELETE FROM {$this->tables[PropertyType::WEAKREFERENCE]} WHERE source_id IN (?)";
+        $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
 
-                        $this->conn->insert('phpcr_nodes_foreignkeys', array(
-                            'source_id' => $nodeId,
-                            'source_property_name' => $property->getName(),
-                            'target_id' => $targetId,
-                            'type' => $type
-                        ));
-                    } catch (ItemNotFoundException $e) {
-                        if (PropertyType::REFERENCE == $type) {
-                            throw new ReferentialIntegrityException(
-                                "Trying to store reference to non-existant node with path '$value' in node $path property " . $property->getName()
-                            );
+        foreach ($this->foreignKeys as $nodeId => $data) {
+            foreach ($data['props'] as $property) {
+                $type = $property->getType();
+                if (isset($this->tables[$type])) {
+                    $values = $property->isMultiple() ? array_unique($property->getString()) : array($property->getString());
+
+                    foreach ($values as $value) {
+                        try {
+                            $this->conn->insert($this->tables[$type], array(
+                                'source_id' => $nodeId,
+                                'source_property_name' => $property->getName(),
+                                'target_id' => $this->pathExists(self::getNodePathForIdentifier($value)),
+                            ));
+                        } catch (ItemNotFoundException $e) {
+                            if (PropertyType::REFERENCE == $type) {
+                                throw new ReferentialIntegrityException(
+                                    "Trying to store reference to non-existant node with path '$value' in node {$data['path']} property " . $property->getName()
+                                );
+                            }
                         }
                     }
                 }
@@ -924,38 +945,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (!$nodeId) {
             throw new ItemNotFoundException("No node found at ".$path);
         }
-        $params = array($path, $path."/%", $this->workspaceName);
 
-        $query =
-            'SELECT COUNT(*)
-             FROM phpcr_nodes_foreignkeys fk
-               INNER JOIN phpcr_nodes n ON n.id = fk.target_id
-             WHERE (n.path = ? OR n.path LIKE ?)
-               AND workspace_name = ?
-               AND fk.type = ' . PropertyType::REFERENCE;
-        $fkReferences = $this->conn->fetchColumn($query, $params);
-        if ($fkReferences > 0) {
-            /*
-            TODO: if we had logging, we could report which nodes
-            $query =
-                'SELECT fk.source_id
-                 FROM phpcr_nodes_foreignkeys fk
-                   INNER JOIN phpcr_nodes n ON n.id = fk.target_id
-                   INNER JOIN phpcr_nodes f ON f.id = fk.source_id
-                 WHERE (n.path = ? OR n.path LIKE ?)
-                   AND n.workspace_name = ?
-                   AND fk.type = ' . PropertyType::REFERENCE;
-            $paths = $this->conn->fetchAssoc($query, $params);
-            */
-            throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode");
-        }
+        $params = array($path, $path."/%", $this->workspaceName);
 
         $query =
             'DELETE FROM phpcr_nodes
              WHERE (path = ? OR path LIKE ?)
                AND workspace_name = ?';
 
-        $this->conn->executeUpdate($query, $params);
+        try {
+            $this->conn->executeUpdate($query, $params);
+        } catch (\Exception $e) {
+            if ('23000' === $e->getPrevious()->errorInfo[0]) {
+                throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode");
+            }
+
+            throw $e;
+        }
     }
 
     /**
@@ -992,15 +998,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
-                if ($propertyNode->hasAttribute('sv:type') &&
-                    ('reference' == $propertyNode->getAttribute('sv:type')
-                        || 'weakreference' == $propertyNode->getAttribute('sv:type')
-                    )
-                ) {
-                    $query = 'DELETE FROM phpcr_nodes_foreignkeys
+                if ($propertyNode->hasAttribute('sv:type')) {
+                    if ('reference' == $propertyNode->getAttribute('sv:type')) {
+                        $table = $this->tables[PropertyType::REFERENCE];
+                    } elseif ('weakreference' == $propertyNode->getAttribute('sv:type')) {
+                        $table = $this->tables[PropertyType::WEAKREFERENCE];
+                    } else {
+                        $table = false;
+                    }
+
+                    if ($table) {
+                        $query =
+                            "DELETE FROM $table
                          WHERE source_id = ?
-                            AND source_property_name = ?';
-                    $this->conn->executeUpdate($query, array($nodeId, $propertyName));
+                            AND source_property_name = ?";
+                        $this->conn->executeUpdate($query, array($nodeId, $propertyName));
+                    }
                 }
                 $propertyNode->parentNode->removeChild($propertyNode);
                 break;
@@ -1658,7 +1671,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         if (null !== $offset && null == $limit &&
             ($this->conn->getDatabasePlatform() instanceof MySqlPlatform
-                || $this->conn->getDatabasePlatform() instanceof SqlitePlatform)
+                || $this->conn->getDatabasePlatform() instanceof SqlitePlatform
+            )
         ) {
             $limit = PHP_INT_MAX;
         }
@@ -1808,12 +1822,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $targetId = $this->pathExists($path);
 
-        $type = $weakReference ? PropertyType::WEAKREFERENCE : PropertyType::REFERENCE;
-
-        $query = "SELECT CONCAT(n.path, '/', fk.source_property_name) as path, fk.source_property_name FROM phpcr_nodes n".
-            '   INNER JOIN phpcr_nodes_foreignkeys fk ON n.id = fk.source_id'.
-            '   WHERE fk.target_id = ? AND fk.type = ?';
-        $properties = $this->conn->fetchAll($query, array($targetId, $type));
+        $table = $weakReference ? $this->tables[PropertyType::WEAKREFERENCE] : $this->tables[PropertyType::REFERENCE];
+        $query = "SELECT CONCAT(n.path, '/', fk.source_property_name) as path, fk.source_property_name FROM phpcr_nodes n
+               INNER JOIN $table fk ON n.id = fk.source_id
+               WHERE fk.target_id = ?";
+        $properties = $this->conn->fetchAll($query, array($targetId));
 
         $references = array();
         foreach ($properties as $property) {
@@ -1902,6 +1915,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function prepareSave()
     {
         $this->conn->beginTransaction();
+        $platform = $this->conn->getDatabasePlatform();
+        if ($platform instanceof MySqlPlatform) {
+
+        } elseif ($platform instanceof SqlitePlatform) {
+
+        }
     }
 
     /**
@@ -1909,6 +1928,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function finishSave()
     {
+        $this->syncForeignKeys();
+        $this->postSave();
+
         $this->conn->commit();
     }
 
@@ -1917,6 +1939,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function rollbackSave()
     {
+        $this->postSave();
+
         $this->conn->rollback();
+    }
+
+    private function postSave()
+    {
+        $this->foreignKeys = array();
+
+        $platform = $this->conn->getDatabasePlatform();
+        if ($platform instanceof MySqlPlatform) {
+
+        } elseif ($platform instanceof SqlitePlatform) {
+
+        }
     }
 }
