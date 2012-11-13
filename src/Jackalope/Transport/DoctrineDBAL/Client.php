@@ -1276,6 +1276,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
+        foreach ($def->getDeclaredSupertypes() as $superType) {
+            $this->validateNode($node, $superType);
+        }
+
         foreach ($node->getProperties() as $property) {
             $this->assertValidProperty($property);
         }
