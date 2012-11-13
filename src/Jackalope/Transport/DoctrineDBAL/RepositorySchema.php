@@ -66,7 +66,6 @@ class RepositorySchema
         $foreignKeys->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
         $foreignKeys->addIndex(array('target_id'));
         $foreignKeys->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
-        $foreignKeys->addForeignKeyConstraint($nodes, array('target_id'), array('id'), array('onDelete' => 'CASCADE'));
 
         $types = $schema->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', array('autoincrement' => true));
