@@ -117,6 +117,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $sequenceTypeName;
 
+    /**
+     * @var array
+     */
+    private $referencesToUpdate = array();
+
+    /**
+     * @var array
+     */
+    private $referencesToDelete = array();
+
+    /**
+     * @param \Jackalope\FactoryInterface $factory
+     * @param \Doctrine\DBAL\Connection $conn
+     */
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
         $this->factory = $factory;
@@ -415,7 +429,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $dom->loadXML($row['props']);
 
-            $propsData = array('dom' => $dom, 'binaryData' => array());
+            $propsData = array('dom' => $dom);
             //when copying a node, it is always a new node, then $isNewNode is set to true
             $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
 
@@ -517,11 +531,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->nodeIdentifiers[$path] = $uuid;
 
-        if (isset($propsData['binaryData'])) {
+        if (!empty($propsData['binaryData'])) {
             $this->syncBinaryData($nodeId, $propsData['binaryData']);
         }
 
-        $this->syncForeignKeys($nodeId, $path, $props);
+        if (!empty($propsData['references'])) {
+            $this->referencesToUpdate[$nodeId] = array('path' => $path, 'properties' => $propsData['references']);
+        }
 
         return $nodeId;
     }
@@ -552,34 +568,63 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function syncForeignKeys($nodeId, $path, $props)
+    private function syncForeignKeys()
     {
-        $this->conn->delete('phpcr_nodes_foreignkeys', array('source_id' => $nodeId));
+        if ($this->referencesToUpdate) {
+            $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE source_id IN (?)';
+            $this->conn->executeUpdate($query, array(array_keys($this->referencesToUpdate)), array(Connection::PARAM_INT_ARRAY));
 
-        foreach ($props as $property) {
-            $type = $property->getType();
-            if (PropertyType::REFERENCE == $type || PropertyType::WEAKREFERENCE == $type) {
-                $values = array_unique( $property->isMultiple() ? $property->getString() : array($property->getString()) );
+            foreach ($this->referencesToUpdate as $nodeId => $references) {
+                foreach ($references['properties'] as $name => $data) {
+                    foreach ($data['values'] as $value) {
+                        try {
+                            $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
 
-                foreach ($values as $value) {
-                    try {
-                        $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
-
-                        $this->conn->insert('phpcr_nodes_foreignkeys', array(
-                            'source_id' => $nodeId,
-                            'source_property_name' => $property->getName(),
-                            'target_id' => $targetId,
-                            'type' => $type
-                        ));
-                    } catch (ItemNotFoundException $e) {
-                        if (PropertyType::REFERENCE == $type) {
-                            throw new ReferentialIntegrityException(
-                                "Trying to store reference to non-existant node with path '$value' in node $path property " . $property->getName()
+                            $params = array(
+                                'source_id' => $nodeId,
+                                'source_property_name' => $name,
+                                'target_id' => $targetId,
+                                'type' => $data['type'],
                             );
+
+                            $this->conn->insert('phpcr_nodes_foreignkeys', $params);
+                        } catch (ItemNotFoundException $e) {
+                            if (PropertyType::REFERENCE == $data['type']) {
+                                throw new ReferentialIntegrityException(
+                                    "Trying to store reference to non-existant node with path '$value' in node '{$references['path']}' property '$name'."
+                                );
+                            }
                         }
                     }
                 }
             }
+        }
+
+        if ($this->referencesToDelete) {
+            $nodeIds = array_keys($this->referencesToDelete);
+            $params = array(PropertyType::REFERENCE, $nodeIds);
+
+            // due to the outer join we cannot filter on workspace_name, but this is ok
+            // since within a transaction there can ever be missing referenced nodes within the current workspace
+            $query = 'SELECT fk.target_id
+            FROM phpcr_nodes_foreignkeys fk
+                LEFT OUTER JOIN phpcr_nodes n ON fk.target_id = n.id
+            WHERE fk.type = ?
+              AND fk.target_id IN (?)';
+
+            $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_INT_ARRAY));
+            $missingTargets = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            if ($missingTargets) {
+                $paths = array();
+                foreach ($missingTargets as $id) {
+                    $paths[] = $this->referencesToDelete[$id];
+                }
+
+                throw new ReferentialIntegrityException("Cannot delete '".implode("', '", $paths)."': A reference points to this node or a subnode");
+            }
+
+            $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE target_id IN (?)';
+            $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
         }
     }
 
@@ -656,9 +701,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @param array $properties
      * @param bool $inlineBinaries
-     * @return array ('dom' => $dom, 'binary' => streams)
+     * @return array ('dom' => $dom, 'binaryData' => streams, 'references' => array('type' => INT, 'values' => array(UUIDs)))
      */
-    public function propsToXML($properties, $inlineBinaries = false)
+    private function propsToXML($properties, $inlineBinaries = false)
     {
         $namespaces = array(
             'mix' => "http://www.jcp.org/jcr/mix/1.0",
@@ -676,7 +721,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $dom->appendChild($rootNode);
 
-        $binaryData = null;
+        $binaryData = $references = array();
         foreach ($properties as $property) {
             /* @var $property Property */
             $propertyNode = $dom->createElement('sv:property');
@@ -685,10 +730,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $propertyNode->setAttribute('sv:multi-valued', $property->isMultiple() ? '1' : '0');
 
             switch ($property->getType()) {
-                case PropertyType::NAME:
-                case PropertyType::URI:
                 case PropertyType::WEAKREFERENCE:
                 case PropertyType::REFERENCE:
+                    $references[$property->getName()] = array(
+                        'type' => $property->getType(),
+                        'values' => $property->isMultiple() ? array_unique($property->getString()) : array($property->getString()),
+                    );
+                case PropertyType::NAME:
+                case PropertyType::URI:
                 case PropertyType::PATH:
                 case PropertyType::STRING:
                     $values = $property->getString();
@@ -757,7 +806,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $rootNode->appendChild($propertyNode);
         }
 
-        return array('dom' => $dom, 'binaryData' => $binaryData);
+        return array('dom' => $dom, 'binaryData' => $binaryData, 'references' => $references);
     }
 
     /**
@@ -924,37 +973,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (!$nodeId) {
             throw new ItemNotFoundException("No node found at ".$path);
         }
+
         $params = array($path, $path."/%", $this->workspaceName);
 
-        $query =
-            'SELECT COUNT(*)
-             FROM phpcr_nodes_foreignkeys fk
-               INNER JOIN phpcr_nodes n ON n.id = fk.target_id
-             WHERE (n.path = ? OR n.path LIKE ?)
-               AND workspace_name = ?
-               AND fk.type = ' . PropertyType::REFERENCE;
-        $fkReferences = $this->conn->fetchColumn($query, $params);
-        if ($fkReferences > 0) {
-            /*
-            TODO: if we had logging, we could report which nodes
-            $query =
-                'SELECT fk.source_id
-                 FROM phpcr_nodes_foreignkeys fk
-                   INNER JOIN phpcr_nodes n ON n.id = fk.target_id
-                   INNER JOIN phpcr_nodes f ON f.id = fk.source_id
-                 WHERE (n.path = ? OR n.path LIKE ?)
-                   AND n.workspace_name = ?
-                   AND fk.type = ' . PropertyType::REFERENCE;
-            $paths = $this->conn->fetchAssoc($query, $params);
-            */
-            throw new ReferentialIntegrityException("Cannot delete $path: A reference points to this node or a subnode");
-        }
+        $query = 'SELECT id, path FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
+        $stmt = $this->conn->executeQuery($query, $params);
+        $this->referencesToDelete+= $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_COLUMN);
 
-        $query =
-            'DELETE FROM phpcr_nodes
-             WHERE (path = ? OR path LIKE ?)
-               AND workspace_name = ?';
-
+        $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
         $this->conn->executeUpdate($query, $params);
     }
 
@@ -989,17 +1015,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
             if ($propertyName == $propertyNode->getAttribute('sv:name')) {
                 $found = true;
-
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
                 if ($propertyNode->hasAttribute('sv:type') &&
-                    ('reference' == $propertyNode->getAttribute('sv:type')
-                        || 'weakreference' == $propertyNode->getAttribute('sv:type')
+                    ('reference' == strtolower($propertyNode->getAttribute('sv:type'))
+                        || 'weakreference' == strtolower($propertyNode->getAttribute('sv:type'))
                     )
                 ) {
                     $query = 'DELETE FROM phpcr_nodes_foreignkeys
-                         WHERE source_id = ?
-                            AND source_property_name = ?';
+                         WHERE source_id = ? AND source_property_name = ?';
                     $this->conn->executeUpdate($query, array($nodeId, $propertyName));
                 }
                 $propertyNode->parentNode->removeChild($propertyNode);
@@ -1913,6 +1937,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function finishSave()
     {
+        $this->syncForeignKeys();
+        $this->referencesToUpdate = $this->referencesToDelete = array();
         $this->conn->commit();
     }
 
@@ -1921,6 +1947,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function rollbackSave()
     {
+        $this->referencesToUpdate = $this->referencesToDelete = array();
         $this->conn->rollback();
     }
 }
