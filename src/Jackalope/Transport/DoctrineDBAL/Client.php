@@ -446,10 +446,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function getJcrName($path)
     {
         $name = implode('', array_slice(explode('/', $path), -1, 1));
-        if (strpos($name, ':') === false) {
-            $alias = '';
+        if (($aliasLength = strpos($name, ':')) !== false) {
+            $alias = substr($name, 0, $aliasLength);
         } else {
-            list($alias, $name) = explode(':', $name);
+            $alias = '';
         }
 
         $namespaces = $this->getNamespaces();
