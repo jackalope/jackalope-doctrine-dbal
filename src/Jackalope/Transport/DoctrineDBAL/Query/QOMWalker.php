@@ -3,6 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use PHPCR\Query\InvalidQueryException;
+use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\QOM;
 
@@ -304,13 +305,13 @@ class QOMWalker
             $selector = $operand->getSelectorName();
             $alias = $this->getTableAlias($selector);
 
-            return $alias.".local_name"; // TODO: Hm, what about the namespace?
+            return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name");
         }
         if ($operand instanceof QOM\NodeLocalNameInterface) {
             $selector = $operand->getSelectorName();
             $alias = $this->getTableAlias($selector);
 
-            return $alias.".local_name";
+            return "$alias.local_name";
         }
         if ($operand instanceof QOM\LowerCaseInterface) {
             return $this->platform->getLowerExpression($this->walkOperand($operand->getOperand()));
@@ -319,7 +320,21 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
-            return $this->conn->quote(trim($operand->getLiteralValue(), '"'));
+            $namespace = '';
+            $literal = trim($operand->getLiteralValue(), '"');
+            if (($aliasLength = strpos($literal, ':')) !== false) {
+                $alias = substr($literal, 0, $aliasLength);
+                if (!isset($this->namespaces[$alias])) {
+                    throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
+                }
+                if (!empty($this->namespaces[$alias])) {
+                    $namespace = $this->namespaces[$alias].':';
+                }
+
+                $literal = substr($literal, $aliasLength + 1);
+            }
+
+            return $this->conn->quote($namespace.$literal);
         }
         if ($operand instanceof QOM\PropertyValueInterface) {
             $alias = $this->getTableAlias($operand->getSelectorName());
