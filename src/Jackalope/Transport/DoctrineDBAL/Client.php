@@ -448,6 +448,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $name = implode('', array_slice(explode('/', $path), -1, 1));
         if (($aliasLength = strpos($name, ':')) !== false) {
             $alias = substr($name, 0, $aliasLength);
+            $name = substr($name, $aliasLength + 1);
         } else {
             $alias = '';
         }
