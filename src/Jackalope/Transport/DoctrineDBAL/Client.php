@@ -1723,7 +1723,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $sql = $qomWalker->walkQOMQuery($query);
 
         $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
-
         $data = $this->conn->fetchAll($sql, array($this->workspaceName));
 
         // The list of columns is required to filter each records props
