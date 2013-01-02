@@ -176,4 +176,19 @@ class QOMWalkerTest extends TestCase
             $sql
         );
     }
+
+    public function testDescendantQuery()
+    {
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->descendantNode('/')
+        );
+
+        $sql = $this->walker->walkQOMQuery($query);
+
+        $this->assertEquals(
+            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND ",
+            $sql
+        );
+    }
 }

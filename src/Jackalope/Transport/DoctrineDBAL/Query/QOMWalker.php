@@ -203,7 +203,12 @@ class QOMWalker
      */
     public function walkDescendantNodeConstraint(QOM\DescendantNodeInterface $constraint)
     {
-        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $constraint->getAncestorPath() . "/%'";
+        $ancestorPath = $constraint->getAncestorPath();
+        if (substr($ancestorPath, -1) == '/') {
+            $ancestorPath = substr($ancestorPath, 0, -1);
+        }
+
+        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $ancestorPath . "/%'";
     }
 
     /**
