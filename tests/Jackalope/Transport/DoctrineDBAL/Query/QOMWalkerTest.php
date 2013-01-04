@@ -176,4 +176,47 @@ class QOMWalkerTest extends TestCase
             $sql
         );
     }
+
+    public function testDescendantQuery()
+    {
+        $this->nodeTypeManager->expects($this->exactly(2))->method('getSubtypes')->will($this->returnValue( array() ));
+
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->descendantNode('/')
+        );
+
+        $sql = $this->walker->walkQOMQuery($query);
+
+        $this->assertEquals(
+            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path LIKE '/%'",
+            $sql
+        );
+
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->descendantNode('/some/node')
+        );
+
+        $sql = $this->walker->walkQOMQuery($query);
+
+        $this->assertEquals(
+            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path LIKE '/some/node/%'",
+            $sql
+        );
+    }
+
+    /**
+     * @expectedException \PHPCR\Query\InvalidQueryException
+     */
+    public function testDescendantQuery_trailingSlash()
+    {
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->descendantNode('/some/node/')
+        );
+
+        $sql = $this->walker->walkQOMQuery($query);
+    }
 }

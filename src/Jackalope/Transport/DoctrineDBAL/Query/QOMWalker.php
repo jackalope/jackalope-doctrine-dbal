@@ -216,7 +216,14 @@ class QOMWalker
      */
     public function walkDescendantNodeConstraint(QOM\DescendantNodeInterface $constraint)
     {
-        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $constraint->getAncestorPath() . "/%'";
+        $ancestorPath = $constraint->getAncestorPath();
+        if ('/' === $ancestorPath) {
+            $ancestorPath = '';
+        } elseif (substr($ancestorPath, -1) === '/') {
+            throw new InvalidQueryException("Trailing slash in $ancestorPath");
+        }
+
+        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $ancestorPath . "/%'";
     }
 
     /**
