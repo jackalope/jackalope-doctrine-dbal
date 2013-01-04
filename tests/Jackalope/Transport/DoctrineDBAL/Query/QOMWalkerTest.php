@@ -205,4 +205,18 @@ class QOMWalkerTest extends TestCase
             $sql
         );
     }
+
+    /**
+     * @expectedException \PHPCR\Query\InvalidQueryException
+     */
+    public function testDescendantQuery_trailingSlash()
+    {
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->descendantNode('/some/node/')
+        );
+
+        $sql = $this->walker->walkQOMQuery($query);
+    }
 }
