@@ -206,7 +206,7 @@ class QOMWalker
         $ancestorPath = $constraint->getAncestorPath();
         if ('/' === $ancestorPath) {
             $ancestorPath = '';
-        } elseif (substr($ancestorPath, -1) == '/') {
+        } elseif (substr($ancestorPath, -1) === '/') {
             throw new InvalidQueryException("Trailing slash in $ancestorPath");
         }
 
