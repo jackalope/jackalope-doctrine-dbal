@@ -202,12 +202,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->insert('phpcr_workspaces', array('name' => $name));
-        } catch (DBALException $e) {
-            if ($e->getPrevious()->getCode() == 23000) {
-                throw new RepositoryException("Workspace '$name' already exists");
-            } else {
-                throw $e;
-            }
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't create Workspace '$name': ".$e->getMessage(), 0, $e);
         }
 
         $this->conn->insert('phpcr_nodes', array(
