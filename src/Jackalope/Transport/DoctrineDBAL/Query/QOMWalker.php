@@ -232,7 +232,7 @@ class QOMWalker
      */
     public function walkChildNodeConstraint(QOM\ChildNodeInterface $constraint)
     {
-        return $this->getTableAlias($constraint->getSelectorName()) . ".parent = '" . $constraint->getParentPath() . "'";
+        return $this->getTableAlias($constraint->getSelectorName()) . ".parent = " . $constraint->getParentPath();
     }
 
     /**
