@@ -11,8 +11,8 @@ env:
 
 before_script:
 # duplicate install to work around https://github.com/composer/composer/issues/789
-  - composer install
-  - composer install --dev
+  - composer install --prefer-source
+  - composer install --prefer-source --dev
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - pyrus set auto_discover 1
