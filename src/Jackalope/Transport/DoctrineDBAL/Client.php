@@ -1573,10 +1573,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 'orderable_child_nodes' => $type->hasOrderableChildNodes() ? 1 : 0,
                 'primary_item' => $type->getPrimaryItemName(),
             ));
-            $nodeTypeId = $this->conn->lastInsertId($this->sequenceTypeName);
 
             if ($propDefs = $type->getDeclaredPropertyDefinitions()) {
                 foreach ($propDefs as $propertyDef) {
+                    $nodeTypeId = $this->conn->lastInsertId($this->sequenceTypeName);
+
                     /* @var $propertyDef \Jackalope\NodeType\PropertyDefinition */
                     $this->conn->insert('phpcr_type_props', array(
                         'node_type_id' => $nodeTypeId,
