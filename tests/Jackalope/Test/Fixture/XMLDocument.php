@@ -1,5 +1,6 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
+
+namespace Jackalope\Test\Fixture;
 
 /**
  * Base for Jackalope Document or System Views and PHPUnit DBUnit Fixture XML classes.
@@ -7,7 +8,6 @@ namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author cryptocompress <cryptocompress@googlemail.com>
  */
-
 abstract class XMLDocument extends \DOMDocument
 {
     /**

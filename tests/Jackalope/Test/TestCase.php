@@ -1,5 +1,6 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test;
+
+namespace Jackalope\Test;
 
 use Doctrine\DBAL\DriverManager;
 

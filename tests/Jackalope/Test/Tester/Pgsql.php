@@ -1,15 +1,14 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test\Tester;
+
+namespace Jackalope\Test\Tester;
 
 /**
  * PostgreSQL specific tester class.
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
-
 class Pgsql extends Generic
 {
-
     public function __construct(\PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection, $fixturePath)
     {
         parent::__construct($connection, $fixturePath);
@@ -18,7 +17,7 @@ class Pgsql extends Generic
     }
 
     public function onSetUp()
-	{
+    {
         parent::onSetUp();
 
         $pdo = $this->getConnection()->getConnection();
