@@ -433,9 +433,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $dom->loadXML($row['props']);
 
-            $propsData = array('dom' => $dom);
+            $propsData = array('dom' => $dom, 'binaryData' => array());
             //when copying a node, it is always a new node, then $isNewNode is set to true
-            $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
+            $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, substr_count($newPath, "/"), array(), $propsData);
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -481,7 +481,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $depth, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -502,6 +502,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 ->from('phpcr_nodes', 'n')
                 ->where('n.parent = :parent_a');
 
+
             $sql = $qb->getSql();
 
             try {
@@ -515,8 +516,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'parent'        => $parent,
                     'workspace_name'  => $this->workspaceName,
                     'props'         => $propsData['dom']->saveXML(),
-                    // TODO compute proper value
-                    'depth'         => 0,
+                    'depth'         => $depth,
                     'parent_a'      => $parent,
                 ));
             } catch (\PDOException $e) {
@@ -832,13 +832,39 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertValidPath($path);
         $this->assertLoggedIn();
 
-        $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
-        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceName));
-        if (!$row) {
+        $values[':path'] = $path;
+        $values[':pathd'] = rtrim($path,'/') . '/%';
+        $values[':workspace'] = $this->workspaceName;
+        $values[':fetchDepth'] = $this->fetchDepth;
+
+        $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace';
+
+        $query = 'SELECT * FROM phpcr_nodes WHERE (path LIKE :pathd OR path = :path) AND workspace_name = :workspace AND depth <= ((' . $subquery . ') + :fetchDepth) ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $values);
+
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        if (count($rows) === 0) {
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
-        return $this->getNodeData($path, $row);
+        $nodeData = array();
+
+        foreach ($rows as $row) {
+            if ($row['path'] == $path) {
+                $node = $this->getNodeData($path, $row);
+            } else {
+                $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+                $nodeData[$pathDiff] = $this->getNodeData($row['path'], $row);
+            }
+        }
+
+        foreach ($nodeData as $key => $value) {
+            $node->{$key} = $value;
+        }
+
+        return $node;
     }
 
     private function getNodeData($path, $row)
@@ -936,10 +962,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $this->assertLoggedIn();
 
+        $params[':workspace'] = $this->workspaceName;
+        $params[':fetchDepth'] = $this->fetchDepth;
+
         $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
-            FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
-        $params = array($this->workspaceName, $paths);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
+            FROM phpcr_nodes WHERE workspace_name = :workspace AND (';
+
+        $i = 0;
+        foreach ($paths as $path) {
+            $params[':path'.$i] = $path;
+            $params[':pathd'.$i] = rtrim($path,'/') . '/%';
+            $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
+            $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
+            $i++;
+        }
+
+        $query = rtrim($query, 'OR ');
+        $query .= ') ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $params);
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
@@ -1088,17 +1129,33 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
+        $updateDepthCase     = "depth = CASE ";
 
         $i = 0;
 
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
+            // TODO: Find a better way to do this
+            // Calculate CAST type for CASE statement
+            switch ($this->conn->getDatabasePlatform()->getName()) {
+                case 'pgsql':
+                    $intType = 'integer';
+                    break;
+                case 'mysql':
+                    $intType = 'unsigned';
+                    break;
+                default:
+                    $intType = 'integer';
+            }
+
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN CAST(:depth" . $i . " AS " . $intType . ") ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = basename($values[':path' . $i]);
@@ -1117,7 +1174,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
 
-        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateDepthCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
         $this->conn->executeUpdate($query, $values);
@@ -1360,7 +1418,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $properties);
+        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $node->getDepth(), $properties);
 
         if (!$saveChildren) {
             return true;
