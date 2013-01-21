@@ -1,17 +1,16 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test\Tester;
+
+namespace Jackalope\Test\Tester;
+
+use PHPCR\Test\FixtureLoaderInterface;
 
 /**
  * Generic tester class.
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
-
-use PHPCR\Test\FixtureLoaderInterface;
-
 class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements FixtureLoaderInterface
 {
-
     /**
      * @var \PHPUnit_Extensions_Database_DB_IDatabaseConnection
      */

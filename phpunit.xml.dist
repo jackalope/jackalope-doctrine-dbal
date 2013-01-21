@@ -25,7 +25,7 @@
 
     <testsuites>
         <testsuite name="Jackalope Doctrine DBAL Tests">
-            <directory>tests/Jackalope</directory>
+            <directory>tests/Jackalope/Transport</directory>
             <directory>vendor/jackalope/jackalope/tests</directory>
             <directory>vendor/phpcr/phpcr/tests</directory>
             <directory>vendor/phpcr/phpcr-utils/tests</directory>

@@ -12,13 +12,13 @@ function generate_fixtures($srcDir, $destDir)
             continue;
         }
 
-        $srcDom = new \Jackalope\Transport\DoctrineDBAL\Test\Fixture\JCRSystemXML($srcFile->getPathname());
+        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML($srcFile->getPathname());
         $nodes  = $srcDom->load()->getNodes();
         if ($nodes->length < 1) {
             continue;
         }
 
-        $destDom = new \Jackalope\Transport\DoctrineDBAL\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
+        $destDom = new \Jackalope\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom->addDataset();
         $destDom->addWorkspace('tests');
         $destDom->addNamespaces($srcDom->getNamespaces());

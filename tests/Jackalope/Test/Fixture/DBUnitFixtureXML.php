@@ -1,5 +1,6 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
+
+namespace Jackalope\Test\Fixture;
 
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files.
@@ -7,7 +8,6 @@ namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author cryptocompress <cryptocompress@googlemail.com>
  */
-
 class DBUnitFixtureXML extends XMLDocument
 {
     const DATEFORMAT = 'Y-m-d\TH:i:s.uP';
