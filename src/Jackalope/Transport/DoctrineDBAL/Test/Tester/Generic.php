@@ -46,7 +46,7 @@ class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements Fix
         return $this->connection;
     }
 
-    public function import($fixtureName = null)
+    public function import($fixtureName)
     {
         // @TODO: this should not be BOOL/FALSE => wrong type. should be string or null.
         if ($fixtureName === false) {

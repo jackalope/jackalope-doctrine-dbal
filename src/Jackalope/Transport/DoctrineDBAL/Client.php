@@ -197,7 +197,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function createWorkspace($name, $srcWorkspace = null)
     {
         if (null !== $srcWorkspace) {
-            throw new NotImplementedException();
+            throw new NotImplementedException('Creating workspace as clone of existing workspace not supported');
+        }
+
+        if ($this->workspaceExists($name)) {
+            throw new RepositoryException("Workspace '$name' already exists");
         }
 
         try {
