@@ -79,7 +79,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\NodeViewTest::testSeekable',
 
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
-                    'Writing\\CopyMethodsTest::testWorkspaceCopy', //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/19
 
                     // TODO: enable and look at the exception you get as starting point
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved',

@@ -3,6 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use PHPCR\Query\InvalidQueryException;
+use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\QOM;
 
@@ -176,6 +177,9 @@ class QOMWalker
         if ($constraint instanceof QOM\SameNodeInterface) {
             return $this->walkSameNodeConstraint($constraint);
         }
+        if ($constraint instanceof QOM\FullTextSearchInterface) {
+            return $this->walkFullTextSearchConstraint($constraint);
+        }
 
         throw new InvalidQueryException("Constraint " . get_class($constraint) . " not yet supported.");
     }
@@ -187,6 +191,15 @@ class QOMWalker
     public function walkSameNodeConstraint(QOM\SameNodeInterface $constraint)
     {
         return $this->getTableAlias($constraint->getSelectorName()) . ".path = '" . $constraint->getPath() . "'";
+    }
+
+    /**
+     * @param \PHPCR\Query\QOM\FullTextSearchInterface $constraint
+     * @return string
+     */
+    public function walkFullTextSearchConstraint(QOM\FullTextSearchInterface $constraint)
+    {
+        return $this->sqlXpathExtractValue($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName()).' LIKE '. $this->conn->quote('%'.$constraint->getFullTextSearchExpression().'%');
     }
 
     /**
@@ -203,7 +216,14 @@ class QOMWalker
      */
     public function walkDescendantNodeConstraint(QOM\DescendantNodeInterface $constraint)
     {
-        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $constraint->getAncestorPath() . "/%'";
+        $ancestorPath = $constraint->getAncestorPath();
+        if ('/' === $ancestorPath) {
+            $ancestorPath = '';
+        } elseif (substr($ancestorPath, -1) === '/') {
+            throw new InvalidQueryException("Trailing slash in $ancestorPath");
+        }
+
+        return $this->getTableAlias($constraint->getSelectorName()) . ".path LIKE '" . $ancestorPath . "/%'";
     }
 
     /**
@@ -292,13 +312,13 @@ class QOMWalker
             $selector = $operand->getSelectorName();
             $alias = $this->getTableAlias($selector);
 
-            return $alias.".local_name"; // TODO: Hm, what about the namespace?
+            return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name");
         }
         if ($operand instanceof QOM\NodeLocalNameInterface) {
             $selector = $operand->getSelectorName();
             $alias = $this->getTableAlias($selector);
 
-            return $alias.".local_name";
+            return "$alias.local_name";
         }
         if ($operand instanceof QOM\LowerCaseInterface) {
             return $this->platform->getLowerExpression($this->walkOperand($operand->getOperand()));
@@ -307,7 +327,21 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
-            return $this->conn->quote(trim($operand->getLiteralValue(), '"'));
+            $namespace = '';
+            $literal = trim($operand->getLiteralValue(), '"');
+            if (($aliasLength = strpos($literal, ':')) !== false) {
+                $alias = substr($literal, 0, $aliasLength);
+                if (!isset($this->namespaces[$alias])) {
+                    throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
+                }
+                if (!empty($this->namespaces[$alias])) {
+                    $namespace = $this->namespaces[$alias].':';
+                }
+
+                $literal = substr($literal, $aliasLength + 1);
+            }
+
+            return $this->conn->quote($namespace.$literal);
         }
         if ($operand instanceof QOM\PropertyValueInterface) {
             $alias = $this->getTableAlias($operand->getSelectorName());
@@ -343,8 +377,9 @@ class QOMWalker
      */
     public function walkOrderings(array $orderings)
     {
-        $sql = "ORDER BY ";
+        $sql = '';
         foreach ($orderings as $ordering) {
+            $sql .= empty($sql) ? "ORDER BY " : ", ";
             $sql .= $this->walkOrdering($ordering);
         }
         return $sql;
