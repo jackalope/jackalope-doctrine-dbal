@@ -943,9 +943,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
-        foreach ($paths as $key => $path) {
+        foreach ($paths as $path) {
             if (isset($all[$path])) {
-                $nodes[$key] = $this->getNodeData($path, $all[$path]);
+                $nodes[$path] = $this->getNodeData($path, $all[$path]);
             }
         }
 
