@@ -2,7 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
-use Jackalope\Transport\DoctrineDBAL\Test\TestCase;
+use Jackalope\Test\TestCase;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Factory;
 

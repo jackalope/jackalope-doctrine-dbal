@@ -1,6 +1,4 @@
 <?php
-// @TODO: change BaseCase to use namespaced loader
-#namespace Jackalope\Transport\DoctrineDBAL\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\Common\Cache\ArrayCache;
@@ -16,7 +14,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
     {
         if (null === self::$instance) {
             global $dbConn;
-            $fixturePath = realpath(__DIR__ . '/../../../../../tests/fixtures/doctrine');
+            $fixturePath = realpath(__DIR__ . '/fixtures/doctrine');
             self::$instance = new ImplementationLoader($dbConn, $fixturePath);
         }
 
@@ -163,10 +161,10 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
     public function getFixtureLoader()
     {
-        $testerClass = '\\Jackalope\\Transport\\DoctrineDBAL\\Test\\Tester\\' . ucfirst(strtolower($this->connection->getWrappedConnection()->getAttribute(PDO::ATTR_DRIVER_NAME)));
+        $testerClass = '\\Jackalope\\Test\\Tester\\' . ucfirst(strtolower($this->connection->getWrappedConnection()->getAttribute(PDO::ATTR_DRIVER_NAME)));
         if (!class_exists($testerClass)) {
             // load Generic Tester if no database specific Tester class found
-            $testerClass = '\\Jackalope\\Transport\\DoctrineDBAL\\Test\\Tester\\Generic';
+            $testerClass = '\\Jackalope\\Test\\Tester\\Generic';
         }
 
         return new $testerClass(

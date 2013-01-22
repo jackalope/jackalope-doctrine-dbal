@@ -10,13 +10,14 @@ if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
         'php composer.phar install --dev' . PHP_EOL);
 }
 
+$loader->add('Jackalope\\Test', __DIR__);
 $loader->add('Jackalope', __DIR__ . '/../vendor/jackalope/jackalope/tests');
 
 // @TODO: move FixtureLoaderInterface to some autoload-able path
 require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/FixtureLoaderInterface.php';
 // @TODO: change phpcr-api-tests/inc/BaseCase to use namespaced ImplementationLoader
 require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
-require_once __DIR__ . '/../src/Jackalope/Transport/DoctrineDBAL/Test/ImplementationLoader.php';
+require_once __DIR__ . '/ImplementationLoader.php';
 require_once __DIR__ . '/generate_fixtures.php';
 
 // generate fixtures

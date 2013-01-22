@@ -3,7 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\DriverManager;
-use Jackalope\Transport\DoctrineDBAL\Test\TestCase;
+use Jackalope\Test\TestCase;
 
 class ClientTest extends TestCase
 {

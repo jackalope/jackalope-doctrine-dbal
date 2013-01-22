@@ -1,5 +1,6 @@
 <?php
-namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
+
+namespace Jackalope\Test\Fixture;
 
 /**
  * Jackalope Document or System Views.
@@ -7,10 +8,8 @@ namespace Jackalope\Transport\DoctrineDBAL\Test\Fixture;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author cryptocompress <cryptocompress@googlemail.com>
  */
-
 class JCRSystemXML extends XMLDocument
 {
-
     /**
      * Returns all found namespaces.
      *
