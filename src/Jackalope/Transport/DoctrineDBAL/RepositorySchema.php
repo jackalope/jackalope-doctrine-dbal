@@ -91,7 +91,7 @@ class RepositorySchema
         $propTypes->addColumn('required_type', 'integer');
         $propTypes->addColumn('query_operators', 'integer'); // BITMASK
         $propTypes->addColumn('default_value', 'string', array('notnull' => false));
-        $propTypes->setPrimaryKey(array('node_type_id'));
+        $propTypes->setPrimaryKey(array('node_type_id', 'name'));
 
         $childTypes = $schema->createTable('phpcr_type_childs');
         $childTypes->addColumn('node_type_id', 'integer');
