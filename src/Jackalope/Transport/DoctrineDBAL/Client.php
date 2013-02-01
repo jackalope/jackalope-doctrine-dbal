@@ -264,7 +264,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * {@inheritDoc}
+     * Configure whether to check if we are logged in before doing a request.
+     *
+     * Will improve error reporting at the cost of some round trips.
      */
     public function setCheckLoginOnServer($bool)
     {
@@ -529,7 +531,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         } else {
             $nodeId = $this->pathExists($path);
             if (!$nodeId) {
-                throw new RepositoryException();
+                throw new RepositoryException("nodeId for $path not found");
             }
             $this->conn->update('phpcr_nodes', array('props' => $propsData['dom']->saveXML()), array('id' => $nodeId));
         }
@@ -965,10 +967,38 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deleteNode($path)
+    public function deleteNodes(array $operations)
     {
         $this->assertLoggedIn();
 
+        foreach($operations as $op) {
+            $this->deleteNode($op->srcPath);
+        }
+
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function deleteNodeImmediately($path)
+    {
+        $this->prepareSave();
+        $this->deleteNode($path);
+        $this->finishSave();
+
+        return true;
+    }
+
+    /**
+     * TODO instead of calling the deletes separately, we should batch the delete query
+     * but careful with the caching!
+     *
+     * @param string $path node path to delete
+     *
+     */
+    protected function deleteNode($path)
+    {
         if ('/' == $path) {
             throw new ConstraintViolationException('You can not delete the root node of a repository');
         }
@@ -992,7 +1022,33 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deleteProperty($path)
+    public function deleteProperties(array $operations)
+    {
+        $this->assertLoggedIn();
+
+        foreach($operations as $op) {
+            $this->deleteProperty($op->srcPath);
+        }
+
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function deletePropertyImmediately($path)
+    {
+        $this->prepareSave();
+        $this->deleteProperty($path);
+        $this->finishSave();
+
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function deleteProperty($path)
     {
         $this->assertLoggedIn();
 
@@ -1049,7 +1105,32 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function moveNode($srcAbsPath, $dstAbsPath)
+    public function moveNodes(array $operations)
+    {
+        /** @var $op \Jackalope\Transport\MoveNodeOperation */
+        foreach ($operations as $op) {
+            $this->moveNode($op->srcPath, $op->dstPath);
+        }
+
+        return true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function moveNodeImmediately($srcAbsPath, $dstAbspath)
+    {
+        $this->prepareSave();
+        $this->moveNode($srcAbsPath, $dstAbspath);
+        $this->finishSave();
+
+        return true;
+    }
+
+    /**
+     * Execute moving a single node
+     */
+    protected function moveNode($srcAbsPath, $dstAbsPath)
     {
         $this->assertLoggedIn();
 
@@ -1202,6 +1283,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $sql .= " ELSE sort_order END WHERE parent = :absPath";
 
         $this->conn->executeUpdate($sql, $values);
+
+        return true;
     }
 
     /**
@@ -1220,6 +1303,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $parent;
     }
 
+    private function validateNode(Node $node)
+    {
+        // This is very slow i believe :-(
+        $nodeDef = $node->getPrimaryNodeType();
+        $nodeTypes = $node->getMixinNodeTypes();
+        array_unshift($nodeTypes, $nodeDef);
+
+        foreach ($nodeTypes as $nodeType) {
+            /* @var $nodeType \PHPCR\NodeType\NodeTypeDefinitionInterface */
+            $this->validateNodeWithType($node, $nodeType);
+        }
+    }
+
     /**
      * TODO: we should move that into the common Jackalope BaseTransport or as new method of NodeType
      * it will be helpful for other implementations.
@@ -1230,7 +1326,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param Node $node
      * @param NodeType $def
      */
-    private function validateNode(Node $node, NodeType $def)
+    private function validateNodeWithType(Node $node, NodeType $def)
     {
         foreach ($def->getDeclaredChildNodeDefinitions() as $childDef) {
             /* @var $childDef \PHPCR\NodeType\NodeDefinitionInterface */
@@ -1306,7 +1402,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($def->getDeclaredSupertypes() as $superType) {
-            $this->validateNode($node, $superType);
+            $this->validateNodeWithType($node, $superType);
         }
 
         foreach ($node->getProperties() as $property) {
@@ -1314,67 +1410,63 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function getResponsibleNodeTypes(Node $node)
+    /**
+     * {@inheritDoc}
+     */
+    public function storeNodes(array $operations)
     {
-        // This is very slow i believe :-(
-        $nodeDef = $node->getPrimaryNodeType();
-        $nodeTypes = $node->getMixinNodeTypes();
-        array_unshift($nodeTypes, $nodeDef);
+        $this->assertLoggedIn();
 
-        return $nodeTypes;
+        /** @var $operation \Jackalope\Transport\AddNodeOperation */
+        foreach ($operations as $operation) {
+            if ($operation->node->isDeleted()) {
+                $properties = $operation->node->getPropertiesForStoreDeletedNode();
+            } else {
+                $this->validateNode($operation->node);
+                $properties = $operation->node->getProperties();
+            }
+            $this->storeNode($operation->srcPath, $properties);
+        }
     }
 
     /**
-     * Recursively store a node and its children to the given absolute path.
+     * Make sure we have a uuid and a primaryType, then sync data into the database
      *
-     * Transport stores the node at its path, with all properties and all
-     * children.
-     *
-     * @param \Jackalope\Node $node the node to store
-     * @param bool $saveChildren false to store only the current node and not its children
+     * @param string $path the path to store the node at
+     * @param Property[] $properties the properties of this node
      *
      * @return bool true on success
      *
      * @throws \PHPCR\RepositoryException if not logged in
      */
-    public function storeNode(Node $node, $saveChildren = true)
+    protected function storeNode($path, $properties)
     {
-        $this->assertLoggedIn();
-
-        $nodeTypes = $this->getResponsibleNodeTypes($node);
-        foreach ($nodeTypes as $nodeType) {
-            /* @var $nodeType \PHPCR\NodeType\NodeTypeDefinitionInterface */
-            $this->validateNode($node, $nodeType);
-        }
-
-        $properties = $node->getProperties();
-
-        $path = $node->getPath();
-        if (isset($this->nodeIdentifiers[$path])) {
-            $nodeIdentifier = $this->nodeIdentifiers[$path];
-        } elseif (isset($properties['jcr:uuid'])) {
-            $nodeIdentifier = $properties['jcr:uuid']->getValue();
-        } else {
-            // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
-            $nodeIdentifier = UUIDHelper::generateUUID();
-        }
+        $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, $node->isNew(), $properties);
+        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, true, $properties);
 
-        if (!$saveChildren) {
-            return true;
-        }
-
-        foreach ($node as $child) {
-            /** @var $child Node */
-            if ($child->isNew()) {
-                // recursively call ourselves
-                $this->storeNode($child);
-            }
-            // else this is an existing node moved to this location
-        }
         return true;
+    }
+
+    /**
+     * Determine a UUID for the node at this path with these properties
+     *
+     * @param string $path
+     * @param Property[] $properties
+     *
+     * @return string a unique id
+     */
+    protected function getIdentifier($path, $properties)
+    {
+        if (isset($this->nodeIdentifiers[$path])) {
+            return $this->nodeIdentifiers[$path];
+        }
+        if (isset($properties['jcr:uuid'])) {
+            return $properties['jcr:uuid']->getValue();
+        }
+        // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
+        return UUIDHelper::generateUUID();
     }
 
     /**
@@ -1384,9 +1476,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
+        // just store the node with this property
+
+        // TODO: we should really delegate more of this from ObjectManager to transport.
+        // this is called for each property of a node - for jackrabbit it makes sense but not here
+
         $node = $property->getParent();
-        //do not store the children nodes, already taken into account previously with storeNode
-        $this->storeNode($node, false);
+        $this->validateNode($node);
+
+        $path = $node->getPath();
+        $properties = $node->getProperties();
+        $this->syncNode(
+            $this->getIdentifier($path, $properties),
+            $path,
+            $this->getParentPath($path),
+            $node->getPropertyValue('jcr:primaryType'),
+            false,
+            $properties
+        );
 
         return true;
     }
