@@ -971,7 +971,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        foreach($operations as $op) {
+        foreach ($operations as $op) {
             $this->deleteNode($op->srcPath);
         }
 
@@ -1026,7 +1026,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        foreach($operations as $op) {
+        foreach ($operations as $op) {
             $this->deleteProperty($op->srcPath);
         }
 
