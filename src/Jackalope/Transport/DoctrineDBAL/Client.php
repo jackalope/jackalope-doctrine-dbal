@@ -441,7 +441,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
-            $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
+
+            try {
+                $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
+            } catch(DBALException $e) {
+                throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
+            }
         }
     }
 
@@ -577,11 +582,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     private function syncForeignKeys()
     {
+        // do not update references that are going to be deleted anyways
+        $toUpdate = array_diff_assoc($this->referencesToUpdate, $this->referencesToDelete);
+
         if ($this->referencesToUpdate) {
             $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE source_id IN (?)';
-            $this->conn->executeUpdate($query, array(array_keys($this->referencesToUpdate)), array(Connection::PARAM_INT_ARRAY));
+            try {
+                $this->conn->executeUpdate($query, array(array_keys($toUpdate)), array(Connection::PARAM_INT_ARRAY));
+            } catch(DBALException $e) {
+                throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
+            }
 
-            foreach ($this->referencesToUpdate as $nodeId => $references) {
+            foreach ($toUpdate as $nodeId => $references) {
                 foreach ($references['properties'] as $name => $data) {
                     foreach ($data['values'] as $value) {
                         try {
@@ -609,17 +621,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         if ($this->referencesToDelete) {
             $nodeIds = array_keys($this->referencesToDelete);
-            $params = array(PropertyType::REFERENCE, $nodeIds);
+            $params = array(PropertyType::REFERENCE, $nodeIds, $nodeIds);
 
             // due to the outer join we cannot filter on workspace_name, but this is ok
-            // since within a transaction there can ever be missing referenced nodes within the current workspace
+            // since within a transaction there can never be missing referenced nodes within the current workspace
+            // make sure the target node is not in the list of nodes being deleted, to allow deletion in same request
             $query = 'SELECT fk.target_id
             FROM phpcr_nodes_foreignkeys fk
                 LEFT OUTER JOIN phpcr_nodes n ON fk.target_id = n.id
             WHERE fk.type = ?
-              AND fk.target_id IN (?)';
+              AND fk.target_id IN (?)
+              AND fk.source_id NOT IN (?)';
 
-            $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_INT_ARRAY));
+            $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_INT, Connection::PARAM_INT_ARRAY, Connection::PARAM_INT_ARRAY));
             $missingTargets = $stmt->fetchAll(\PDO::FETCH_COLUMN);
             if ($missingTargets) {
                 $paths = array();
@@ -631,7 +645,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
 
             $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE target_id IN (?)';
-            $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
+            try {
+                $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
+            } catch(DBALException $e) {
+                throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
+            }
+
         }
     }
 
@@ -1013,10 +1032,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT id, path FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
         $stmt = $this->conn->executeQuery($query, $params);
-        $this->referencesToDelete+= $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_COLUMN);
-
+        $this->referencesToDelete += $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_COLUMN);
         $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
-        $this->conn->executeUpdate($query, $params);
+        try {
+            $this->conn->executeUpdate($query, $params);
+        } catch(DBALException $e) {
+            throw new RepositoryException('Unexpected exception while deleting node ' . $path, $e->getCode(), $e);
+        }
     }
 
     /**
@@ -1085,7 +1107,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 ) {
                     $query = 'DELETE FROM phpcr_nodes_foreignkeys
                          WHERE source_id = ? AND source_property_name = ?';
-                    $this->conn->executeUpdate($query, array($nodeId, $propertyName));
+                    try {
+                        $this->conn->executeUpdate($query, array($nodeId, $propertyName));
+                    } catch(DBALException $e) {
+                        throw new RepositoryException("Unexpected exception while deleting foreign key of reference property $path", $e->getCode(), $e);
+                    }
                 }
                 $propertyNode->parentNode->removeChild($propertyNode);
                 break;
@@ -1099,7 +1125,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
         $params = array($xml, $nodeId);
 
-        $this->conn->executeUpdate($query, $params);
+        try {
+            $this->conn->executeUpdate($query, $params);
+        } catch(DBALException $e) {
+            throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
+        }
     }
 
     /**
@@ -1201,7 +1231,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
-        $this->conn->executeUpdate($query, $values);
+        try {
+            $this->conn->executeUpdate($query, $values);
+        } catch(DBALException $e) {
+            throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
+        }
     }
 
     /**
@@ -1282,7 +1316,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $sql .= " ELSE sort_order END WHERE parent = :absPath";
 
-        $this->conn->executeUpdate($sql, $values);
+        try {
+            $this->conn->executeUpdate($sql, $values);
+        } catch(DBALException $e) {
+            throw new RepositoryException('Unexpected exception while reordering nodes', $e->getCode(), $e);
+        }
 
         return true;
     }

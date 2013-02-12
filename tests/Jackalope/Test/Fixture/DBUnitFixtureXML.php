@@ -50,6 +50,15 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $this->appendChild($this->createElement('dataset'));
 
+        // purge binary in case no binary properties are in fixture
+        $this->ensureTableExists('phpcr_binarydata', array(
+            'node_id',
+            'property_name',
+            'workspace_name',
+            'idx',
+            'data',
+        ));
+
         return $this;
     }
 
@@ -71,8 +80,22 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
+    /**
+     * Add all nodes from the fixtures xml document.
+     *
+     * If the root node is not called jcr:root, autogenerate a root node.
+     *
+     * @param string       $workspaceName
+     * @param \DOMNodeList $nodes
+     *
+     * @return DBUnitFixtureXML
+     */
     public function addNodes($workspaceName, \DOMNodeList $nodes)
     {
+        $node = $nodes->item(0);
+        if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
+            $this->addRootNode(1, \PHPCR\Util\UUIDHelper::generateUUID(), '/', 'tests');
+        }
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
@@ -120,11 +143,11 @@ class DBUnitFixtureXML extends XMLDocument
         $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])         ? $this->expectedNodes[$uuid]                 : count($this->ids) + 1;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
-        $rootNode = $dom->createElement('sv:node');
+        $phpcrNode = $dom->createElement('sv:node');
         foreach ($this->namespaces as $namespace => $uri) {
-            $rootNode->setAttribute('xmlns:' . $namespace, $uri);
+            $phpcrNode->setAttribute('xmlns:' . $namespace, $uri);
         }
-        $dom->appendChild($rootNode);
+        $dom->appendChild($phpcrNode);
 
         foreach ($properties as $propertyName => $propertyData) {
             if ($propertyName == 'jcr:uuid') {
@@ -135,7 +158,7 @@ class DBUnitFixtureXML extends XMLDocument
                 throw new \InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
             }
 
-            $rootNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $rootNode));
+            $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode));
         }
 
         list ($parentPath, $childPath) = $this->getPath($node);
@@ -144,6 +167,15 @@ class DBUnitFixtureXML extends XMLDocument
         $name       = $node->getAttributeNS($this->namespaces['sv'], 'name');
         if (count($parts = explode(':', $name, 2)) == 2) {
             list($namespace, $name) = $parts;
+        }
+
+        $depth = substr_count($childPath, '/');
+        if ($namespace == 'jcr' && $name == 'root') {
+            $id         = 1;
+            $childPath  = '/';
+            $parentPath = '';
+            $name       = '';
+            $namespace  = '';
         }
 
         $this->addRow('phpcr_nodes', array(
@@ -156,7 +188,7 @@ class DBUnitFixtureXML extends XMLDocument
             'identifier'    => $uuid,
             'type'          => $properties['jcr:primaryType']['value'][0],
             'props'         => $dom->saveXML(),
-            'depth'         => 0,
+            'depth'         => $depth,
             'sort_order'    => $id - 2,
         ));
 
