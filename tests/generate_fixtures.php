@@ -22,7 +22,6 @@ function generate_fixtures($srcDir, $destDir)
         $destDom->addDataset();
         $destDom->addWorkspace('tests');
         $destDom->addNamespaces($srcDom->getNamespaces());
-        $destDom->addRootNode(1, \PHPCR\Util\UUIDHelper::generateUUID(), '/', 'tests');
         $destDom->addNodes('tests', $nodes);
         // delay this to the end to not add entries for weak refs to not existing nodes
         $destDom->addForeignKeys();

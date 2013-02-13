@@ -33,6 +33,7 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
     'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
     'host'      => @$GLOBALS['phpcr.doctrine.dbal.host'],
+    'port'      => @$GLOBALS['phpcr.doctrine.dbal.port'],
     'user'      => @$GLOBALS['phpcr.doctrine.dbal.username'],
     'password'  => @$GLOBALS['phpcr.doctrine.dbal.password'],
     'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']

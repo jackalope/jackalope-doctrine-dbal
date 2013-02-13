@@ -148,9 +148,9 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deleteNode($path)
+    public function deleteNodes(array $operations)
     {
-        $result = parent::deleteNode($path);
+        $result = parent::deleteNodes($operations);
 
         if ($result && isset($this->caches['nodes'])) {
             $this->caches['nodes']->deleteAll();
@@ -162,9 +162,31 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deleteProperty($path)
+    public function deleteProperties(array $operation)
     {
-        $result = parent::deleteProperty($path);
+        $result = parent::deleteProperties($operation);
+
+        if ($result && isset($this->caches['nodes'])) {
+            $this->caches['nodes']->deleteAll();
+        }
+
+        return $result;
+    }
+
+    public function deleteNodeImmediately($absPath)
+    {
+        $result = parent::deleteNodeImmediately($absPath);
+
+        if ($result && isset($this->caches['nodes'])) {
+            $this->caches['nodes']->deleteAll();
+        }
+
+        return $result;
+    }
+
+    public function deletePropertyImmediately($absPath)
+    {
+        $result = parent::deletePropertyImmediately($absPath);
 
         if ($result && isset($this->caches['nodes'])) {
             $this->caches['nodes']->deleteAll();
@@ -176,9 +198,20 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function moveNode($srcAbsPath, $dstAbsPath)
+    public function moveNodes(array $operations)
     {
-        $result = parent::moveNode($srcAbsPath, $dstAbsPath);
+        $result = parent::moveNodes($operations);
+
+        if ($result && isset($this->caches['nodes'])) {
+            $this->caches['nodes']->deleteAll();
+        }
+
+        return $result;
+    }
+
+    public function moveNodeImmediately($srcAbsPath, $dstAbsPath)
+    {
+        $result = parent::moveNodeImmediately($srcAbsPath, $dstAbsPath);
 
         if ($result && isset($this->caches['nodes'])) {
             $this->caches['nodes']->deleteAll();
@@ -202,9 +235,9 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function storeNode(Node $node, $saveChildren = true)
+    public function storeNodes(array $operations)
     {
-        $result = parent::storeNode($node, $saveChildren);
+        $result = parent::storeNodes($operations);
 
         if ($result && isset($this->caches['nodes'])) {
             $this->caches['nodes']->deleteAll();
