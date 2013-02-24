@@ -1241,64 +1241,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function reorderNodes($absPath, $reorders)
+    public function reorderChildren(Node $node)
     {
         $this->assertLoggedIn();
 
-        /* Solution:
-         * - Determine the current order (from DB query).
-         * - Use the $reorders to calculate the new order.
-         * - Compare the old and new sequences to generate the required update statements.
-         * We cant just use the $reorders to get UPDATE statements directly as even a simple single move, from being the
-         * last sibling to being the first, could result in the need to update the sort_order of every sibling.
-         */
-
-        // Retrieve an array of siblings names in the original order.
-        $qb = $this->conn->createQueryBuilder();
-
-        $qb->select("CONCAT(n.namespace,(CASE namespace WHEN '' THEN '' ELSE ':' END), n.local_name)")
-            ->from('phpcr_nodes', 'n')
-            ->where('n.parent = :absPath')
-            ->orderBy('n.sort_order', 'ASC');
-
-        $query = $qb->getSql() . ' ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
-
-        $stmnt = $this->conn->executeQuery($query, array('absPath' => $absPath));
-
-        while ($row = $stmnt->fetchColumn()) {
-            $original[] = $row;
-        }
-
-        // Flip to access via the name.
-        $modified = array_flip($original);
-
-        foreach ($reorders as $reorder) {
-            if (null === $reorder[1]) {
-                // Case: need to move node to the end of the array.
-                // Remove from old position and append to end.
-                unset($modified[$reorder[0]]);
-                $modified = array_flip($modified);
-                $modified[] = $reorder[0];
-
-                // Resequence keys and flip back so we can access via name again.
-                $modified = array_values($modified);
-                $modified = array_flip($modified);
-            } else {
-                // Case: need to move node to before the specified target.
-                // Remove from old position, resequence the keys and flip back so we can access by name again.
-                unset($modified[$reorder[0]]);
-                $modified = array_keys($modified);
-                $modified = array_flip($modified);
-
-                // Get target position and splice in.
-                $targetPos = $modified[$reorder[1]];
-                $modified = array_flip($modified);
-                array_splice($modified, $targetPos, 0, $reorder[0]);
-                $modified = array_flip($modified);
-            }
-        }
-
-        $values[':absPath'] = $absPath;
+        $values[':absPath'] = $node->getPath();
         $sql = "UPDATE phpcr_nodes SET sort_order = CASE CONCAT(
           namespace,
           (CASE namespace WHEN '' THEN '' ELSE ':' END),
@@ -1307,7 +1254,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $i = 0;
 
-        foreach ($modified as $name => $order) {
+        foreach ($node->getNodeNames() as $order => $name) {
             $values[':name' . $i] = $name;
             $values[':order' . $i] = $order;
             $sql .= " WHEN :name" . $i . " THEN :order" . $i;
