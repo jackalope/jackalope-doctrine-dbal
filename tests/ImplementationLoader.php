@@ -95,11 +95,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
-
-                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/12
-                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingWorkspace',
-                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceExistingSession',
-                    'Import\\ImportRepositoryContentTest::testImportXMLUuidReplaceRoot',
         );
     }
 
