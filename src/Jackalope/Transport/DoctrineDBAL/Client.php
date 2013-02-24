@@ -1254,9 +1254,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $i = 0;
 
-        foreach ($node->getNodeNames() as $order => $name) {
+        foreach ($node->getNodeNames() as $name) {
             $values[':name' . $i] = $name;
-            $values[':order' . $i] = $order;
+            $values[':order' . $i] = $i; // use our counter to avoid gaps
             $sql .= " WHEN :name" . $i . " THEN :order" . $i;
             $i++;
         }
