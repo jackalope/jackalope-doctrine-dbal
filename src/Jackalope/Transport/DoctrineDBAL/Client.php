@@ -815,7 +815,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     if (!$date instanceof \DateTime) {
                         $date = new \DateTime("now");
                     }
-                    $values = $date->format('Y-m-d H:i:s');
+                    $values = PropertyType::convertType($date, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
