@@ -2,16 +2,15 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use PHPCR\RepositoryInterface;
+use PHPCR\NamespaceRegistryInterface;
+use PHPCR\CredentialsInterface;
 use PHPCR\PropertyType;
 use PHPCR\Query\QOM\QueryObjectModelInterface;
 use PHPCR\Query\QOM\SelectorInterface;
 use PHPCR\Query\QueryInterface;
 use PHPCR\RepositoryException;
 use PHPCR\NamespaceException;
-use PHPCR\NamespaceRegistryInterface;
-use PHPCR\RepositoryInterface;
-use PHPCR\Util\UUIDHelper;
-use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\NoSuchWorkspaceException;
 use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
@@ -20,6 +19,10 @@ use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
+
+use PHPCR\Util\UUIDHelper;
+use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
+use PHPCR\Util\PathHelper;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
@@ -55,7 +58,7 @@ use Jackalope\FactoryInterface;
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
     /**
-     * @var Doctrine\DBAL\Connection
+     * @var \Doctrine\DBAL\Connection
      */
     private $conn;
 
@@ -183,7 +186,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @return Doctrine\DBAL\Connection
+     * @return \Doctrine\DBAL\Connection
      */
     public function getConnection()
     {
@@ -228,7 +231,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function login(\PHPCR\CredentialsInterface $credentials = null, $workspaceName = 'default')
+    public function login(CredentialsInterface $credentials = null, $workspaceName = 'default')
     {
         $this->credentials = $credentials;
         $this->workspaceName = $workspaceName;
@@ -404,7 +407,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        $this->assertValidPath($dstAbsPath, true);
+        PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
         if (!$srcNodeId) {
@@ -415,8 +418,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ItemExistsException("Cannot copy to destination path '$dstAbsPath' that already exists.");
         }
 
-        if (!$this->pathExists($this->getParentPath($dstAbsPath))) {
-            throw new PathNotFoundException("Parent of the destination path '" . $this->getParentPath($dstAbsPath) . "' has to exist.");
+        if (!$this->pathExists(PathHelper::getParentPath($dstAbsPath))) {
+            throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
         // Algorithm:
@@ -436,8 +439,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $dom->loadXML($row['props']);
 
             $propsData = array('dom' => $dom);
-            //when copying a node, it is always a new node, then $isNewNode is set to true
-            $newNodeId = $this->syncNode(null, $newPath, $this->getParentPath($newPath), $row['type'], true, array(), $propsData);
+            // when copying a node, the copy is always a new node. set $isNewNode to true
+            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, array(), $propsData);
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -850,7 +853,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNode($path)
     {
-        $this->assertValidPath($path);
+        PathHelper::assertValidAbsolutePath($path);
         $this->assertLoggedIn();
 
         $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
@@ -953,7 +956,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNodes($paths)
     {
         foreach ($paths as $path) {
-            $this->assertValidPath($path);
+            PathHelper::assertValidAbsolutePath($path);
         }
         $this->assertLoggedIn();
 
@@ -1074,7 +1077,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $nodePath = $this->getParentPath($path);
+        $nodePath = PathHelper::getParentPath($path);
         $nodeId = $this->pathExists($nodePath);
         if (!$nodeId) {
             // no we really don't know that path
@@ -1164,7 +1167,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $this->assertValidPath($dstAbsPath, true);
+        PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
         if (!$srcNodeId) {
@@ -1175,8 +1178,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ItemExistsException("Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists.");
         }
 
-        if (!$this->pathExists($this->getParentPath($dstAbsPath))) {
-            throw new PathNotFoundException("Parent of the destination path '" . $this->getParentPath($dstAbsPath) . "' has to exist.");
+        if (!$this->pathExists(PathHelper::getParentPath($dstAbsPath))) {
+            throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
         $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
@@ -1201,6 +1204,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateSortOrderCase = "sort_order = CASE ";
 
         $i = 0;
+        $values = array();
 
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
 
@@ -1270,22 +1274,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         return true;
-    }
-
-    /**
-     * Get parent path of a path.
-     *
-     * @param string $path
-     * @return string
-     */
-    private function getParentPath($path)
-    {
-        $parent = implode('/', array_slice(explode('/', $path), 0, -1));
-        if (!$parent) {
-            return '/';
-        }
-
-        return $parent;
     }
 
     private function validateNode(Node $node)
@@ -1429,7 +1417,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, $this->getParentPath($path), $type, true, $properties);
+        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, $properties);
 
         return true;
     }
@@ -1474,7 +1462,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->syncNode(
             $this->getIdentifier($path, $properties),
             $path,
-            $this->getParentPath($path),
+            PathHelper::getParentPath($path),
             $node->getPropertyValue('jcr:primaryType'),
             false,
             $properties
@@ -1733,7 +1721,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $nodePath = $this->getParentPath($path);
+        $nodePath = PathHelper::getParentPath($path);
         $propertyName = ltrim(str_replace($nodePath, '', $path), '/'); // i dont know why trim here :/
         $nodeId = $this->pathExists($nodePath);
 
@@ -1818,7 +1806,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
         $sql = $qomWalker->walkQOMQuery($query);
-
         $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
         $data = $this->conn->fetchAll($sql, array($this->workspaceName));
 

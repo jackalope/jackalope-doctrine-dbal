@@ -2,9 +2,9 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
-use PHPCR\Query\InvalidQueryException;
 use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
+use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
 
 use Jackalope\NotImplementedException;
@@ -33,7 +33,7 @@ class QOMWalker
     private $alias = array();
 
     /**
-     * @var Doctrine\DBAL\Connection
+     * @var \Doctrine\DBAL\Connection
      */
     private $conn;
 
@@ -138,7 +138,7 @@ class QOMWalker
 
         $subTypes = $this->nodeTypeManager->getSubtypes($source->getNodeTypeName());
         foreach ($subTypes as $subType) {
-            /* @var $subType PHPCR\NodeType\NodeTypeInterface */
+            /* @var $subType \PHPCR\NodeType\NodeTypeInterface */
             $sql .= ", '" . $subType->getName() . "'";
         }
         $sql .= ')';
@@ -413,7 +413,7 @@ class QOMWalker
         if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
-        
+
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
 
