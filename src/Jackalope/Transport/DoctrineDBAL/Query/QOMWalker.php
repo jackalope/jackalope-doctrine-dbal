@@ -327,6 +327,10 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
+            if (is_numeric($operand->getLiteralValue())) {
+                return $operand->getLiteralValue();
+            }
+
             $namespace = '';
             $literal = trim($operand->getLiteralValue(), '"');
             if (($aliasLength = strpos($literal, ':')) !== false) {

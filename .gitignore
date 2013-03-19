@@ -22,3 +22,5 @@ phpcr_tests.db-journal
 vendor/
 composer.phar
 composer.lock
+
+.DS_Store
