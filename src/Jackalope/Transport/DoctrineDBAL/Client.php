@@ -1529,7 +1529,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function getNodePathForIdentifier($uuid)
+    public function getNodePathForIdentifier($uuid, $workspace = null)
     {
         $this->assertLoggedIn();
 
@@ -1712,6 +1712,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function cloneFrom($srcWorkspace, $srcAbsPath, $destAbsPath, $removeExisting)
     {
         throw new NotImplementedException('Cloning nodes is not implemented yet');
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function updateNode(Node $node, $srcWorkspace)
+    {
+        throw new NotImplementedException('Updating nodes is not implemented yet');
     }
 
     /**

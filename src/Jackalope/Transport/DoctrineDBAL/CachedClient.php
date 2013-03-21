@@ -249,7 +249,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodePathForIdentifier($uuid)
+    public function getNodePathForIdentifier($uuid, $workspace = null)
     {
         $this->assertLoggedIn();
 
