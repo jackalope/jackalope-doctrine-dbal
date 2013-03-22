@@ -53,6 +53,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         $this->unsupportedCases = array(
                     'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
                     'Query\\Sql1', //TODO: Query language 'sql' not yet implemented
+                    'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
         );
 
         $this->unsupportedTests = array(
@@ -82,27 +83,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\MoveMethodsTest::testSessionDeleteMoved',
                     'Writing\\MoveMethodsTest::testSessionMoveReplace',
                     'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
-
-                    // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
-                    'Writing\\CloneMethodsTest::testCloneReferenceableWithChild',
-                    'Writing\\CloneMethodsTest::testCloneReferenceableRemoveExisting',
-                    'Writing\\CloneMethodsTest::testCloneReferenceableNoRemoveExisting',
-                    'Writing\\CloneMethodsTest::testCloneNoRemoveExistingNewLocation',
-                    'Writing\\CloneMethodsTest::testCloneNoSuchWorkspace',
-                    'Writing\\CloneMethodsTest::testCloneRelativePaths',
-                    'Writing\\CloneMethodsTest::testCloneInvalidDstPath',
-                    'Writing\\CloneMethodsTest::testCloneProperty',
-                    'Writing\\CloneMethodsTest::testCloneSrcNotFound',
-                    'Writing\\CloneMethodsTest::testCloneDstParentNotFound',
-                    'Writing\\CloneMethodsTest::testCloneNonReferenceable',
-                    'Writing\\CloneMethodsTest::testCloneRemoveExistingNonReferenceable',
-                    'Writing\\CloneMethodsTest::testCloneNonReferenceableNoRemoveExisting',
-                    'Writing\\CloneMethodsTest::testGetCorrespondingNode',
-                    'Writing\\CloneMethodsTest::testGetCorrespondingNodeNoSuchWorkspace',
-                    'Writing\\CloneMethodsTest::testGetCorrespondingNodeItemNotFound',
-                    'Writing\\CloneMethodsTest::testUpdateNodeWithChildren',
-                    'Writing\\CloneMethodsTest::testUpdateNoSuchWorkspace',
-                    'Writing\\CloneMethodsTest::testUpdateSrcNotFound',
 
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
