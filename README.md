@@ -1,13 +1,15 @@
 # Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
 
-A powerful implementation of the [PHPCR API](http://phpcr.github.com).
+Implementation of the persisting data into relational databases.
 
-Jackalope binding for relational databases with the DoctrineDBAL. Tested to work
-with MySQL, PostgreSQL and SQLite and has no dependency on java or jackrabbit.
-For the moment, it is less feature complete.
+Provide the [PHPCR API](http://phpcr.github.com) implementation
+[Jackalope](http://github.com/jackalope/jackalope) with storing data into
+relational databases with Doctrine DBAL. Tested to work with MySQL, PostgreSQL
+and SQLite.
 
-Discuss on jackalope-dev@googlegroups.com
-or visit #jackalope on irc.freenode.net
+For the moment, it is less feature complete and robust than [Jackalope-Jackrabbit](http://github.com/jackalope/jackalope-jackrabbit).
+
+Discuss on jackalope-dev@googlegroups.com or visit #jackalope on irc.freenode.net
 
 License: This code is licenced under the apache license.
 Please see the file LICENSE in this folder.
@@ -16,27 +18,21 @@ Please see the file LICENSE in this folder.
 # Preconditions
 
 * php >= 5.3
-* phpunit >= 3.6 (if you want to run the tests)
-* phpunit/DbUnit (if you want to run the Doctrine DBAL Transport tests)
-* [composer](http://getcomposer.org/)
 
 
 # Installation
 
-To install jackalope, run the following in the parent directory of where you want jackalope:
+The recommended way to install jackalope is through [composer](http://getcomposer.org/).
+You can of course do without, but then you will need to resolve the dependencies
+manually.
 
-    # get source
-    git clone git://github.com/jackalope/jackalope-doctrine-dbal.git
-    cd jackalope-doctrine-dbal
-
-    # install dependencies
+    mkdir my-project
+    cd my-project
     curl -s http://getcomposer.org/installer | php
-    php composer.phar install
+    ./composer.phar init
+    ./composer.phar require jackalope/jackalope-doctrine-dbal
+    ./composer.phar install
 
-    # install tests dependencies
-    php composer.phar install --dev
-
-Note that the --dev parameter is only needed if you want to be able to run the test suite.
 
 ## Create a repository
 
@@ -53,13 +49,7 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 ### SQLite
     Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Databasename is not needed.
 
-For further details, please see Doctrine configuration page.
-http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
-
-## phpunit Tests
-
-If you want to run the tests, please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md)
-and check if you told composer to install the suggested dependencies (see Installation).
+For further details, please see the [Doctrine configuration page](http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details).
 
 
 ## Enable the commands
@@ -177,19 +167,21 @@ See [doc/architecture.md](https://github.com/jackalope/jackalope/blob/master/doc
 for an introduction how Jackalope is built. Have a look at the source files and
 generate the phpdoc.
 
+# Running the tests
 
-# TODO
+Jackalope-doctrine-dbal is integrated with the phpcr-api-tests suite that tests
+all PHPCR functionality.
+
+If you want to run the tests, please see the [README file in the tests folder](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/README.md).
+
+
+# Things left to do
 
 The best overview of what needs to be done are the skipped API tests.
 Have a look at [DoctrineDBALImplementationLoader](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/src/Jackalope/Transport/DoctrineDBAL/Test/ImplementationLoader.php)
 to see what is currently not working and start hacking :-)
 
-
-## Some notes
-
-* Refactor storage to implement one one table per database type?
-* Optimize database storage more, using real ids and normalizing the uuids and paths?
-* Implement parser for Jackrabbit CND syntax for node-type definitions in phpcr-utils.
+Also have a look at the issue trackers of this project and the base jackalope/jackalope.
 
 
 # Contributors
