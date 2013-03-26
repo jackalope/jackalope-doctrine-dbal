@@ -249,8 +249,12 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodePathForIdentifier($uuid)
+    public function getNodePathForIdentifier($uuid, $workspace = null)
     {
+        if (null !== $workspace) {
+            throw new NotImplementedException('Specifying the workspace is not yet supported.');
+        }
+
         $this->assertLoggedIn();
 
         $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;

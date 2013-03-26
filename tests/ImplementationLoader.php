@@ -53,6 +53,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         $this->unsupportedCases = array(
                     'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
                     'Query\\Sql1', //TODO: Query language 'sql' not yet implemented
+                    'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
         );
 
         $this->unsupportedTests = array(
@@ -143,14 +144,17 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
     public function getRepository()
     {
         $transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory, $this->connection);
-        try {
-            $transport->createWorkspace($GLOBALS['phpcr.workspace']);
-        } catch (\PHPCR\RepositoryException $e) {
-            if ($e->getMessage() != "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
-                // if the message is not that the workspace already exists, something went really wrong
-                throw $e;
+        foreach (array($GLOBALS['phpcr.workspace'], $this->otherWorkspacename) as $workspace) {
+            try {
+                $transport->createWorkspace($workspace);
+            } catch (\PHPCR\RepositoryException $e) {
+                if ($e->getMessage() != "Workspace '$workspace' already exists") {
+                    // if the message is not that the workspace already exists, something went really wrong
+                    throw $e;
+                }
             }
         }
+
         return new \Jackalope\Repository(null, $transport);
     }
 
