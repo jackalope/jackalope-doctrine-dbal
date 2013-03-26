@@ -136,6 +136,16 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         return new \PHPCR\SimpleCredentials('anonymous', 'abc');
     }
 
+    /**
+     * Doctrine dbal supports anonymous login
+     *
+     * @return bool true
+     */
+    public function prepareAnonymousLogin()
+    {
+        return true;
+    }
+
     public function getUserId()
     {
         return $GLOBALS['phpcr.user'];

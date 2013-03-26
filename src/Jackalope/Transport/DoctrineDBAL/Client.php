@@ -955,10 +955,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNodes($paths)
     {
+        $this->assertLoggedIn();
         foreach ($paths as $path) {
             PathHelper::assertValidAbsolutePath($path);
         }
-        $this->assertLoggedIn();
+        if (! count($paths)) {
+            return array();
+        }
 
         $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
@@ -985,6 +988,73 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         return false;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodeByIdentifier($uuid)
+    {
+        $this->assertLoggedIn();
+
+        $query = 'SELECT * FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
+        $row = $this->conn->fetchAssoc($query, array($uuid, $this->workspaceName));
+        if (!$row) {
+            throw new ItemNotFoundException("Item $uuid not found in workspace ".$this->workspaceName);
+        }
+
+        $path = $row['path'];
+        $data = $this->getNodeData($path, $row);
+        $data->{':jcr:path'} = $path;
+
+        return $data;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodesByIdentifier($identifiers)
+    {
+        $this->assertLoggedIn();
+        if (! count($identifiers)) {
+            return array();
+        }
+
+        $query = 'SELECT identifier AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+            FROM phpcr_nodes WHERE workspace_name = ? AND identifier IN (?)';
+        $params = array($this->workspaceName, $identifiers);
+        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
+        $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+
+        $nodes = array();
+        foreach ($identifiers as $id) {
+            if (isset($all[$id])) {
+                $path = $all[$id]['path'];
+                $nodes[$path] = $this->getNodeData($path, $all[$id]);
+            }
+        }
+
+        return $nodes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodePathForIdentifier($uuid, $workspace = null)
+    {
+        if (null !== $workspace) {
+            throw new NotImplementedException('Specifying the workspace is not yet supported.');
+        }
+
+        $this->assertLoggedIn();
+
+        $path = $this->conn->fetchColumn("SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?", array($uuid, $this->workspaceName));
+        if (!$path) {
+            throw new ItemNotFoundException("no item found with uuid ".$uuid);
+        }
+
+        return $path;
+    }
+
 
     /**
      * {@inheritDoc}
@@ -1524,25 +1594,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
                 break;
         }
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function getNodePathForIdentifier($uuid, $workspace = null)
-    {
-        if (null !== $workspace) {
-            throw new NotImplementedException('Specifying the workspace is not yet supported.');
-        }
-
-        $this->assertLoggedIn();
-
-        $path = $this->conn->fetchColumn("SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?", array($uuid, $this->workspaceName));
-        if (!$path) {
-            throw new ItemNotFoundException("no item found with uuid ".$uuid);
-        }
-
-        return $path;
     }
 
     /**

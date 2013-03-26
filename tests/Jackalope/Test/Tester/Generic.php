@@ -45,8 +45,11 @@ class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements Fix
         return $this->connection;
     }
 
-    public function import($fixtureName)
+    public function import($fixtureName, $workspace = null)
     {
+        if ($workspace) {
+            throw new \Exception('TODO: find a solution to import fixtures for other workspace');
+        }
         // @TODO: this should not be BOOL/FALSE => wrong type. should be string or null.
         if ($fixtureName === false) {
             $fixtureName = null;
