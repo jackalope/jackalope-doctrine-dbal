@@ -327,8 +327,14 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
+            $literalValue = $operand->getLiteralValue();
+            
+            if (is_int($literalValue) || is_float($literalValue)) {
+                return $literalValue;
+            } 
+
             $namespace = '';
-            $literal = trim($operand->getLiteralValue(), '"');
+            $literal = trim($literalValue, '"');
             if (($aliasLength = strpos($literal, ':')) !== false) {
                 $alias = substr($literal, 0, $aliasLength);
                 if (!isset($this->namespaces[$alias])) {
@@ -339,8 +345,7 @@ class QOMWalker
                 }
 
                 $literal = substr($literal, $aliasLength + 1);
-            }
-
+            }            
             return $this->conn->quote($namespace.$literal);
         }
         if ($operand instanceof QOM\PropertyValueInterface) {

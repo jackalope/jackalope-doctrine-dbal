@@ -72,6 +72,23 @@ class QOMWalkerTest extends TestCase
         );
     }
 
+    public function testQueryWithPropertyComparisonConstraintNumericLiteral()
+    {
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+
+        $query = $this->factory->createQuery(
+            $this->factory->selector('nt:unstructured'),
+            $this->factory->comparison($this->factory->propertyValue('price'), '>', $this->factory->literal(100)),
+            array(),
+            array()
+        );
+        $sql = $this->walker->walkQOMQuery($query);
+
+        $this->assertContains("> 100",
+            $sql
+        );
+    }
+
     public function testQueryWithAndConstraint()
     {
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
