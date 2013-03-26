@@ -84,7 +84,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains("'//sv:property[@sv:name=\"price\"]/sv:value[1]') > 100",
+        $this->assertContains("> 100",
             $sql
         );
     }
