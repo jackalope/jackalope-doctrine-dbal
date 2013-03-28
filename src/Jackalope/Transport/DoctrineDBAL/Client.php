@@ -15,6 +15,7 @@ use PHPCR\NoSuchWorkspaceException;
 use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
+use PHPCR\Util\CND\Parser\CndParser;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
@@ -1686,14 +1687,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         return $result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function registerNodeTypesCnd($cnd, $allowUpdate)
-    {
-        throw new NotImplementedException('Not implemented yet');
     }
 
     /**

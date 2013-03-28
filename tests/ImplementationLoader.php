@@ -54,7 +54,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\XPath', // Query language 'xpath' not implemented.
                     'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
-                    'NodeTypeManagement\\CndTest', //TODO: parse cnd https://github.com/phpcr/phpcr-utils/issues/18
         );
 
         $this->unsupportedTests = array(
