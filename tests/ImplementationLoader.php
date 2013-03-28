@@ -51,8 +51,8 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         );
 
         $this->unsupportedCases = array(
-                    'Query\\XPath', //TODO: Query language 'xpath' not yet implemented.
-                    'Query\\Sql1', //TODO: Query language 'sql' not yet implemented
+                    'Query\\XPath', // Query language 'xpath' not implemented.
+                    'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
         );
 
@@ -85,11 +85,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
 
-                    // TODO: enable and look at the exception you get as starting point
-                    'Writing\\MoveMethodsTest::testSessionDeleteMoved',
-                    'Writing\\MoveMethodsTest::testSessionMoveReplace',
-                    'Writing\\CombinedManipulationsTest::testAddAndChildAddAndMove',
-
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
 
@@ -98,9 +93,10 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'NodeTypeManagement\\ManipulationTest::testPrimaryItem',
                     'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCndNoUpdate',
 
-                    //TODO: Client::createWorkspace throws a NotImplementedException
+                    // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
+                    // TODO: implement deleting workspace
                     'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
         );
     }
