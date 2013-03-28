@@ -54,6 +54,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\XPath', // Query language 'xpath' not implemented.
                     'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
+                    'NodeTypeManagement\\CndTest', //TODO: parse cnd https://github.com/phpcr/phpcr-utils/issues/18
         );
 
         $this->unsupportedTests = array(
@@ -87,11 +88,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
                     'Transactions\\TransactionMethodsTest::testTransactionCommit',
-
-                    //TODO: parse cnd https://github.com/phpcr/phpcr-utils/issues/18
-                    'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCnd',
-                    'NodeTypeManagement\\ManipulationTest::testPrimaryItem',
-                    'NodeTypeManagement\\ManipulationTest::testRegisterNodeTypesCndNoUpdate',
 
                     // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
