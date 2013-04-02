@@ -1710,7 +1710,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($propDefs = $type->getDeclaredPropertyDefinitions()) {
                 foreach ($propDefs as $propertyDef) {
-                    /* @var $propertyDef \Jackalope\NodeType\PropertyDefinition */
+                    /* @var $propertyDef \PHPCR\NodeType\PropertyDefinitionInterface */
                     $this->conn->insert('phpcr_type_props', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $propertyDef->getName(),
@@ -1730,7 +1730,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($childDefs = $type->getDeclaredChildNodeDefinitions()) {
                 foreach ($childDefs as $childDef) {
-                    /* @var $propertyDef \PHPCR\NodeType\NodeDefinitionInterface */
+                    /* @var $childDef \PHPCR\NodeType\NodeDefinitionInterface */
                     $this->conn->insert('phpcr_type_childs', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $childDef->getName(),
