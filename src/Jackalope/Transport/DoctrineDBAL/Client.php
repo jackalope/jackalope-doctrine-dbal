@@ -383,7 +383,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
                 NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
                 NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
-                'phpcr' => 'http://github.com/jackalope/jackalope', // TODO: Namespace?
             );
 
             foreach ($data as $row) {
