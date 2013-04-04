@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -15,7 +16,6 @@ use PHPCR\NoSuchWorkspaceException;
 use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
-use PHPCR\Util\CND\Parser\CndParser;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
@@ -448,7 +448,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             try {
                 $this->conn->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
-            } catch(DBALException $e) {
+            } catch (DBALException $e) {
                 throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
             }
         }
@@ -593,7 +593,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE source_id IN (?)';
             try {
                 $this->conn->executeUpdate($query, array(array_keys($toUpdate)), array(Connection::PARAM_INT_ARRAY));
-            } catch(DBALException $e) {
+            } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
             }
 
@@ -651,7 +651,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'DELETE FROM phpcr_nodes_foreignkeys WHERE target_id IN (?)';
             try {
                 $this->conn->executeUpdate($query, array($nodeIds), array(Connection::PARAM_INT_ARRAY));
-            } catch(DBALException $e) {
+            } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
             }
 
@@ -1110,7 +1110,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
         try {
             $this->conn->executeUpdate($query, $params);
-        } catch(DBALException $e) {
+        } catch (DBALException $e) {
             throw new RepositoryException('Unexpected exception while deleting node ' . $path, $e->getCode(), $e);
         }
     }
@@ -1183,7 +1183,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                          WHERE source_id = ? AND source_property_name = ?';
                     try {
                         $this->conn->executeUpdate($query, array($nodeId, $propertyName));
-                    } catch(DBALException $e) {
+                    } catch (DBALException $e) {
                         throw new RepositoryException("Unexpected exception while deleting foreign key of reference property $path", $e->getCode(), $e);
                     }
                 }
@@ -1201,7 +1201,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->executeUpdate($query, $params);
-        } catch(DBALException $e) {
+        } catch (DBALException $e) {
             throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
         }
     }
@@ -1308,7 +1308,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->executeUpdate($query, $values);
-        } catch(DBALException $e) {
+        } catch (DBALException $e) {
             throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
         }
     }
@@ -1340,7 +1340,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->conn->executeUpdate($sql, $values);
-        } catch(DBALException $e) {
+        } catch (DBALException $e) {
             throw new RepositoryException('Unexpected exception while reordering nodes', $e->getCode(), $e);
         }
 
@@ -1696,15 +1696,30 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         foreach ($types as $type) {
             /* @var $type \Jackalope\NodeType\NodeTypeDefinition */
-            $this->conn->insert('phpcr_type_nodes', array(
-                'name' => $type->getName(),
-                'supertypes' => implode(' ', $type->getDeclaredSuperTypeNames()),
-                'is_abstract' => $type->isAbstract() ? 1 : 0,
-                'is_mixin' => $type->isMixin() ? 1 : 0,
-                'queryable' => $type->isQueryable() ? 1 : 0,
-                'orderable_child_nodes' => $type->hasOrderableChildNodes() ? 1 : 0,
-                'primary_item' => $type->getPrimaryItemName(),
-            ));
+
+            if ($allowUpdate) {
+                $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
+                $result = $this->conn->fetchColumn($query, array($type->getName()));
+                if ($result) {
+                    $this->conn->delete('phpcr_type_nodes', array('node_type_id' => $result));
+                    $this->conn->delete('phpcr_type_props', array('node_type_id' => $result));
+                    $this->conn->delete('phpcr_type_childs', array('node_type_id' => $result));
+                }
+            }
+
+            try {
+                $this->conn->insert('phpcr_type_nodes', array(
+                    'name' => $type->getName(),
+                    'supertypes' => implode(' ', $type->getDeclaredSuperTypeNames()),
+                    'is_abstract' => $type->isAbstract() ? 1 : 0,
+                    'is_mixin' => $type->isMixin() ? 1 : 0,
+                    'queryable' => $type->isQueryable() ? 1 : 0,
+                    'orderable_child_nodes' => $type->hasOrderableChildNodes() ? 1 : 0,
+                    'primary_item' => $type->getPrimaryItemName(),
+                ));
+            } catch (DBALException $e) {
+                throw new NodeTypeExistsException("Could not register node type with the name '".$type->getName()."'");
+            }
 
             $nodeTypeId = $this->conn->lastInsertId($this->sequenceTypeName);
 
