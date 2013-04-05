@@ -69,7 +69,7 @@ class RepositorySchema
 
         $types = $schema->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', array('autoincrement' => true));
-        $types->addColumn('name', 'string', array('unique' => true));
+        $types->addColumn('name', 'string');
         $types->addColumn('supertypes', 'string');
         $types->addColumn('is_abstract', 'boolean');
         $types->addColumn('is_mixin', 'boolean');
@@ -77,6 +77,7 @@ class RepositorySchema
         $types->addColumn('orderable_child_nodes', 'boolean');
         $types->addColumn('primary_item', 'string', array('notnull' => false));
         $types->setPrimaryKey(array('node_type_id'));
+        $types->addUniqueIndex(array('name'));
 
         $propTypes = $schema->createTable('phpcr_type_props');
         $propTypes->addColumn('node_type_id', 'integer');
