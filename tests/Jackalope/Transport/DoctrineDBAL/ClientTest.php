@@ -52,6 +52,24 @@ class ClientTest extends TestCase
         $this->session = $this->repository->login(new \PHPCR\SimpleCredentials("user", "passwd"), $GLOBALS['phpcr.workspace']);
     }
 
+    public function testOutOfRangeCharacters()
+    {
+        $invalidString = urldecode('%01%02%03%00');
+
+        // if this is 1 then there isn't a problem
+        $this->assertEquals(4, strlen($invalidString));
+
+        $root = $this->session->getNode('/');
+        $article = $root->addNode('article');
+        $article->setProperty('test', $invalidString);
+        $this->session->save();
+
+        $node = $this->session->getNode('/article');
+
+        $prop = $node->getProperty('test');
+        $this->assertEquals('', $prop->getValue());
+    }
+
     public function testQueryNodes()
     {
         $root = $this->session->getNode('/');
