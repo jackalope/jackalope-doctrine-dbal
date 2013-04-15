@@ -328,17 +328,24 @@ class QOMWalker
         }
         if ($operand instanceof QOM\LiteralInterface) {
             $namespace = '';
-            $literal = trim($operand->getLiteralValue(), '"');
-            if (($aliasLength = strpos($literal, ':')) !== false) {
-                $alias = substr($literal, 0, $aliasLength);
-                if (!isset($this->namespaces[$alias])) {
-                    throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
-                }
-                if (!empty($this->namespaces[$alias])) {
-                    $namespace = $this->namespaces[$alias].':';
-                }
 
-                $literal = substr($literal, $aliasLength + 1);
+            $value = $operand->getLiteralValue();
+
+            if ($value instanceof \DateTime) {
+                $literal = $value->format('c');
+            } else {
+                $literal = trim($value, '"');
+                if (($aliasLength = strpos($literal, ':')) !== false) {
+                    $alias = substr($literal, 0, $aliasLength);
+                    if (!isset($this->namespaces[$alias])) {
+                        throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
+                    }
+                    if (!empty($this->namespaces[$alias])) {
+                        $namespace = $this->namespaces[$alias].':';
+                    }
+
+                    $literal = substr($literal, $aliasLength + 1);
+                }
             }
 
             return $this->conn->quote($namespace.$literal);
