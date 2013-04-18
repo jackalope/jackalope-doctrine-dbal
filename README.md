@@ -18,6 +18,10 @@ Please see the file LICENSE in this folder.
 # Preconditions
 
 * php >= 5.3
+* One of the following databases, including the PDO extension for it:
+    * MySQL >= 5.1.5 (we need the ExtractValue function)
+    * PostgreSQL
+    * SQLite
 
 
 # Installation
