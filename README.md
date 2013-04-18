@@ -43,6 +43,9 @@ manually.
 Set up a new database supported by Doctrine DBAL. You can use your favorite GUI frontend or just do something like this:
 
 ### MySQL
+
+Note that you need at least version 5.1.5 of MySQL, otherwise you will get ``QLSTATE[42000]: Syntax error or access violation: 1305 FUNCTION cmf-app.EXTRACTVALUE does not exist``
+
     mysqladmin -u root -p  create jackalope
     echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
