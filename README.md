@@ -185,7 +185,7 @@ If you want to run the tests, please see the [README file in the tests folder](h
 # Things left to do
 
 The best overview of what needs to be done are the skipped API tests.
-Have a look at [DoctrineDBALImplementationLoader](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/src/Jackalope/Transport/DoctrineDBAL/Test/ImplementationLoader.php)
+Have a look at [ImplementationLoader](https://github.com/jackalope/jackalope-doctrine-dbal/blob/master/tests/ImplementationLoader.php)
 to see what is currently not working and start hacking :-)
 
 Also have a look at the issue trackers of this project and the base jackalope/jackalope.
