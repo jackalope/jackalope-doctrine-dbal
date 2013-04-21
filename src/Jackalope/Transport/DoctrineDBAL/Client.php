@@ -659,13 +659,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     static public function xmlToProps($xml, $filter = null)
     {
-        $props = array();
+        $data = new \stdClass();
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $dom->loadXML($xml);
 
         foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
             $name = $propertyNode->getAttribute('sv:name');
+
+            // only return the properties that pass through the filter callback
+            if (null !== $filter && is_callable($filter) && false === $filter($name)) {
+                continue;
+            }
+
             $values = array();
             $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
             foreach ($propertyNode->childNodes as $valueNode) {
@@ -689,7 +695,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $values[] = (int)$valueNode->nodeValue;
                         break;
                     case PropertyType::DATE:
-                        $values[] = $valueNode->nodeValue;
+                        $date = new \DateTime($valueNode->nodeValue);
+                        $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+                        $values[] = PropertyType::convertType($date, PropertyType::STRING);
                         break;
                     case PropertyType::DOUBLE:
                         $values[] = (double)$valueNode->nodeValue;
@@ -699,30 +707,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
             }
 
-            // only return the properties that pass through the filter callback
-            if (null !== $filter && is_callable($filter)) {
-                if (false === $filter($name, $values)) {
-                    continue;
-                }
-            }
-
-            if (PropertyType::BINARY == $type) {
-                if (1 == $propertyNode->getAttribute('sv:multi-valued')) {
-                    $props[':' . $name] = $values;
-                } else {
-                    $props[':' . $name] = $values[0];
-                }
-            } else {
-                if (1 == $propertyNode->getAttribute('sv:multi-valued')) {
-                    $props[$name] = $values;
-                } else {
-                    $props[$name] = $values[0];
-                }
-                $props[':' . $name] = $type;
+            switch ($type) {
+                case PropertyType::BINARY:
+                    $data->{':' . $name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
+                    break;
+                default:
+                    $data->{$name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
+                    $data->{':' . $name} = $type;
+                    break;
             }
         }
 
-        return $props;
+        return $data;
     }
 
     /**
@@ -782,20 +778,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     break;
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
-                        if ($property->isMultiple()) {
-                            $values = array();
-                            foreach ($property->getValueForStorage() as $stream) {
-                                if (null === $stream) {
-                                    $binary = '';
-                                } else {
-                                    $binary = stream_get_contents($stream);
-                                    fclose($stream);
-                                }
-                                $binaryData[$property->getName()][] = $binary;
-                                $values[] = strlen($binary);
-                            }
-                        } else {
-                            $stream = $property->getValueForStorage();
+                        $values = array();
+                        foreach ((array)$property->getValueForStorage() as $stream) {
                             if (null === $stream) {
                                 $binary = '';
                             } else {
@@ -803,22 +787,31 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                                 fclose($stream);
                             }
                             $binaryData[$property->getName()][] = $binary;
-                            $values = strlen($binary);
+                            $values[] = strlen($binary);
                         }
                     } else {
                         $values = $property->getLength();
                         if (!$property->isMultiple() && empty($values)) {
-                            // TODO: not sure why this happens.
                             $values = array(0);
                         }
                     }
                     break;
                 case PropertyType::DATE:
-                    $date = $property->getDate();
-                    if (!$date instanceof \DateTime) {
-                        $date = new \DateTime("now");
+                    $values = (array)$property->getDate();
+                    foreach ($values as $key => $date) {
+                        if (!$date instanceof \DateTime) {
+                            // TODO why are we forcing "now" in this case?
+                            $date = new \DateTime("now");
+                        }
+                        $date->setTimezone(new \DateTimeZone('UTC'));
+                        $values[$key] = $date;
                     }
-                    $values = PropertyType::convertType($date, PropertyType::STRING);
+
+                    $values = $property->getDate();
+                    if (!$values instanceof \DateTime) {
+                        $values = new \DateTime("now");
+                    }
+                    $values = PropertyType::convertType($values, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
@@ -867,84 +860,29 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     private function getNodeData($path, $row)
     {
-        $data = new \stdClass();
-        $data->{'jcr:primaryType'} = $row['type'];
         $this->nodeIdentifiers[$path] = $row['identifier'];
+
+        $data = self::xmlToProps($row['props']);
+        $data->{'jcr:primaryType'} = $row['type'];
 
         $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_name = ? ORDER BY sort_order ASC';
         $children = $this->conn->fetchAll($query, array($path, $this->workspaceName));
         foreach ($children as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
-            $data->{$childName} = new \stdClass();
-        }
-
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $dom->loadXML($row['props']);
-
-        foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-            $name = $propertyNode->getAttribute('sv:name');
-            $values = array();
-            $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
-            foreach ($propertyNode->childNodes as $valueNode) {
-                switch ($type) {
-                    case PropertyType::NAME:
-                    case PropertyType::URI:
-                    case PropertyType::WEAKREFERENCE:
-                    case PropertyType::REFERENCE:
-                    case PropertyType::PATH:
-                    case PropertyType::DECIMAL:
-                    case PropertyType::STRING:
-                        $values[] = $valueNode->nodeValue;
-                        break;
-                    case PropertyType::BOOLEAN:
-                        $values[] = (bool)$valueNode->nodeValue;
-                        break;
-                    case PropertyType::LONG:
-                        $values[] = (int)$valueNode->nodeValue;
-                        break;
-                    case PropertyType::BINARY:
-                        $values[] = (int)$valueNode->nodeValue;
-                        break;
-                    case PropertyType::DATE:
-                        $values[] = $valueNode->nodeValue;
-                        break;
-                    case PropertyType::DOUBLE:
-                        $values[] = (double)$valueNode->nodeValue;
-                        break;
-                    default:
-                        throw new \InvalidArgumentException("Type with constant " . $type . " not found.");
-                }
-            }
-
-            if (PropertyType::BINARY == $type) {
-                if (1 == $propertyNode->getAttribute('sv:multi-valued')) {
-                    $data->{':' . $name} = $values;
-                } else {
-                    $data->{':' . $name} = $values[0];
-                }
-            } else {
-                if (1 == $propertyNode->getAttribute('sv:multi-valued')) {
-                    $data->{$name} = $values;
-                } else {
-                    $data->{$name} = $values[0];
-                }
-                $data->{':' . $name} = $type;
+            if (!isset($data->{$childName})) {
+                $data->{$childName} = new \stdClass();
             }
         }
 
         // If the node is referenceable, return jcr:uuid.
-        $is_referenceable = false;
         if (isset($data->{"jcr:mixinTypes"})) {
             foreach ((array) $data->{"jcr:mixinTypes"} as $mixin) {
                 if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
-                    $is_referenceable = true;
+                    $data->{'jcr:uuid'} = $row['identifier'];
                     break;
                 }
             }
-        }
-        if ($is_referenceable) {
-            $data->{'jcr:uuid'} = $row['identifier'];
         }
 
         return $data;
@@ -1047,7 +985,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->assertLoggedIn();
 
-        $path = $this->conn->fetchColumn("SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?", array($uuid, $this->workspaceName));
+        $query = "SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?";
+        $path = $this->conn->fetchColumn($query, array($uuid, $this->workspaceName));
         if (!$path) {
             throw new ItemNotFoundException("no item found with uuid ".$uuid);
         }
@@ -1252,7 +1191,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
-        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->conn->getDatabasePlatform()->getForUpdateSQL();
+        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? '
+            . $this->conn->getDatabasePlatform()->getForUpdateSQL();
         $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
 
         /*
@@ -1914,6 +1854,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $props = static::xmlToProps($row['props'], function ($name) use ($columns) {
                 return array_key_exists($name, $columns);
             });
+            $props = (array)$props;
 
             foreach ($columns AS $columnName => $columnPrefix) {
                 $result[] = array(
