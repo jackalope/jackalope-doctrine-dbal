@@ -440,7 +440,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $propsData = array('dom' => $dom);
             // when copying a node, the copy is always a new node. set $isNewNode to true
-            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, array(), $propsData);
+            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, substr_count($newPath, "/"), array(), $propsData);
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -491,7 +491,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $depth, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -508,6 +508,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             list($namespace, $localName) = $this->getJcrName($path);
 
             $qb = $this->conn->createQueryBuilder();
+
             $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
                 ->from('phpcr_nodes', 'n')
                 ->where('n.parent = :parent_a');
@@ -525,8 +526,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'parent'        => $parent,
                     'workspace_name'  => $this->workspaceName,
                     'props'         => $propsData['dom']->saveXML(),
-                    // TODO compute proper value
-                    'depth'         => 0,
+                    'depth'         => $depth,
                     'parent_a'      => $parent,
                 ));
             } catch (\PDOException $e) {
@@ -1214,6 +1214,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
+        $updateDepthCase     = "depth = CASE ";
 
         $i = 0;
         $values = array();
@@ -1223,9 +1224,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN :depth" . $i . " ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = basename($values[':path' . $i]);
@@ -1244,7 +1247,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
 
-        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateDepthCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
         try {
@@ -1429,7 +1432,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, $properties);
+        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, substr_count($path, "/"), $properties);
 
         return true;
     }
@@ -1447,9 +1450,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (isset($this->nodeIdentifiers[$path])) {
             return $this->nodeIdentifiers[$path];
         }
+
         if (isset($properties['jcr:uuid'])) {
             return $properties['jcr:uuid']->getValue();
         }
+
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
         return UUIDHelper::generateUUID();
     }
@@ -1477,6 +1482,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             PathHelper::getParentPath($path),
             $node->getPropertyValue('jcr:primaryType'),
             false,
+            $node->getDepth(),
             $properties
         );
 
