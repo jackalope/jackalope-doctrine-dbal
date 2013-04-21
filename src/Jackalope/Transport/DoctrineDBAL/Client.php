@@ -695,8 +695,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $values[] = (int)$valueNode->nodeValue;
                         break;
                     case PropertyType::DATE:
-                        $date = $valueNode->nodeValue;
-                        $values[] = $date;
+                        $date = new \DateTime($valueNode->nodeValue);
+                        $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+                        $values[] = PropertyType::convertType($date, PropertyType::STRING);
                         break;
                     case PropertyType::DOUBLE:
                         $values[] = (double)$valueNode->nodeValue;
@@ -777,20 +778,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     break;
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
-                        if ($property->isMultiple()) {
-                            $values = array();
-                            foreach ($property->getValueForStorage() as $stream) {
-                                if (null === $stream) {
-                                    $binary = '';
-                                } else {
-                                    $binary = stream_get_contents($stream);
-                                    fclose($stream);
-                                }
-                                $binaryData[$property->getName()][] = $binary;
-                                $values[] = strlen($binary);
-                            }
-                        } else {
-                            $stream = $property->getValueForStorage();
+                        $values = array();
+                        foreach ((array)$property->getValueForStorage() as $stream) {
                             if (null === $stream) {
                                 $binary = '';
                             } else {
@@ -798,22 +787,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                                 fclose($stream);
                             }
                             $binaryData[$property->getName()][] = $binary;
-                            $values = array(strlen($binary));
+                            $values[] = strlen($binary);
                         }
                     } else {
                         $values = $property->getLength();
                         if (!$property->isMultiple() && empty($values)) {
-                            // TODO: not sure why this happens.
                             $values = array(0);
                         }
                     }
                     break;
                 case PropertyType::DATE:
-                    $date = $property->getDate();
-                    if (!$date instanceof \DateTime) {
-                        $date = new \DateTime("now");
+                    $values = (array)$property->getDate();
+                    foreach ($values as $key => $date) {
+                        $date->setTimezone(new \DateTimeZone('UTC'));
+                        $values[$key] = $date;
                     }
-                    $values = PropertyType::convertType($date, PropertyType::STRING);
+                    $values = PropertyType::convertType($values, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
