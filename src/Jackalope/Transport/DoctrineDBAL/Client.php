@@ -675,7 +675,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    static public function xmlToProps($xml, $filter = null)
+    static public function xmlToProps($xml, ValueConverter $valueConverter, $filter = null)
     {
         $data = new \stdClass();
 
@@ -704,20 +704,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $values[] = $valueNode->nodeValue;
                         break;
                     case PropertyType::BOOLEAN:
-                        $values[] = (bool)$valueNode->nodeValue;
+                        $values[] = (bool) $valueNode->nodeValue;
                         break;
                     case PropertyType::LONG:
-                        $values[] = (int)$valueNode->nodeValue;
+                        $values[] = (int) $valueNode->nodeValue;
                         break;
                     case PropertyType::BINARY:
-                        $values[] = (int)$valueNode->nodeValue;
+                        $values[] = (int) $valueNode->nodeValue;
                         break;
                     case PropertyType::DATE:
                         $date = $valueNode->nodeValue;
+                        if ($date) {
+                            $date = new \DateTime($date);
+                            $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+                            // Jackalope expects a string, might make sense to refactor to allow \DateTime instances too
+                            $date = $valueConverter->convertType($date, PropertyType::STRING);
+                        }
                         $values[] = $date;
                         break;
                     case PropertyType::DOUBLE:
-                        $values[] = (double)$valueNode->nodeValue;
+                        $values[] = (double) $valueNode->nodeValue;
                         break;
                     default:
                         throw new \InvalidArgumentException("Type with constant $type not found.");
@@ -814,8 +820,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     }
                     break;
                 case PropertyType::DATE:
-                    $date = $property->getDate();
-                    $values = $this->valueConverter->convertType($date, PropertyType::STRING);
+                    $values = $property->getDate();
+                    if ($values instanceof \DateTime) {
+                        $values = array($values);
+                    }
+                    foreach ((array) $values as $key => $date) {
+                        if ($date instanceof \DateTime) {
+                            $date->setTimezone(new \DateTimeZone('UTC'));
+                        }
+                        $values[$key] = $date;
+                    }
+                    $values = $this->valueConverter->convertType($values, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
@@ -892,7 +907,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->nodeIdentifiers[$path] = $row['identifier'];
 
-        $data = self::xmlToProps($row['props']);
+        $data = self::xmlToProps($row['props'], $this->valueConverter);
         $data->{'jcr:primaryType'} = $row['type'];
 
         $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_name = ? ORDER BY sort_order ASC';
@@ -1920,9 +1935,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if (!isset($properties[$columnAlias])) {
                     if (isset($row[$columnPrefix . 'props'])) {
                         // extract only the properties that have been requested in the query
-                        $properties[$columnAlias] = static::xmlToProps($row[$columnPrefix . 'props'], function ($name) use ($columns, $columnAlias, $columnName) {
-                            return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
-                        });
+                        $properties[$columnAlias] = static::xmlToProps(
+                            $row[$columnPrefix . 'props'],
+                            $this->valueConverter,
+                            function ($name) use ($columns, $columnAlias, $columnName) {
+                                return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
+                            }
+                        );
                     } else { // props field is empty, can happen with OUTER joins
                         $properties[$columnAlias] = array();
                     }
