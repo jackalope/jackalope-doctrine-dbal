@@ -122,10 +122,10 @@ class ClientTest extends TestCase
         $qb = $conn->createQueryBuilder();
 
         $qb->select('local_name, sort_order')
-           ->from('phpcr_nodes', 'n')
-           ->where('n.local_name = :name')
-           ->andWhere('n.parent = :parent')
-           ->orderBy('n.sort_order', 'ASC');
+            ->from('phpcr_nodes', 'n')
+            ->where('n.local_name = :name')
+            ->andWhere('n.parent = :parent')
+            ->orderBy('n.sort_order', 'ASC');
 
         $query = $qb->getSql();
 
@@ -154,26 +154,26 @@ class ClientTest extends TestCase
     {
         $root = $this->session->getNode('/');
         $topic = $root->addNode('topic');
-        $topic->addNode('page1');  
-        
+        $topic->addNode('page1');
+
         $this->session->save();
 
         $conn = $this->getConnection();
         $qb = $conn->createQueryBuilder();
 
         $qb->select('local_name, depth')
-           ->from('phpcr_nodes', 'n')
-           ->where('n.path = :path');
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path');
 
         $query = $qb->getSql();
 
         $stmnt = $this->conn->executeQuery($query, array('path' => '/topic'));
-        $row = $stmnt->fetch(); 
+        $row = $stmnt->fetch();
 
-        $this->assertEquals($row['depth'], '1'); 
+        $this->assertEquals($row['depth'], '1');
 
         $stmnt = $this->conn->executeQuery($query, array('path' => '/topic/page1'));
-        $row = $stmnt->fetch(); 
+        $row = $stmnt->fetch();
 
         $this->assertEquals($row['depth'], '2');
     }
@@ -193,27 +193,25 @@ class ClientTest extends TestCase
         $topic3->addNode('page3');
         $this->session->save();
 
-        $this->transport->moveNode('/topic2/page2', '/topic1/page1/page2');        
-        $this->session->save();
+        $this->transport->moveNodeImmediately('/topic2/page2', '/topic1/page1/page2');
 
-        $this->transport->moveNode('/topic3', '/topic1/page1/page2/topic3');
-        $this->session->save();
+        $this->transport->moveNodeImmediately('/topic3', '/topic1/page1/page2/topic3');
 
         $conn = $this->getConnection();
         $qb = $conn->createQueryBuilder();
 
         $qb->select('local_name, depth')
-           ->from('phpcr_nodes', 'n')
-           ->where('n.path = :path');
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path');
 
         $query = $qb->getSql();
 
         $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2'));
-        $row = $stmnt->fetch(); 
+        $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '3');
 
         $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2/topic3/page3'));
-        $row = $stmnt->fetch(); 
+        $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '5');
     }
 }
