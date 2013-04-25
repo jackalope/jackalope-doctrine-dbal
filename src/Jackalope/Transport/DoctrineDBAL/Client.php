@@ -795,7 +795,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
                         $values = array();
-                        foreach ((array)$property->getValueForStorage() as $stream) {
+                        foreach ((array) $property->getValueForStorage() as $stream) {
                             if (null === $stream) {
                                 $binary = '';
                             } else {
@@ -823,7 +823,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     throw new RepositoryException('unknown type '.$property->getType());
             }
 
-            foreach ((array)$values as $value) {
+            foreach ((array) $values as $value) {
                 $element = $propertyNode->appendChild($dom->createElement('sv:value'));
                 $element->appendChild($dom->createTextNode($value));
             }
@@ -1857,7 +1857,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $props = static::xmlToProps($row['props'], function ($name) use ($columns) {
                 return array_key_exists($name, $columns);
             });
-            $props = (array)$props;
+            $props = (array) $props;
 
             foreach ($columns AS $columnName => $columnPrefix) {
                 $result[] = array(
