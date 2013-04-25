@@ -1242,7 +1242,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         /*
          * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
          * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
-         * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
+         * the node? this will be extremely slow for a large set of nodes. i think you should use query builder here
          * rather than raw sql, to make it work on a maximum of platforms.
          *
          * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
@@ -1279,7 +1279,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = dirname($values[':path' . $i]);
-            $values[':depth' . $i]  = substr_count($values[':path' . $i], "/");
+            $values[':depth' . $i]  = PathHelper::getPathDepth($values[':path' . $i]);
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
