@@ -30,7 +30,8 @@ function bootstrapDoctrineDbal()
         'password'  => $pass,
         'dbname'    => $database,
     ));
-    $repository = \Jackalope\RepositoryFactoryDoctrineDBAL::getRepository(array('jackalope.doctrine_dbal_connection' => $dbConn));
+    $factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+    $repository = $factory->getRepository(array('jackalope.doctrine_dbal_connection' => $dbConn));
 }
 
 bootstrapDoctrineDbal();
