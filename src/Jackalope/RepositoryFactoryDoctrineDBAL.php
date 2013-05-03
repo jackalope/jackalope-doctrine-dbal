@@ -11,7 +11,8 @@ use PHPCR\RepositoryFactoryInterface;
  *
  * <pre>
  *    $parameters = array('jackalope.doctrine_dbal_connection' => $dbConn);
- *    $repository = \Jackalope\RepositoryFactoryDoctrineDBAL::getRepository($parameters);
+ *    $factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+ *    $repository = $factory->getRepository($parameters);
  * </pre>
  *
  * @api

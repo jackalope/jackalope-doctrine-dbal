@@ -129,7 +129,8 @@ sample code to get a PHPCR session with the doctrine-dbal backend:
         // 'path'   => $path, // for SQLite
     ));
 
-    $repository = \Jackalope\RepositoryFactoryDoctrineDBAL::getRepository(
+    $factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+    $repository = $factory->getRepository(
         array('jackalope.doctrine_dbal_connection' => $dbConn)
     );
     // dummy credentials to comply with the API
