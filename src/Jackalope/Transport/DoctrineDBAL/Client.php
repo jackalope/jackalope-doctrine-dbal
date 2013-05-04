@@ -16,6 +16,7 @@ use PHPCR\NoSuchWorkspaceException;
 use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
+use PHPCR\Util\ValueConverter;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
@@ -58,6 +59,17 @@ use Jackalope\FactoryInterface;
  */
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
+    /**
+     * The factory to instantiate objects
+     * @var FactoryInterface
+     */
+    protected $factory;
+
+    /**
+     * @var ValueConverter
+     */
+    protected $valueConverter;
+
     /**
      * @var \Doctrine\DBAL\Connection
      */
@@ -138,6 +150,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
         $this->factory = $factory;
+        $this->valueConverter = $this->factory->get('PHPCR\Util\ValueConverter');
         $this->conn = $conn;
         if ($conn->getDatabasePlatform() instanceof PostgreSqlPlatform) {
             $this->sequenceWorkspaceName = 'phpcr_workspaces_id_seq';
@@ -232,18 +245,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function login(CredentialsInterface $credentials = null, $workspaceName = 'default')
+    public function login(CredentialsInterface $credentials = null, $workspaceName = null)
     {
         $this->credentials = $credentials;
-        $this->workspaceName = $workspaceName;
+
+        $this->workspaceName = $workspaceName ? : 'default';
 
         if (!$this->checkLoginOnServer) {
-            return true;
+            return $workspaceName;
         }
 
         if (!$this->workspaceExists($workspaceName)) {
             if ('default' !== $workspaceName) {
-                throw new NoSuchWorkspaceException("Requested workspace: $workspaceName");
+                throw new NoSuchWorkspaceException("Requested workspace: '$workspaceName'");
             }
 
             // create default workspace if it not exists
@@ -252,7 +266,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->loggedIn = true;
 
-        return true;
+        return $workspaceName;
     }
 
     /**
@@ -813,7 +827,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     if (!$date instanceof \DateTime) {
                         $date = new \DateTime("now");
                     }
-                    $values = PropertyType::convertType($date, PropertyType::STRING);
+                    $values = $this->valueConverter->convertType($date, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
