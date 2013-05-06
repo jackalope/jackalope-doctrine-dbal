@@ -794,20 +794,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     break;
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
-                        if ($property->isMultiple()) {
-                            $values = array();
-                            foreach ($property->getValueForStorage() as $stream) {
-                                if (null === $stream) {
-                                    $binary = '';
-                                } else {
-                                    $binary = stream_get_contents($stream);
-                                    fclose($stream);
-                                }
-                                $binaryData[$property->getName()][] = $binary;
-                                $values[] = strlen($binary);
-                            }
-                        } else {
-                            $stream = $property->getValueForStorage();
+                        $values = array();
+                        foreach ((array) $property->getValueForStorage() as $stream) {
                             if (null === $stream) {
                                 $binary = '';
                             } else {
@@ -815,21 +803,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                                 fclose($stream);
                             }
                             $binaryData[$property->getName()][] = $binary;
-                            $values = array(strlen($binary));
+                            $values[] = strlen($binary);
                         }
                     } else {
                         $values = $property->getLength();
                         if (!$property->isMultiple() && empty($values)) {
-                            // TODO: not sure why this happens.
                             $values = array(0);
                         }
                     }
                     break;
                 case PropertyType::DATE:
                     $date = $property->getDate();
-                    if (!$date instanceof \DateTime) {
-                        $date = new \DateTime("now");
-                    }
                     $values = $this->valueConverter->convertType($date, PropertyType::STRING);
                     break;
                 case PropertyType::DOUBLE:
@@ -839,7 +823,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     throw new RepositoryException('unknown type '.$property->getType());
             }
 
-            foreach ((array)$values as $value) {
+            foreach ((array) $values as $value) {
                 $element = $propertyNode->appendChild($dom->createElement('sv:value'));
                 $element->appendChild($dom->createTextNode($value));
             }
@@ -1873,7 +1857,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $props = static::xmlToProps($row['props'], function ($name) use ($columns) {
                 return array_key_exists($name, $columns);
             });
-            $props = (array)$props;
+            $props = (array) $props;
 
             foreach ($columns AS $columnName => $columnPrefix) {
                 $result[] = array(
