@@ -2,6 +2,8 @@
 
 namespace Jackalope\Test\Fixture;
 
+use PHPCR\Util\PathHelper;
+
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files.
  *
@@ -169,7 +171,6 @@ class DBUnitFixtureXML extends XMLDocument
             list($namespace, $name) = $parts;
         }
 
-        $depth = substr_count($childPath, '/');
         if ($namespace == 'jcr' && $name == 'root') {
             $id         = 1;
             $childPath  = '/';
@@ -188,7 +189,7 @@ class DBUnitFixtureXML extends XMLDocument
             'identifier'    => $uuid,
             'type'          => $properties['jcr:primaryType']['value'][0],
             'props'         => $dom->saveXML(),
-            'depth'         => $depth,
+            'depth'         => PathHelper::getPathDepth($childPath),
             'sort_order'    => $id - 2,
         ));
 
