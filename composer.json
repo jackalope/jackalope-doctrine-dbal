@@ -14,11 +14,11 @@
     ],
     "require": {
         "php": ">=5.3.2",
-        "jackalope/jackalope": "1.0.0-alpha4",
+        "jackalope/jackalope": "1.0.0-beta1",
         "doctrine/dbal": ">=2.2.0,<2.4"
     },
     "provide": {
-        "jackalope/jackalope-transport": "1.0.0-alpha3"
+        "jackalope/jackalope-transport": "1.0.0-beta1"
     },
     "require-dev": {
         "phpcr/phpcr-api-tests": "dev-master"

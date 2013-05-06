@@ -53,7 +53,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      *
      * @api
      */
-    static public function getRepository(array $parameters = null)
+    public function getRepository(array $parameters = null)
     {
         if (null === $parameters) {
             return null;
@@ -96,7 +96,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      *
      * @api
      */
-    static public function getConfigurationKeys()
+    public function getConfigurationKeys()
     {
         return array_merge(self::$required, self::$optional);
     }
