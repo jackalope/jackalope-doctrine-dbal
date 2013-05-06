@@ -848,35 +848,35 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNode($path)
     {
-        $this->assertValidPath($path);
         $this->assertLoggedIn();
+        PathHelper::assertValidAbsolutePath($path);
 
         $values[':path'] = $path;
         $values[':pathd'] = rtrim($path,'/') . '/%';
         $values[':workspace'] = $this->workspaceName;
         $values[':fetchDepth'] = $this->fetchDepth;
 
-        $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace';
-        
-        $query = 'SELECT * FROM phpcr_nodes WHERE (path LIKE :pathd OR path = :path) AND workspace_name = :workspace AND depth <= ((' . $subquery . ') + :fetchDepth) ORDER BY sort_order ASC';
+        $query = 'SELECT * FROM phpcr_nodes
+            WHERE (path LIKE :pathd OR path = :path)
+                AND workspace_name = :workspace
+                AND depth <= ((SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace) + :fetchDepth)
+            ORDER BY sort_order ASC';
 
         $stmt = $this->conn->executeQuery($query, $values);
-
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        if (count($rows) === 0) {
-            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
-        }
-
         $nodeData = array();
-
         foreach ($rows as $row) {
-            if ($row['path'] == $path) {
+            if ($row['path'] === $path) {
                 $node = $this->getNodeData($path, $row);
             } else {
                 $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
                 $nodeData[$pathDiff] = $this->getNodeData($row['path'], $row);
             }
+        }
+
+        if (empty($node)) {
+            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
         foreach ($nodeData as $key => $value) {
@@ -922,11 +922,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNodes($paths)
     {
         $this->assertLoggedIn();
+
+        if (empty($paths)) {
+            return array();
+        }
+
         foreach ($paths as $path) {
             PathHelper::assertValidAbsolutePath($path);
-        }
-        if (! count($paths)) {
-            return array();
         }
 
         $params[':workspace'] = $this->workspaceName;
@@ -996,7 +998,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNodesByIdentifier($identifiers)
     {
         $this->assertLoggedIn();
-        if (! count($identifiers)) {
+        if (empty($identifiers)) {
             return array();
         }
 
@@ -1218,7 +1220,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function moveNode($srcAbsPath, $dstAbsPath)
     {
         $this->assertLoggedIn();
-
         PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
@@ -1238,7 +1239,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             . $this->conn->getDatabasePlatform()->getForUpdateSQL();
         $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '/%', $srcAbsPath, $this->workspaceName));
 
-
         /*
          * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
          * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
@@ -1250,16 +1250,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
          * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
          */
 
-        $ids                 = '';
         $query               = "UPDATE phpcr_nodes SET ";
         $updatePathCase      = "path = CASE ";
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
         $updateDepthCase     = "depth = CASE ";
-
-        $i = 0;
-        $values = array();
 
         // TODO: Find a better way to do this
         // Calculate CAST type for CASE statement
@@ -1274,11 +1270,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $intType = 'integer';
         }
 
+        $i = 0;
+        $values = $ids = array();
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-            $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
             $values[':depth' . $i]  = PathHelper::getPathDepth($values[':path' . $i]);
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
@@ -1286,18 +1283,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $updateDepthCase  .= "WHEN id = :id" . $i . " THEN CAST(:depth" . $i . " AS " . $intType . ") ";
 
             if ($srcAbsPath === $row['path']) {
-                $values[':localname' . $i] = basename($values[':path' . $i]);
+                $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
 
                 $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
                 $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
             }
 
-            $ids .= $row['id'] . ',';
+            $ids[] = $row['id'];
 
-            $i ++;
+            $i++;
         }
 
-        $ids = rtrim($ids, ',');
+        if (!$i) {
+            return;
+        }
+
+        $ids = implode($ids, ',');
 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
@@ -1536,7 +1537,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $path,
             $node->getPropertyValue('jcr:primaryType'),
             false,
-            $node->getDepth(),
             $properties
         );
 
