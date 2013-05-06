@@ -1223,13 +1223,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
-            $values[':parent' . $i] = dirname($values[':path' . $i]);
+            $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
 
             if ($srcAbsPath === $row['path']) {
-                $values[':localname' . $i] = basename($values[':path' . $i]);
+                $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
 
                 $updateLocalNameCase .= "WHEN id = :id" . $i . " THEN :localname" . $i . " ";
                 $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
