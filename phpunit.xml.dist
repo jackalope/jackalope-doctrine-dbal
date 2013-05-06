@@ -1,5 +1,6 @@
 <phpunit backupGlobals="false"
          backupStaticAttributes="false"
+         cacheTokens="true"
          colors="false"
          convertErrorsToExceptions="true"
          convertNoticesToExceptions="true"
@@ -15,7 +16,7 @@
         <var name="phpcr.workspace" value="tests" />
         <var name="phpcr.defaultWorkspace" value="default" />
         <var name="phpcr.additionalWorkspace" value="testsAdditional" />
-        
+
         <var name="data_caches" value="meta,nodes" />
         <!-- Doctrine DBAL database configuration -->
         <var name="phpcr.doctrine.dbal.driver" value="pdo_sqlite" />

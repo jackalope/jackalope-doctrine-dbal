@@ -249,7 +249,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->credentials = $credentials;
 
-        $this->workspaceName = $workspaceName ? : 'default';
+        if (empty($workspaceName)) {
+            $workspaceName = 'default';
+        }
+        $this->workspaceName = $workspaceName;
 
         if (!$this->checkLoginOnServer) {
             return $workspaceName;
