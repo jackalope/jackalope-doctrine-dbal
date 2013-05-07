@@ -457,7 +457,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $propsData = array('dom' => $dom);
             // when copying a node, the copy is always a new node. set $isNewNode to true
-            $newNodeId = $this->syncNode(null, $newPath, PathHelper::getParentPath($newPath), $row['type'], true, array(), $propsData);
+            $newNodeId = $this->syncNode(null, $newPath, $row['type'], true, array(), $propsData);
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -498,7 +498,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @param string $uuid node uuid
      * @param string $path absolute path of the node
-     * @param string $parent absolute path of the parent node
      * @param string $type node type
      * @param bool $isNewNode new nodes to insert (true) or existing node to update (false)
      * @param array $props
@@ -508,7 +507,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
      */
-    private function syncNode($uuid, $path, $parent, $type, $isNewNode, $props = array(), $propsData = array())
+    private function syncNode($uuid, $path, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -525,6 +524,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             list($namespace, $localName) = $this->getJcrName($path);
 
             $qb = $this->conn->createQueryBuilder();
+
             $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
                 ->from('phpcr_nodes', 'n')
                 ->where('n.parent = :parent_a');
@@ -539,12 +539,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'path'          => $path,
                     'local_name'    => $localName,
                     'namespace'     => $namespace,
-                    'parent'        => $parent,
+                    'parent'        => PathHelper::getParentPath($path),
                     'workspace_name'  => $this->workspaceName,
                     'props'         => $propsData['dom']->saveXML(),
-                    // TODO compute proper value
-                    'depth'         => 0,
-                    'parent_a'      => $parent,
+                    'depth'         => PathHelper::getPathDepth($path),
+                    'parent_a'      => PathHelper::getParentPath($path),
                 ));
             } catch (\PDOException $e) {
                 throw new ItemExistsException('Item ' . $path . ' already exists in the database');
@@ -849,16 +848,42 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNode($path)
     {
-        PathHelper::assertValidAbsolutePath($path);
         $this->assertLoggedIn();
+        PathHelper::assertValidAbsolutePath($path);
 
-        $query = 'SELECT * FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
-        $row = $this->conn->fetchAssoc($query, array($path, $this->workspaceName));
-        if (!$row) {
+        $values[':path'] = $path;
+        $values[':pathd'] = rtrim($path,'/') . '/%';
+        $values[':workspace'] = $this->workspaceName;
+        $values[':fetchDepth'] = $this->fetchDepth;
+
+        $query = 'SELECT * FROM phpcr_nodes
+            WHERE (path LIKE :pathd OR path = :path)
+                AND workspace_name = :workspace
+                AND depth <= ((SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace) + :fetchDepth)
+            ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $values);
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+        $nodeData = array();
+        foreach ($rows as $row) {
+            if ($row['path'] === $path) {
+                $node = $this->getNodeData($path, $row);
+            } else {
+                $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+                $nodeData[$pathDiff] = $this->getNodeData($row['path'], $row);
+            }
+        }
+
+        if (empty($node)) {
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
-        return $this->getNodeData($path, $row);
+        foreach ($nodeData as $key => $value) {
+            $node->{$key} = $value;
+        }
+
+        return $node;
     }
 
     private function getNodeData($path, $row)
@@ -897,17 +922,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNodes($paths)
     {
         $this->assertLoggedIn();
-        foreach ($paths as $path) {
-            PathHelper::assertValidAbsolutePath($path);
-        }
-        if (! count($paths)) {
+
+        if (empty($paths)) {
             return array();
         }
 
+        foreach ($paths as $path) {
+            PathHelper::assertValidAbsolutePath($path);
+        }
+
+        $params[':workspace'] = $this->workspaceName;
+        $params[':fetchDepth'] = $this->fetchDepth;
+
         $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
-            FROM phpcr_nodes WHERE workspace_name = ? AND path IN (?)';
-        $params = array($this->workspaceName, $paths);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
+            FROM phpcr_nodes WHERE workspace_name = :workspace AND (';
+
+        $i = 0;
+        foreach ($paths as $path) {
+            $params[':path'.$i] = $path;
+            $params[':pathd'.$i] = rtrim($path,'/') . '/%';
+            $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
+            $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
+            $i++;
+        } 
+
+        $query = rtrim($query, 'OR ');
+        $query .= ') ORDER BY sort_order ASC';
+
+        $stmt = $this->conn->executeQuery($query, $params);
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
@@ -956,7 +998,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNodesByIdentifier($identifiers)
     {
         $this->assertLoggedIn();
-        if (! count($identifiers)) {
+        if (empty($identifiers)) {
             return array();
         }
 
@@ -1178,7 +1220,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function moveNode($srcAbsPath, $dstAbsPath)
     {
         $this->assertLoggedIn();
-
         PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
         $srcNodeId = $this->pathExists($srcAbsPath);
@@ -1201,7 +1242,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         /*
          * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
          * the other thing i wonder: can't you do the replacement inside sql instead of loading and then storing
-         * the node? this will be extremly slow for a large set of nodes. i think you should use query builder here
+         * the node? this will be extremely slow for a large set of nodes. i think you should use query builder here
          * rather than raw sql, to make it work on a maximum of platforms.
          *
          * can you try to do this please? if we don't figure out how to do it, at least fix the where criteria, and
@@ -1209,24 +1250,37 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
          * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
          */
 
-        $ids                 = '';
         $query               = "UPDATE phpcr_nodes SET ";
         $updatePathCase      = "path = CASE ";
         $updateParentCase    = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
+        $updateDepthCase     = "depth = CASE ";
+
+        // TODO: Find a better way to do this
+        // Calculate CAST type for CASE statement
+        switch ($this->conn->getDatabasePlatform()->getName()) {
+            case 'pgsql':
+                $intType = 'integer';
+                break;
+            case 'mysql':
+                $intType = 'unsigned';
+                break;
+            default:
+                $intType = 'integer';
+        }
 
         $i = 0;
-        $values = array();
-
+        $values = $ids = array();
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
-
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
             $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
+            $values[':depth' . $i]  = PathHelper::getPathDepth($values[':path' . $i]);
 
             $updatePathCase   .= "WHEN id = :id" . $i . " THEN :path" . $i . " ";
             $updateParentCase .= "WHEN id = :id" . $i . " THEN :parent" . $i . " ";
+            $updateDepthCase  .= "WHEN id = :id" . $i . " THEN CAST(:depth" . $i . " AS " . $intType . ") ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
@@ -1235,17 +1289,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $updateSortOrderCase .= "WHEN id = :id" . $i . " THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent" . $i . ") y) ";
             }
 
-            $ids .= $row['id'] . ',';
+            $ids[] = $row['id'];
 
-            $i ++;
+            $i++;
         }
 
-        $ids = rtrim($ids, ',');
+        if (!$i) {
+            return;
+        }
+
+        $ids = implode($ids, ',');
 
         $updateLocalNameCase .= "ELSE local_name END, ";
         $updateSortOrderCase .= "ELSE sort_order END ";
 
-        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
+        $query .= $updatePathCase . "END, " . $updateParentCase . "END, " . $updateDepthCase . "END, " . $updateLocalNameCase . $updateSortOrderCase;
         $query .= "WHERE id IN (" . $ids . ")";
 
         try {
@@ -1430,7 +1488,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
 
-        $this->syncNode($nodeIdentifier, $path, PathHelper::getParentPath($path), $type, true, $properties);
+        $this->syncNode($nodeIdentifier, $path, $type, true, $properties);
 
         return true;
     }
@@ -1448,9 +1506,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (isset($this->nodeIdentifiers[$path])) {
             return $this->nodeIdentifiers[$path];
         }
+
         if (isset($properties['jcr:uuid'])) {
             return $properties['jcr:uuid']->getValue();
         }
+
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
         return UUIDHelper::generateUUID();
     }
@@ -1475,7 +1535,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->syncNode(
             $this->getIdentifier($path, $properties),
             $path,
-            PathHelper::getParentPath($path),
             $node->getPropertyValue('jcr:primaryType'),
             false,
             $properties
