@@ -74,10 +74,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\QueryResultsTest::testBooleanField',
 
 
-                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/15
-                    'Query\\QuerySql2OperationsTest::testQueryJoin',
-                    'Query\\QuerySql2OperationsTest::testQueryJoinReference',
-
                     // this seems a bug in php with arrayiterator - and jackalope is using
                     // arrayiterator for the search result
                     // https://github.com/phpcr/phpcr-api-tests/issues/22

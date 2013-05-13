@@ -3,6 +3,8 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\NodeType\NodeTypeExistsException;
+use PHPCR\Query\QOM\JoinInterface;
+use PHPCR\Query\QOM\SourceInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -1860,21 +1862,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $source   = $query->getSource();
 
-        if (!($source instanceof SelectorInterface)) {
-            throw new NotImplementedException("Only Selector Sources are supported for now, but no Join.");
-        }
-
-        // TODO: this check is only relevant for Selector, not for Join. should we push it into the walker?
-        $nodeType = $source->getNodeTypeName();
-
-        if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
-            $msg = 'Selected node type does not exist: ' . $nodeType;
-            if ($alias = $source->getSelectorName()) {
-                $msg .= ' AS ' . $alias;
-            }
-
-            throw new InvalidQueryException($msg);
-        }
+        $this->validateSource($source);
 
         $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
         $sql = $qomWalker->walkQOMQuery($query);
@@ -1888,41 +1876,68 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $columns[$column->getPropertyName()] = $column->getSelectorName();
         }
 
-        // TODO: this needs update once we implement join
 
-        $selector = $source->getSelectorName();
-        if (null === $selector) {
-            $selector = $source->getNodeTypeName();
+        /** @var SelectorInterface $selector */
+        $selector = $source;
+        if ($source instanceOf JoinInterface) {
+            if ($source->getLeft() instanceof SelectorInterface) {
+                $selector = $source->getLeft();
+            } else if ($source->getRight() instanceOf SelectorInterface) {
+                $selector = $source->getRight();
+            } else {
+                throw new NotImplementedException("Join query without selector"); // TODO: check if this is even possible?
+            }
+        }
+
+        $selectorName = $selector->getSelectorName();
+        if (null === $selectorName) {
+            $selectorName = $selector->getNodeTypeName();
         }
 
         if (empty($columns)) {
             $columns = array(
-                'jcr:createdBy'   => $selector,
-                'jcr:created'     => $selector,
+                'jcr:createdBy'   => $selectorName,
+                'jcr:created'     => $selectorName,
             );
         }
 
-        $columns['jcr:primaryType'] = $selector;
+        $columns['jcr:primaryType'] = $selectorName;
 
         $results = array();
         // This block feels really clunky - maybe this should be a QueryResultFormatter class?
         foreach ($data as $row) {
+            $prefix = null === $selector->getSelectorName() ? '' : $selector->getSelectorName() . '_';
             $result = array(
-                array('dcr:name' => 'jcr:path', 'dcr:value' => $row['path'], 'dcr:selectorName' => $row['type']),
-                array('dcr:name' => 'jcr:score', 'dcr:value' => 0, 'dcr:selectorName' => $row['type'])
+                array('dcr:name' => 'jcr:path', 'dcr:value' => $row[$prefix . 'path'], 'dcr:selectorName' => $row[$prefix . 'type']),
+                array('dcr:name' => 'jcr:score', 'dcr:value' => 0, 'dcr:selectorName' => $row[$prefix . 'type'])
             );
 
-            // extract only the properties that have been requested in the query
-            $props = static::xmlToProps($row['props'], function ($name) use ($columns) {
-                return array_key_exists($name, $columns);
-            });
-            $props = (array) $props;
+            $properties = array();
+            foreach ($columns AS $columnName => $columnAlias) {
+                // Determine which props field to use
+                // in other words, from which join/selector is the requested data
+                $columnPrefix = null === $selector->getSelectorName() ? '' : $columnAlias . '_';
+                if (!isset($properties[$columnAlias])) {
+                    // extract only the properties that have been requested in the query
+                    $properties[$columnAlias] = static::xmlToProps($row[$columnPrefix . 'props'], function ($name) use ($columns, $columnAlias, $columnName) {
+                        return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
+                    });
+                }
+                $props = (array)$properties[$columnAlias];
 
-            foreach ($columns AS $columnName => $columnPrefix) {
+                $dcrValue = null;
+                if ('jcr:uuid' === $columnName) {
+                    $dcrValue = $row[$columnPrefix . 'identifier'];
+                }
+                if ('jcr:path' === $columnName) {
+                    $dcrValue = $row[$columnPrefix . 'path'];
+
+                }
+
                 $result[] = array(
-                    'dcr:name' => null === $columnPrefix ? $columnName : "{$columnPrefix}.{$columnName}",
-                    'dcr:value' => array_key_exists($columnName, $props) ? $props[$columnName] : null,
-                    'dcr:selectorName' => $columnPrefix ?: $selector,
+                    'dcr:name' => null === $columnAlias ? $columnName : "{$columnAlias}.{$columnName}",
+                    'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $props) ? $props[$columnName] : null),
+                    'dcr:selectorName' => $columnAlias ?: $selectorName,
                 );
             }
 
@@ -2106,5 +2121,56 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->referencesToUpdate = $this->referencesToDelete = array();
         $this->conn->rollback();
+    }
+
+    /**
+     * Validates the nodeTypes in given source
+     *
+     * @param SourceInterface $source
+     * @throws \PHPCR\Query\InvalidQueryException
+     */
+    protected function validateSource(SourceInterface $source)
+    {
+        if ($source instanceOf SelectorInterface) {
+            $this->validateSelectorSource($source);
+        } elseif ($source instanceOf JoinInterface) {
+            $this->validateJoinSource($source);
+        }
+    }
+
+    /**
+     * @param SelectorInterface $source
+     * @throws \PHPCR\Query\InvalidQueryException
+     */
+    protected function validateSelectorSource(SelectorInterface $source)
+    {
+        $nodeType = $source->getNodeTypeName();
+
+        if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
+            $msg = 'Selected node type does not exist: ' . $nodeType;
+            if ($alias = $source->getSelectorName()) {
+                $msg .= ' AS ' . $alias;
+            }
+
+            throw new InvalidQueryException($msg);
+        }
+    }
+
+    /**
+     * @param JoinInterface $source
+     * @throws \PHPCR\Query\InvalidQueryException     *
+     */
+    protected function validateJoinSource(JoinInterface $source)
+    {
+        $left = $source->getLeft();
+        $right = $source->getRight();
+
+        if ($left) {
+            $this->validateSource($left);
+        }
+
+        if ($right) {
+            $this->validateSource($right);
+        }
     }
 }
