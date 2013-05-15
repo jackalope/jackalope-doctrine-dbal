@@ -20,6 +20,8 @@ class QOMWalkerTest extends TestCase
 
     private $nodeTypeManager;
 
+    private $defaultColumns = '*';
+
     public function setUp()
     {
         parent::setUp();
@@ -28,6 +30,7 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager = $this->getMock('Jackalope\NodeType\NodeTypeManager', array(), array(), '', false);
         $this->factory = new QueryObjectModelFactory(new Factory);
         $this->walker = new QOMWalker($this->nodeTypeManager, $conn);
+        $this->defaultColumns = 'n0.id AS id, n0.path AS path, n0.parent AS parent, n0.local_name AS local_name, n0.namespace AS namespace, n0.workspace_name AS workspace_name, n0.identifier AS identifier, n0.type AS type, n0.props AS props, n0.depth AS depth, n0.sort_order AS sort_order';
     }
 
     public function testDefaultQuery()
@@ -37,7 +40,7 @@ class QOMWalkerTest extends TestCase
         $query = $this->factory->createQuery($this->factory->selector('nt:unstructured'), null, array(), array());
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured')", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured')", $this->defaultColumns), $sql);
     }
 
     public function testQueryWithPathComparisonConstraint()
@@ -52,7 +55,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path = '/'", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path = '/'", $this->defaultColumns), $sql);
     }
 
     public function testQueryWithPropertyComparisonConstraint()
@@ -87,7 +90,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND (n.path = '/' AND n.path = '/')", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' AND n0.path = '/')", $this->defaultColumns), $sql);
     }
 
     public function testQueryWithOrConstraint()
@@ -105,7 +108,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND (n.path = '/' OR n.path = '/')", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' OR n0.path = '/')", $this->defaultColumns), $sql);
     }
 
     public function testQueryWithNotConstraint()
@@ -122,7 +125,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND NOT (n.path = '/')", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND NOT (n0.path = '/')", $this->defaultColumns), $sql);
     }
 
     static public function dataQueryWithOperator()
@@ -155,7 +158,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertEquals("SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path $op '/'", $sql);
+        $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path $op '/'", $this->defaultColumns), $sql);
     }
 
     public function testQueryWithOrderings()
@@ -172,7 +175,7 @@ class QOMWalkerTest extends TestCase
         $sql = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
-            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') ORDER BY n.path ASC",
+            sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') ORDER BY n0.path ASC", $this->defaultColumns),
             $sql
         );
     }
@@ -189,7 +192,7 @@ class QOMWalkerTest extends TestCase
         $sql = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
-            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path LIKE '/%'",
+            sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/%%'", $this->defaultColumns),
             $sql
         );
 
@@ -201,7 +204,7 @@ class QOMWalkerTest extends TestCase
         $sql = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
-            "SELECT * FROM phpcr_nodes n WHERE n.workspace_name = ? AND n.type IN ('nt:unstructured') AND n.path LIKE '/some/node/%'",
+            sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/some/node/%%'", $this->defaultColumns),
             $sql
         );
     }
