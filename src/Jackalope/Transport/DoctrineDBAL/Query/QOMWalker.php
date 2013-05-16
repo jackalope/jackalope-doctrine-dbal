@@ -195,7 +195,7 @@ class QOMWalker
     public function walkSelectorSource(QOM\SelectorInterface $source)
     {
         $alias = $this->getTableAlias($source->getSelectorName());
-        $nodeTypeClause = $this->sqlNodeTypeClause($source, $alias);
+        $nodeTypeClause = $this->sqlNodeTypeClause($alias, $source);
         $sql = "FROM phpcr_nodes $alias WHERE $alias.workspace_name = ? AND $nodeTypeClause";
 
         return $sql;
@@ -216,7 +216,7 @@ class QOMWalker
         $sql = "FROM phpcr_nodes $leftAlias ";
 
         $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
-        $nodeTypeClause = $this->sqlNodeTypeClause($source->getRight(), $rightAlias);
+        $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
 
         switch ($source->getJoinType()) {
             case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_INNER:
@@ -614,7 +614,7 @@ class QOMWalker
      * @param string $alias
      * @return string
      */
-    private function sqlNodeTypeClause(QOM\SelectorInterface $source, $alias = 'n')
+    private function sqlNodeTypeClause($alias, QOM\SelectorInterface $source)
     {
         $sql = "$alias.type IN ('" . $source->getNodeTypeName() ."'";
 
