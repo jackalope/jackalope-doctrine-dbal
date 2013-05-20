@@ -253,7 +253,7 @@ class QOMWalker
         }
 
         if ($condition instanceOf QOM\DescendantNodeJoinConditionInterface) {
-            return $this->walkDescendantNodeJoinConditon($left->getSelectorName(), $condition);
+            return $this->walkDescendantNodeJoinConditon($condition);
         }
 
         if ($condition instanceOf QOM\EquiJoinConditionInterface) {
@@ -269,10 +269,10 @@ class QOMWalker
      * @param QOM\DescendantNodeJoinConditionInterface $condition
      * @return string
      */
-    public function walkDescendantNodeJoinConditon($leftSelectorName, QOM\DescendantNodeJoinConditionInterface $condition)
+    public function walkDescendantNodeJoinConditon(QOM\DescendantNodeJoinConditionInterface $condition)
     {
         $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
-        $leftAlias = $this->getTableAlias($leftSelectorName);
+        $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
         return "$rightAlias.path LIKE CONCAT($leftAlias.path, '/%') ";
     }
 

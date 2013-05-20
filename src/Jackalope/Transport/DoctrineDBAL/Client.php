@@ -1918,10 +1918,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 // in other words, from which join/selector is the requested data
                 $columnPrefix = null === $selector->getSelectorName() ? '' : $columnAlias . '_';
                 if (!isset($properties[$columnAlias])) {
-                    // extract only the properties that have been requested in the query
-                    $properties[$columnAlias] = static::xmlToProps($row[$columnPrefix . 'props'], function ($name) use ($columns, $columnAlias, $columnName) {
-                        return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
-                    });
+                    if (isset($row[$columnPrefix . 'props'])) {
+                        // extract only the properties that have been requested in the query
+                        $properties[$columnAlias] = static::xmlToProps($row[$columnPrefix . 'props'], function ($name) use ($columns, $columnAlias, $columnName) {
+                            return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
+                        });
+                    } else { // props field is empty, can happen with OUTER joins
+                        $properties[$columnAlias] = array();
+                    }
                 }
                 $props = (array)$properties[$columnAlias];
 
@@ -1931,7 +1935,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
                 if ('jcr:path' === $columnName) {
                     $dcrValue = $row[$columnPrefix . 'path'];
-
+                }
+                if ('jcr:name' === $columnName) {
+                    $dcrValue = $row[$columnPrefix . 'local_name'];
                 }
 
                 $result[] = array(
