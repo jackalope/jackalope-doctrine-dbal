@@ -2,12 +2,15 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
+use Jackalope\NotImplementedException;
+use Jackalope\Query\QOM\PropertyValue;
+use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+
 use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
-
-use Jackalope\NotImplementedException;
+use PHPCR\Util\QOM\NotSupportedOperandException;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -42,7 +45,15 @@ class QOMWalker
      */
     private $platform;
 
+    /**
+     * @var array
+     */
     private $namespaces;
+
+    /**
+     * @var \Doctrine\DBAL\Schema\Schema
+     */
+    private $schema;
 
     /**
      * @param \PHPCR\NodeType\NodeTypeManagerInterface $manager
@@ -55,19 +66,19 @@ class QOMWalker
         $this->nodeTypeManager = $manager;
         $this->platform = $conn->getDatabasePlatform();
         $this->namespaces = $namespaces;
+        $this->schema = RepositorySchema::create();
     }
 
     /**
+     * Generate a table alias
+     *
      * @param $selectorName
      * @return string
      */
     private function getTableAlias($selectorName)
     {
-        if (strpos($selectorName, ".") === false) {
-            return "n";
-        }
+        $selectorAlias = $this->getSelectorAlias($selectorName);
 
-        $selectorAlias = reset(explode(".", $selectorName));
         if (!isset($this->alias[$selectorAlias])) {
             $this->alias[$selectorAlias] = "n" . count($this->alias);
         }
@@ -76,20 +87,49 @@ class QOMWalker
     }
 
     /**
+     * @param $selectorName
+     * @return mixed|string
+     */
+    private function getSelectorAlias($selectorName)
+    {
+        if (null === $selectorName) {
+            if (count($this->alias)) { // We have aliases, use the first
+                $selectorAlias = array_search('n0', $this->alias);
+            } else { // Currently no aliases, use an empty string as index
+                $selectorAlias = '';
+            }
+        } else if (strpos($selectorName, ".") === false) {
+            $selectorAlias = $selectorName;
+        } else {
+            $parts = explode(".", $selectorName);
+            $selectorAlias = reset($parts);
+        }
+
+        return $selectorAlias;
+    }
+
+    /**
      * @param \PHPCR\Query\QOM\QueryObjectModelInterface $qom
      * @return string
      */
     public function walkQOMQuery(QOM\QueryObjectModelInterface $qom)
     {
+        $sourceSql = " " . $this->walkSource($qom->getSource());
+        $constraintSql = '';
+        if ($constraint = $qom->getConstraint()) {
+            $constraintSql = " AND " . $this->walkConstraint($constraint);
+        }
+
+        $orderingSql = '';
+        if ($orderings = $qom->getOrderings()) {
+            $orderingSql = " " . $this->walkOrderings($orderings);
+        }
+
         $sql = "SELECT";
         $sql .= " " . $this->walkColumns($qom->getColumns());
-        $sql .= " " . $this->walkSource($qom->getSource());
-        if ($constraint = $qom->getConstraint()) {
-            $sql .= " AND " . $this->walkConstraint($constraint);
-        }
-        if ($orderings = $qom->getOrderings()) {
-            $sql .= " " . $this->walkOrderings($orderings);
-        }
+        $sql .= $sourceSql;
+        $sql .= $constraintSql;
+        $sql .= $orderingSql;
 
         return $sql;
     }
@@ -100,14 +140,23 @@ class QOMWalker
      */
     public function walkColumns($columns)
     {
-        $sql = '';
-        if ($columns) {
-            foreach ($columns as $column) {
-                $sql .= $this->walkColumn($column);
-            }
+        $sqlColumns = array();
+        foreach ($this->schema->getTable('phpcr_nodes')->getColumns() as $column) {
+            $sqlColumns[] = $column->getName();
         }
 
-        if ('' === trim($sql)) {
+        if (count($this->alias)) {
+            $aliasSql = array();
+            foreach ($this->alias as $selectorAlias => $alias) {
+                if ('' !== $selectorAlias) {
+                    $selectorAlias = $selectorAlias . '_';
+                }
+                foreach ($sqlColumns as $sqlColumn) {
+                    $aliasSql[] = sprintf('%s.%s AS %s%s', $alias, $sqlColumn, $selectorAlias, $sqlColumn);
+                }
+            }
+            $sql = join(', ', $aliasSql);
+        } else {
             $sql = '*';
         }
 
@@ -119,7 +168,8 @@ class QOMWalker
      */
     public function walkColumn(QOM\ColumnInterface $column)
     {
-        return '';
+        $alias = $this->getTableAlias($column->getSelectorName());
+        return $this->sqlProperty($alias, $column->getPropertyName());
     }
 
     /**
@@ -129,21 +179,112 @@ class QOMWalker
      */
     public function walkSource(QOM\SourceInterface $source)
     {
-        if (!($source instanceof QOM\SelectorInterface)) {
-            throw new NotImplementedException("Only Selector Sources are supported.");
+        if ($source instanceOf QOM\SelectorInterface) {
+            return $this->walkSelectorSource($source);
         }
 
-        $sql = "FROM phpcr_nodes n ".
-               "WHERE n.workspace_name = ? AND n.type IN ('" . $source->getNodeTypeName() ."'";
+        if ($source instanceOf QOM\JoinInterface) {
+            return $this->walkJoinSource($source);
+        }
+    }
 
-        $subTypes = $this->nodeTypeManager->getSubtypes($source->getNodeTypeName());
+    /**
+     * @param QOM\SelectorInterface $source
+     * @return string
+     */
+    public function walkSelectorSource(QOM\SelectorInterface $source)
+    {
+        $alias = $this->getTableAlias($source->getSelectorName());
+        $nodeTypeClause = $this->sqlNodeTypeClause($alias, $source);
+        $sql = "FROM phpcr_nodes $alias WHERE $alias.workspace_name = ? AND $nodeTypeClause";
+
+        return $sql;
+    }
+
+    /**
+     * @param QOM\JoinInterface $source
+     * @return string
+     * @throws \Jackalope\NotImplementedException
+     */
+    public function walkJoinSource(QOM\JoinInterface $source)
+    {
+        if (!$source->getLeft() instanceOf QOM\SelectorInterface || !$source->getRight() instanceOf QOM\SelectorInterface) {
+            throw new NotImplementedException("Join with Joins");
+        }
+
+        $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
+        $sql = "FROM phpcr_nodes $leftAlias ";
+
+        $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
+        $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
+
+        switch ($source->getJoinType()) {
+            case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_INNER:
+                $sql .= "INNER JOIN phpcr_nodes $rightAlias ";
+                break;
+            case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_LEFT_OUTER:
+                $sql .= "LEFT JOIN phpcr_nodes $rightAlias ";
+                break;
+            case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_RIGHT_OUTER:
+                $sql .= "RIGHT JOIN phpcr_nodes $rightAlias ";
+                break;
+        }
+
+        $sql .= "ON ( $leftAlias.workspace_name = $rightAlias.workspace_name AND $nodeTypeClause ";
+        $sql .= "AND " . $this->walkJoinCondition($source->getLeft(), $source->getRight(), $source->getJoinCondition()) . " ";
+        $sql .= ") "; // close on-clause
+
+        $sql .= "WHERE $leftAlias.workspace_name = ? AND $leftAlias.type IN ('" . $source->getLeft()->getNodeTypeName() ."'";
+        $subTypes = $this->nodeTypeManager->getSubtypes($source->getLeft()->getNodeTypeName());
         foreach ($subTypes as $subType) {
             /* @var $subType \PHPCR\NodeType\NodeTypeInterface */
             $sql .= ", '" . $subType->getName() . "'";
         }
         $sql .= ')';
 
+
         return $sql;
+    }
+
+    public function walkJoinCondition(QOM\SelectorInterface $left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
+    {
+        if ($condition instanceOf QOM\ChildNodeJoinConditionInterface) {
+            throw new NotImplementedException("ChildNodeJoinCondition");
+        }
+
+        if ($condition instanceOf QOM\DescendantNodeJoinConditionInterface) {
+            return $this->walkDescendantNodeJoinConditon($condition);
+        }
+
+        if ($condition instanceOf QOM\EquiJoinConditionInterface) {
+            return $this->walkEquiJoinCondition($left->getSelectorName(), $right->getSelectorName(), $condition);
+        }
+
+        if ($condition instanceOf QOM\SameNodeJoinConditionInterface) {
+            throw new NotImplementedException("SameNodeJoinCondtion");
+        }
+    }
+
+    /**
+     * @param QOM\DescendantNodeJoinConditionInterface $condition
+     * @return string
+     */
+    public function walkDescendantNodeJoinConditon(QOM\DescendantNodeJoinConditionInterface $condition)
+    {
+        $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
+        $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
+        return "$rightAlias.path LIKE CONCAT($leftAlias.path, '/%') ";
+    }
+
+    /**
+     * @param QOM\EquiJoinConditionInterface $condition
+     * @return string
+     */
+    public function walkEquiJoinCondition($leftSelectorName, $rightSelectorName, QOM\EquiJoinConditionInterface $condition)
+    {
+        return $this->walkOperand(new PropertyValue($leftSelectorName, $condition->getProperty1Name())) . " " .
+               $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) . " " .
+               $this->walkOperand(new PropertyValue($rightSelectorName, $condition->getProperty2Name()));
     }
 
     /**
@@ -351,7 +492,7 @@ class QOMWalker
             return $this->conn->quote($namespace.$literal);
         }
         if ($operand instanceof QOM\PropertyValueInterface) {
-            $alias = $this->getTableAlias($operand->getSelectorName());
+            $alias = $this->getTableAlias($operand->getSelectorName() . '.' . $operand->getPropertyName());
             $property = $operand->getPropertyName();
             if ($property == "jcr:path") {
                 return $alias . ".path";
@@ -365,14 +506,8 @@ class QOMWalker
         if ($operand instanceof QOM\LengthInterface) {
             $alias = $this->getTableAlias($operand->getPropertyValue()->getSelectorName());
             $property = $operand->getPropertyValue()->getPropertyName();
-            if ($property == "jcr:path") {
-                return $alias . ".path";
-            }
-            if ($property == "jcr:uuid") {
-                return $alias . ".identifier";
-            }
 
-            return $this->sqlXpathExtractValue($alias, $property);
+            return $this->sqlProperty($alias, $property);
         }
 
         throw new InvalidQueryException("Dynamic operand " . get_class($operand) . " not yet supported.");
@@ -452,5 +587,44 @@ class QOMWalker
     private function sqlXpathPostgreSQLNamespaces()
     {
         return "ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]";
+    }
+
+    /**
+     * Returns the SQL part to select the given property
+     *
+     * @param $alias
+     * @param $propertyName
+     * @return string
+     */
+    private function sqlProperty($alias, $propertyName)
+    {
+        if ('jcr:uuid' === $propertyName) {
+            return "$alias.identifier";
+        }
+
+        if ('jcr:path' === $propertyName) {
+            return "$alias.path";
+        }
+
+        return $this->sqlXpathExtractValue($alias, $propertyName);
+    }
+
+    /**
+     * @param QOM\SelectorInterface $source
+     * @param string $alias
+     * @return string
+     */
+    private function sqlNodeTypeClause($alias, QOM\SelectorInterface $source)
+    {
+        $sql = "$alias.type IN ('" . $source->getNodeTypeName() ."'";
+
+        $subTypes = $this->nodeTypeManager->getSubtypes($source->getNodeTypeName());
+        foreach ($subTypes as $subType) {
+            /* @var $subType \PHPCR\NodeType\NodeTypeInterface */
+            $sql .= ", '" . $subType->getName() . "'";
+        }
+        $sql .= ')';
+
+        return $sql;
     }
 }
