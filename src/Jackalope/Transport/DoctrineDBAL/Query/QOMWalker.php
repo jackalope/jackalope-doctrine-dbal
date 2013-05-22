@@ -2,21 +2,21 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
+use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+
 use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
-
-use Jackalope\NotImplementedException;
+use PHPCR\Util\QOM\NotSupportedOperandException;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-use PHPCR\Util\QOM\NotSupportedOperandException;
 
 /**
  * Converts QOM to SQL Statements for the Doctrine DBAL database backend.

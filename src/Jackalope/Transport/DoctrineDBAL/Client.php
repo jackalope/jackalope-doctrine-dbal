@@ -1913,7 +1913,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             );
 
             $properties = array();
-            foreach ($columns AS $columnName => $columnAlias) {
+            foreach ($columns as $columnName => $columnAlias) {
                 // Determine which props field to use
                 // in other words, from which join/selector is the requested data
                 $columnPrefix = null === $selector->getSelectorName() ? '' : $columnAlias . '_';
