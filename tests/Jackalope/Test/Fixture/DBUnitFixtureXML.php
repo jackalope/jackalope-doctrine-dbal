@@ -3,6 +3,7 @@
 namespace Jackalope\Test\Fixture;
 
 use PHPCR\Util\PathHelper;
+use PHPCR\Util\UUIDHelper;
 
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files.
@@ -96,7 +97,7 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $node = $nodes->item(0);
         if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
-            $this->addRootNode(1, \PHPCR\Util\UUIDHelper::generateUUID(), '/', 'tests');
+            $this->addRootNode(1, UUIDHelper::generateUUID(), '/', 'tests');
         }
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
@@ -140,9 +141,11 @@ class DBUnitFixtureXML extends XMLDocument
 
     public function addNode($workspaceName, \DOMElement $node)
     {
-        $properties             = $this->getAttributes($node);
-        $uuid                   = isset($properties['jcr:uuid']['value'][0]) ? (string)$properties['jcr:uuid']['value'][0] : \PHPCR\Util\UUIDHelper::generateUUID();
-        $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])         ? $this->expectedNodes[$uuid]                 : count($this->ids) + 1;
+        $properties = $this->getAttributes($node);
+        $uuid = isset($properties['jcr:uuid']['value'][0])
+            ? (string) $properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
+        $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])
+            ? $this->expectedNodes[$uuid] : count($this->ids) + 1;
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
@@ -286,7 +289,7 @@ class DBUnitFixtureXML extends XMLDocument
             case 'reference':
                 if (isset($this->ids[$value])) {
                     $targetId = $this->ids[$value];
-                } else if (isset($this->expectedNodes[$value])) {
+                } elseif (isset($this->expectedNodes[$value])) {
                     $targetId = $this->expectedNodes[$value];
                 } else {
                     $targetId = $this->expectedNodes[$value] = count($this->ids) + 1;
