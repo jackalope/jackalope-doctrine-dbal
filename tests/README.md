@@ -55,3 +55,16 @@ To run the tests:
     # adjust phpunit.xml as necessary
     phpunit
 
+If you haven't installed phpunit globally and you want to keep it as a dependency of the jackalope doctrine-dbal project, add the following dependencies to your `composer.json`:
+
+    "require-dev": {
+        [...]
+        "phpunit/phpunit": "dev-master",
+        "phpunit/dbunit": "dev-master"
+    }
+
+You can then run the tests as follows:
+
+    ./vendor/bin/phpunit
+
+Also make sure you set your php memory limit high enough so the tests can successfully be executed (minimum 512M)
