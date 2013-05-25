@@ -48,10 +48,30 @@ Test fixtures for functional tests are written in the JCR System XML format.
 The converted fixtures are not tracked in the repository, and get regenerated
 on each testrun.
 
-To run the tests:
+# Running the tests
+
+Make sure you set your php memory limit high enough so the tests can
+successfully be executed (minimum 512M).
+
+To run the tests, execute:
 
     cd /path/to/jackalope-doctrine-dbal
     # cp phpunit.xml.dist phpunit.xml
     # adjust phpunit.xml as necessary
     phpunit
 
+## Installing phpunit as project dependency
+
+If you haven't installed phpunit globally and you want to keep it as a dependency
+of the jackalope doctrine-dbal project, add the following dependencies to your
+`composer.json`:
+
+    "require-dev": {
+        [...]
+        "phpunit/phpunit": "dev-master",
+        "phpunit/dbunit": "dev-master"
+    }
+
+You can then run the tests as follows:
+
+    ./vendor/bin/phpunit
