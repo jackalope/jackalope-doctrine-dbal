@@ -246,6 +246,41 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * {@inheritDoc}
+     *
+     */
+    public function deleteWorkspace($name)
+    {
+        if (!$this->workspaceExists($name)) {
+            throw new RepositoryException("Workspace '$name' cannot be
+            deleted as it does not exist");
+        }
+
+        try {
+            $this->conn->delete('phpcr_workspaces', array('name' => $name));
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't delete workspace '$name': "
+            .$e->getMessage(), 0, $e);
+        }
+
+        try {
+            $this->conn->delete('phpcr_nodes', array('workspace_name'=>
+            $name));
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't delete nodes in workspace
+            '$name': ".$e->getMessage(), 0, $e);
+        }
+
+        try {
+            $this->conn->delete('phpcr_binarydata', array('workspace_name'=>
+            $name));
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't delete binary data in
+            workspace '$name': ".$e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
      */
     public function login(CredentialsInterface $credentials = null, $workspaceName = null)
     {
