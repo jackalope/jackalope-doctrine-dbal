@@ -86,9 +86,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
-                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
-                    // TODO: implement deleting workspace
-                    'WorkspaceManagement\\WorkspaceManagementTest::testDeleteWorkspace',
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
         );
     }
 
