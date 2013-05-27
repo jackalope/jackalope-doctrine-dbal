@@ -258,11 +258,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->conn->delete('phpcr_workspaces', array('name' => $name));
         } catch (\Exception $e) {
-            throw new RepositoryException("Couldn't delete Workspace '$name': "
+            throw new RepositoryException("Couldn't delete workspace '$name': "
             .$e->getMessage(), 0, $e);
         }
 
-        $this->conn->delete('phpcr_nodes', array('workspace_name'=> $name));
+        try {
+            $this->conn->delete('phpcr_nodes', array('workspace_name'=>
+            $name));
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't delete nodes in workspace
+            '$name': ".$e->getMessage(), 0, $e);
+        }
+
+        try {
+            $this->conn->delete('phpcr_binarydata', array('workspace_name'=>
+            $name));
+        } catch (\Exception $e) {
+            throw new RepositoryException("Couldn't delete binary data in
+            workspace '$name': ".$e->getMessage(), 0, $e);
+        }
     }
 
     /**
