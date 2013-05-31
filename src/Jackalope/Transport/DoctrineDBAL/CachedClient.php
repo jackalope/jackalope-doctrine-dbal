@@ -44,7 +44,6 @@ class CachedClient extends Client
         $this->caches['meta']->save("workspace: $name", 1);
     }
 
-
     /**
      * {@inheritDoc}
      *
