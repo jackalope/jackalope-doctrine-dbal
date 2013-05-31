@@ -43,6 +43,23 @@ class CachedClient extends Client
         $this->caches['meta']->delete('workspaces');
         $this->caches['meta']->save("workspace: $name", 1);
     }
+
+
+    /**
+     * {@inheritDoc}
+     *
+     */
+    public function deleteWorkspace($name)
+    {
+        parent::deleteWorkspace($name);
+
+        $this->caches['meta']->delete('workspaces');
+        $this->caches['meta']->delete("workspace: $name");
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->deleteAll();
+        }
+    }
+
     /**
      * {@inheritDoc}
      */
