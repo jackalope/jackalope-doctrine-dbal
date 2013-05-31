@@ -1911,47 +1911,57 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $columns[$column->getPropertyName()] = $column->getSelectorName();
         }
 
+        $selectors = array();
+        if ($source instanceOf SelectorInterface) {
+            $selectors[] = $source;
+            $mainSelector = $source;
+        } elseif ($source instanceof JoinInterface) {
+            if ($source->getLeft() instanceOf SelectorInterface) {
+                $selectors[] = $source->getLeft();
+                $mainSelector = $source->getLeft();
+            }
 
-        /** @var SelectorInterface $selector */
-        $selector = $source;
-        if ($source instanceOf JoinInterface) {
-            if ($source->getLeft() instanceof SelectorInterface) {
-                $selector = $source->getLeft();
-            } else if ($source->getRight() instanceOf SelectorInterface) {
-                $selector = $source->getRight();
-            } else {
-                throw new NotImplementedException("Join query without selector"); // TODO: check if this is even possible?
+            if ($source->getRight() instanceOf SelectorInterface) {
+                $selectors[] = $source->getRight();
             }
         }
 
-        $selectorName = $selector->getSelectorName();
-        if (null === $selectorName) {
-            $selectorName = $selector->getNodeTypeName();
+        if (!isset($mainSelector)) {
+            throw new InvalidQueryException('The source needs to be a Selector or a Join with left as Selector');
+        }
+
+        $mainSelectorName = $mainSelector->getSelectorName();
+        $mainAlias = null;
+        if (null === $mainSelectorName) {
+            $mainSelectorName = $mainSelector->getNodeTypeName();
+        } else {
+            $mainAlias = $mainSelectorName;
         }
 
         if (empty($columns)) {
             $columns = array(
-                'jcr:createdBy'   => $selectorName,
-                'jcr:created'     => $selectorName,
+                'jcr:createdBy' => $mainSelectorName,
+                'jcr:created'   => $mainSelectorName,
             );
         }
-
-        $columns['jcr:primaryType'] = $selectorName;
+        $columns['jcr:primaryType'] = $mainSelectorName;
 
         $results = array();
-        // This block feels really clunky - maybe this should be a QueryResultFormatter class?
         foreach ($data as $row) {
-            $prefix = null === $selector->getSelectorName() ? '' : $selector->getSelectorName() . '_';
-            $result = array(
-                array('dcr:name' => 'jcr:path', 'dcr:value' => $row[$prefix . 'path'], 'dcr:selectorName' => $row[$prefix . 'type']),
-                array('dcr:name' => 'jcr:score', 'dcr:value' => 0, 'dcr:selectorName' => $row[$prefix . 'type'])
-            );
+            $result = array();
+            /** @var SelectorInterface $selector */
+            foreach ($selectors as $selector) {
+                $columnPrefix   = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '_' : '';
+                $selectorPrefix = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '.' : '';
+                $selectorName   = $selector->getSelectorName() ?: $row[$columnPrefix . 'type'];
+
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',   'dcr:value' => $row[$columnPrefix . 'path'],    'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score',  'dcr:value' => 0,                               'dcr:selectorName' => $selectorName);
+            }
 
             $properties = array();
             foreach ($columns as $columnName => $columnAlias) {
-                // Determine which props field to use
-                // in other words, from which join/selector is the requested data
-                $columnPrefix = null === $selector->getSelectorName() ? '' : $columnAlias . '_';
+                $columnPrefix = null !== $mainSelector->getSelectorName() ? $columnAlias . '_' : '';
                 if (!isset($properties[$columnAlias])) {
                     if (isset($row[$columnPrefix . 'props'])) {
                         // extract only the properties that have been requested in the query
@@ -1968,17 +1978,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if ('jcr:uuid' === $columnName) {
                     $dcrValue = $row[$columnPrefix . 'identifier'];
                 }
-                if ('jcr:path' === $columnName) {
-                    $dcrValue = $row[$columnPrefix . 'path'];
-                }
-                if ('jcr:name' === $columnName) {
-                    $dcrValue = $row[$columnPrefix . 'local_name'];
-                }
 
                 $result[] = array(
                     'dcr:name' => null === $columnAlias ? $columnName : "{$columnAlias}.{$columnName}",
                     'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $props) ? $props[$columnName] : null),
-                    'dcr:selectorName' => $columnAlias ?: $selectorName,
+                    'dcr:selectorName' => $columnAlias ?: $mainSelectorName,
                 );
             }
 
