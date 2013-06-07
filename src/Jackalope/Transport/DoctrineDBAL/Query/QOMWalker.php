@@ -36,6 +36,11 @@ class QOMWalker
     private $alias = array();
 
     /**
+     * @var string
+     */
+    private $sourceNodeType;
+
+    /**
      * @var \Doctrine\DBAL\Connection
      */
     private $conn;
@@ -98,8 +103,16 @@ class QOMWalker
             } else { // Currently no aliases, use an empty string as index
                 $selectorAlias = '';
             }
-        } else if (strpos($selectorName, ".") === false) {
-            $selectorAlias = $selectorName;
+        } elseif (strpos($selectorName, ".") === false) {
+            if (strpos($selectorName, '[') === 0) {
+                $selectorName = substr($selectorName, 1, -1);
+            }
+
+            if ($this->sourceNodeType === $selectorName && count($this->alias)) {
+                $selectorAlias = array_search('n0', $this->alias);
+            } else {
+                $selectorAlias = $selectorName;
+            }
         } else {
             $parts = explode(".", $selectorName);
             $selectorAlias = reset($parts);
@@ -194,6 +207,7 @@ class QOMWalker
      */
     public function walkSelectorSource(QOM\SelectorInterface $source)
     {
+        $this->sourceNodeType = $source->getNodeTypeName();
         $alias = $this->getTableAlias($source->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($alias, $source);
         $sql = "FROM phpcr_nodes $alias WHERE $alias.workspace_name = ? AND $nodeTypeClause";
