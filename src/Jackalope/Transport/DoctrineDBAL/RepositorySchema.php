@@ -58,14 +58,24 @@ class RepositorySchema
         $binary->setPrimaryKey(array('id'));
         $binary->addUniqueIndex(array('node_id', 'property_name', 'workspace_name', 'idx'));
 
-        $foreignKeys = $schema->createTable('phpcr_nodes_foreignkeys');
-        $foreignKeys->addColumn('source_id', 'integer');
-        $foreignKeys->addColumn('source_property_name', 'string', array('length' => 220));
-        $foreignKeys->addColumn('target_id', 'integer');
-        $foreignKeys->addColumn('type', 'smallint');
-        $foreignKeys->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
-        $foreignKeys->addIndex(array('target_id'));
-        $foreignKeys->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
+        $references = $schema->createTable('phpcr_nodes_references');
+        $references->addColumn('source_id', 'integer');
+        $references->addColumn('source_property_name', 'string', array('length' => 220));
+        $references->addColumn('target_id', 'integer');
+        $references->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
+        $references->addIndex(array('target_id'));
+        $references->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
+        // TODO: this should be reenabled on RDBMS with deferred FK support
+        //$references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
+
+        $weakreferences = $schema->createTable('phpcr_nodes_weakreferences');
+        $weakreferences->addColumn('source_id', 'integer');
+        $weakreferences->addColumn('source_property_name', 'string', array('length' => 220));
+        $weakreferences->addColumn('target_id', 'integer');
+        $weakreferences->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
+        $weakreferences->addIndex(array('target_id'));
+        $weakreferences->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
+        $weakreferences->addForeignKeyConstraint($nodes, array('target_id'), array('id'), array('onDelete' => 'CASCADE'));
 
         $types = $schema->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', array('autoincrement' => true));
