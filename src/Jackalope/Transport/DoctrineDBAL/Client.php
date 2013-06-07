@@ -1910,7 +1910,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        $source   = $query->getSource();
+        $source = $query->getSource();
 
         $this->validateSource($source);
 
@@ -1946,11 +1946,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $mainSelectorName = $mainSelector->getSelectorName();
-        $mainAlias = null;
         if (null === $mainSelectorName) {
             $mainSelectorName = $mainSelector->getNodeTypeName();
-        } else {
-            $mainAlias = $mainSelectorName;
         }
 
         if (empty($columns)) {
@@ -1970,8 +1967,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $selectorPrefix = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '.' : '';
                 $selectorName   = $selector->getSelectorName() ?: $row[$columnPrefix . 'type'];
 
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',   'dcr:value' => $row[$columnPrefix . 'path'],    'dcr:selectorName' => $selectorName);
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score',  'dcr:value' => 0,                               'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',  'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score', 'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
             }
 
             $properties = array();
