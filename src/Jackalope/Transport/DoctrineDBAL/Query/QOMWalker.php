@@ -90,7 +90,7 @@ class QOMWalker
         if ($orderings = $qom->getOrderings()) {
             $sql .= " " . $this->walkOrderings($orderings);
         }
-
+        
         return $sql;
     }
 
@@ -331,7 +331,15 @@ class QOMWalker
             
             if (is_int($literalValue) || is_float($literalValue)) {
                 return $literalValue;
-            } 
+            }
+            
+            if (is_bool($literalValue)) {
+                if (true === $literalValue) {
+                    return $this->conn->quote('1');
+                } else {
+                    return $this->conn->quote('0');
+                }
+            }
 
             $namespace = '';
             $literal = trim($literalValue, '"');
