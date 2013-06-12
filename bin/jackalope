@@ -47,6 +47,7 @@ $cli->addCommands(array(
     new \PHPCR\Util\Console\Command\NodeTypeRegisterCommand(),
 
     new \PHPCR\Util\Console\Command\WorkspaceCreateCommand(),
+    new \PHPCR\Util\Console\Command\WorkspaceDeleteCommand(),
     new \PHPCR\Util\Console\Command\WorkspaceExportCommand(),
     new \PHPCR\Util\Console\Command\WorkspaceImportCommand(),
     new \PHPCR\Util\Console\Command\WorkspaceListCommand(),
