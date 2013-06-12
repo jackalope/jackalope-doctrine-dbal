@@ -422,6 +422,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             RepositoryInterface::OPTION_XML_EXPORT_SUPPORTED => true,
             RepositoryInterface::OPTION_XML_IMPORT_SUPPORTED => true,
             RepositoryInterface::QUERY_FULL_TEXT_SEARCH_SUPPORTED => true,
+            RepositoryInterface::QUERY_CANCEL_SUPPORTED => false,
             RepositoryInterface::QUERY_JOINS => RepositoryInterface::QUERY_JOINS_NONE,
             RepositoryInterface::QUERY_LANGUAGES => array(QueryInterface::JCR_SQL2, QueryInterface::JCR_JQOM),
             RepositoryInterface::QUERY_STORED_QUERIES_SUPPORTED => false,
@@ -2019,6 +2020,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         return $results;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getSupportedQueryLanguages()
+    {
+        return array(
+            QueryInterface::JCR_SQL2,
+            QueryInterface::JCR_JQOM,
+        );
     }
 
     /**
