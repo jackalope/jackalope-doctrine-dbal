@@ -10,7 +10,7 @@ env:
   - DB=sqlite
 
 before_script:
-  - composer update
+  - composer update --prefer-source
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - pyrus set auto_discover 1
