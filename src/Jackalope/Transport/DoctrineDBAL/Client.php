@@ -1979,7 +1979,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($selectors as $selector) {
                 $columnPrefix   = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '_' : '';
                 $selectorPrefix = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '.' : '';
-                $selectorName   = $selector->getSelectorName() ?: $row[$columnPrefix . 'type'];
+                $selectorName   = $selector->getSelectorName() ?: $selector->getNodeTypeName();
 
                 $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',  'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
                 $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score', 'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
