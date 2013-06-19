@@ -74,6 +74,8 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     // TODO https://github.com/jackalope/jackalope-doctrine-dbal/issues/89 (next two tests)
                     'Query\QueryResultsTest::testCompareNumberFields',
                     'Query\QueryResultsTest::testBooleanField',
+                    // https://github.com/jackalope/jackalope-doctrine-dbal/issues/125
+                    'Query\QuerySql2OperationsTest::testQueryJoin',
 
 
                     // this seems a bug in php with arrayiterator - and jackalope is using
