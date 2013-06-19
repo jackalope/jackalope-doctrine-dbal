@@ -104,18 +104,18 @@ class QOMWalker
                 $selectorAlias = '';
             }
         } elseif (strpos($selectorName, ".") === false) {
-            if (strpos($selectorName, '[') === 0) {
-                $selectorName = substr($selectorName, 1, -1);
-            }
-
-            if ($this->sourceNodeType === $selectorName && count($this->alias)) {
-                $selectorAlias = array_search('n0', $this->alias);
-            } else {
-                $selectorAlias = $selectorName;
-            }
+            $selectorAlias = $selectorName;
         } else {
             $parts = explode(".", $selectorName);
             $selectorAlias = reset($parts);
+        }
+
+        if (strpos($selectorAlias, '[') === 0) {
+            $selectorAlias = substr($selectorAlias, 1, -1);
+        }
+
+        if ($this->sourceNodeType === $selectorAlias) {
+            $selectorAlias = '';
         }
 
         return $selectorAlias;
