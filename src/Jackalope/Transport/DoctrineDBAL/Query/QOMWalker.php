@@ -411,12 +411,48 @@ class QOMWalker
 
     /**
      * @param QOM\ComparisonInterface $constraint
+     * @return string
      */
     public function walkComparisonConstraint(QOM\ComparisonInterface $constraint)
     {
-        return $this->walkOperand($constraint->getOperand1()) . " " .
-               $this->walkOperator($constraint->getOperator()) . " " .
-               $this->walkOperand($constraint->getOperand2());
+        // When we encouter equal/not-equal do some checks to catch text comparison
+        if ($constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO || $constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO) {
+            // Check if we have a property and a literal value (in random order)
+            if (
+                ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface   || $constraint->getOperand2() instanceOf QOM\PropertyValueInterface) &&
+                ($constraint->getOperand1() instanceOf QOM\LiteralInterface         || $constraint->getOperand2() instanceOf QOM\LiteralInterface)
+            ) {
+                if ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface) {
+                    $propertyOperand = $constraint->getOperand1();
+                    $literalOperand = $constraint->getOperand2();
+                } else {
+                    $propertyOperand = $constraint->getOperand2();
+                    $literalOperand = $constraint->getOperand1();
+                }
+
+                if ('jcr:path' !== $propertyOperand->getPropertyName() && 'jcr:uuid' !== $propertyOperand->getPropertyName()) {
+                    return $this->walkTextComparisonConstraint($propertyOperand, $literalOperand, $constraint->getOperator());
+                }
+            }
+        }
+
+        // None of the checks above returned a constraint, return a simple constraint
+        return
+            $this->walkOperand($constraint->getOperand1()) . " " .
+            $this->walkOperator($constraint->getOperator()) . " " .
+            $this->walkOperand($constraint->getOperand2());
+    }
+
+    /**
+     * @param QOM\ComparisonInterface $constraint
+     * @return string
+     */
+    public function walkTextComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
+    {
+        $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
+        $property = $propertyOperand->getPropertyName();
+
+        return $this->sqlXpathComparePropertyValue($alias, $property, $this->getLiteralValue($literalOperand), $operator);
     }
 
     /**
@@ -474,28 +510,8 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
-            $namespace = '';
 
-            $value = $operand->getLiteralValue();
-
-            if ($value instanceof \DateTime) {
-                $literal = $value->format('c');
-            } else {
-                $literal = trim($value, '"');
-                if (($aliasLength = strpos($literal, ':')) !== false) {
-                    $alias = substr($literal, 0, $aliasLength);
-                    if (!isset($this->namespaces[$alias])) {
-                        throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
-                    }
-                    if (!empty($this->namespaces[$alias])) {
-                        $namespace = $this->namespaces[$alias].':';
-                    }
-
-                    $literal = substr($literal, $aliasLength + 1);
-                }
-            }
-
-            return $this->conn->quote($namespace.$literal);
+            return $this->conn->quote($this->getLiteralValue($operand));
         }
         if ($operand instanceof QOM\PropertyValueInterface) {
             $alias = $this->getTableAlias($operand->getSelectorName() . '.' . $operand->getPropertyName());
@@ -544,6 +560,37 @@ class QOMWalker
     }
 
     /**
+     * @param QOM\LiteralInterface $operand
+     * @return string
+     * @throws \PHPCR\NamespaceException
+     */
+    private function getLiteralValue(QOM\LiteralInterface $operand)
+    {
+        $namespace = '';
+
+        $value = $operand->getLiteralValue();
+
+        if ($value instanceof \DateTime) {
+            $literal = $value->format('c');
+        } else {
+            $literal = trim($value, '"');
+            if (($aliasLength = strpos($literal, ':')) !== false) {
+                $alias = substr($literal, 0, $aliasLength);
+                if (!isset($this->namespaces[$alias])) {
+                    throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
+                }
+                if (!empty($this->namespaces[$alias])) {
+                    $namespace = $this->namespaces[$alias].':';
+                }
+
+                $literal = substr($literal, $aliasLength + 1);
+            }
+        }
+
+        return $namespace.$literal;
+    }
+
+    /**
      * SQL to execute an XPATH expression checking if the property exist on the node with the given alias.
      *
      * @param string $alias
@@ -585,6 +632,36 @@ class QOMWalker
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
+    }
+
+    /**
+     * @param $alias
+     * @param $property
+     * @param $value
+     * @param string $operator
+     * @return string
+     * @throws \Jackalope\NotImplementedException
+     */
+    private function sqlXpathComparePropertyValue($alias, $property, $value, $operator)
+    {
+        $expression = null;
+
+        if ($this->platform instanceof MySqlPlatform) {
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]) > 0')";
+        }
+
+        if ($this->platform instanceof PostgreSqlPlatform) {
+            $expression = "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
+        }
+        if ($this->platform instanceof SqlitePlatform) {
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]) > 0')";
+        }
+
+        if (null === $expression) {
+            throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
+        }
+
+        return sprintf($expression, $this->walkOperator($operator), $value);
     }
 
     /**
