@@ -651,7 +651,7 @@ class QOMWalker
         }
 
         if ($this->platform instanceof PostgreSqlPlatform) {
-            $expression = "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
+            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
         if ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]) > 0')";
