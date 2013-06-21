@@ -138,8 +138,7 @@ class QOMWalker
             $orderingSql = " " . $this->walkOrderings($orderings);
         }
 
-        $sql = "SELECT";
-        $sql .= " " . $this->walkColumns($qom->getColumns());
+        $sql = "SELECT " . $this->getColumns();
         $sql .= $sourceSql;
         $sql .= $constraintSql;
         $sql .= $orderingSql;
@@ -151,7 +150,7 @@ class QOMWalker
      * @param $columns
      * @return string
      */
-    public function walkColumns($columns)
+    public function getColumns()
     {
         $sqlColumns = array();
         foreach ($this->schema->getTable('phpcr_nodes')->getColumns() as $column) {
@@ -176,15 +175,6 @@ class QOMWalker
         return $sql;
     }
 
-    /*
-     * @return string
-     */
-    public function walkColumn(QOM\ColumnInterface $column)
-    {
-        $alias = $this->getTableAlias($column->getSelectorName());
-        return $this->sqlProperty($alias, $column->getPropertyName());
-    }
-
     /**
      * @param \PHPCR\Query\QOM\SourceInterface $source
      * @return string
@@ -199,6 +189,8 @@ class QOMWalker
         if ($source instanceOf QOM\JoinInterface) {
             return $this->walkJoinSource($source);
         }
+
+        throw new NotImplementedException(sprintf("The source class '%s' is not supported", get_class($source)));
     }
 
     /**
