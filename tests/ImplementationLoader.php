@@ -69,8 +69,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\QueryManagerTest::testGetQuery',
                     'Query\\QueryManagerTest::testGetQueryInvalid',
                     'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
-                    // TODO https://github.com/jackalope/jackalope-doctrine-dbal/issues/88
-                    // 'Query\QuerySql2OperationsTest::testQueryMultiValuedProperty',
                     // TODO https://github.com/jackalope/jackalope-doctrine-dbal/issues/89 (next two tests)
                     'Query\QueryResultsTest::testCompareNumberFields',
                     'Query\QueryResultsTest::testBooleanField',
