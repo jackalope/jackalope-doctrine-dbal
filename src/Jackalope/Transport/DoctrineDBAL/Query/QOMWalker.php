@@ -410,6 +410,11 @@ class QOMWalker
     }
 
     /**
+     * This method figures out the best way to do a comparison
+     * When we need to compare a property with a literal value,
+     * we need to be aware of the multivalued properties, we then require
+     * a different xpath statement then with other comparisons
+     *
      * @param QOM\ComparisonInterface $constraint
      * @return string
      */
@@ -419,15 +424,19 @@ class QOMWalker
         if ($constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO || $constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO) {
             // Check if we have a property and a literal value (in random order)
             if (
-                ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface   || $constraint->getOperand2() instanceOf QOM\PropertyValueInterface) &&
-                ($constraint->getOperand1() instanceOf QOM\LiteralInterface         || $constraint->getOperand2() instanceOf QOM\LiteralInterface)
+                ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface
+                    && $constraint->getOperand2() instanceOf QOM\LiteralInterface) ||
+                ($constraint->getOperand1() instanceOf QOM\LiteralInterface
+                    && $constraint->getOperand2() instanceOf QOM\PropertyValueInterface)
             ) {
+                // Check weither the left is the property, at this point
+                // the other always is the literal operand
                 if ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface) {
                     $propertyOperand = $constraint->getOperand1();
                     $literalOperand = $constraint->getOperand2();
                 } else {
-                    $propertyOperand = $constraint->getOperand2();
                     $literalOperand = $constraint->getOperand1();
+                    $propertyOperand = $constraint->getOperand2();
                 }
 
                 if ('jcr:path' !== $propertyOperand->getPropertyName() && 'jcr:uuid' !== $propertyOperand->getPropertyName()) {
