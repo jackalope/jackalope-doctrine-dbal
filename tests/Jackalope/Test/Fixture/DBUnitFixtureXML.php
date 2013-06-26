@@ -382,7 +382,7 @@ class DBUnitFixtureXML extends XMLDocument
             if (null === $value) {
                 $row->appendChild($this->createElement('null'));
             } else {
-                $row->appendChild($this->createElement('value', $value));
+                $row->appendChild($this->createElement('value', htmlspecialchars($value)));
             }
         }
         $this->tables[$tableName]->appendChild($row);
