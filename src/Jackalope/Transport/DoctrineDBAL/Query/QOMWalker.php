@@ -670,7 +670,7 @@ class QOMWalker
             throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
         }
 
-        return sprintf($expression, $this->walkOperator($operator), $value);
+        return sprintf($expression, $this->walkOperator($operator), addslashes($value));
     }
 
     /**
