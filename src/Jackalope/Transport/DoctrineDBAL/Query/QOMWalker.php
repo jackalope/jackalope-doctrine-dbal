@@ -5,6 +5,7 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+use Jackalope\Transport\DoctrineDBAL\Util\Xpath;
 
 use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
@@ -642,21 +643,21 @@ class QOMWalker
         $expression = null;
 
         if ($this->platform instanceof MySqlPlatform) {
-            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]) > 0')";
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
         }
 
         if ($this->platform instanceof PostgreSqlPlatform) {
-            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
+            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
         if ($this->platform instanceof SqlitePlatform) {
-            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s\"%s\"]) > 0')";
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
         }
 
         if (null === $expression) {
             throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
         }
 
-        return sprintf($expression, $this->walkOperator($operator), addslashes($value));
+        return sprintf($expression, $this->walkOperator($operator), Xpath::escape($value));
     }
 
     /**
