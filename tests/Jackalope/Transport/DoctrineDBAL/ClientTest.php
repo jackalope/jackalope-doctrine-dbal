@@ -3,10 +3,17 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\DriverManager;
+use Jackalope\Factory;
+use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Test\TestCase;
+use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
+use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 
 class ClientTest extends TestCase
 {
+    /**
+     * @var \Jackalope\Transport\DoctrineDBAL\Client
+     */
     private $transport;
     /**
      * @var \Jackalope\Repository
@@ -214,4 +221,52 @@ class ClientTest extends TestCase
         $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '5');
     }
+
+    public function testProblematicCharacters()
+    {
+        $root = $this->session->getNode('/');
+        $node = $root->addNode('encodingTest');
+
+        $node->setProperty('class', 'Jackalope\\Transport\\DoctrineDBAL\\Client');
+        $node->setProperty('ampersand', 'This is a test & I want to see it work');
+        $node->setProperty('quotes', 'So this isn\'t just a test, but an actual "quote" test.');
+
+        $this->session->save();
+
+        $factory = new QueryObjectModelFactory(new Factory());
+
+        $query = $factory->createQuery(
+            $factory->selector('nt:unstructured'),
+            $factory->comparison($factory->propertyValue('class'), QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO, $factory->literal('Jackalope\\Transport\\DoctrineDBAL\\Client'))
+        );
+
+
+        $qomWalker = new QOMWalker($this->getNodeTypeManager(), $this->getConnection());
+
+        $result = $this->transport->query($query);
+
+//        $this->assertCount(1, $result, 'Failed searching for property with backslashes in it\'s value');
+
+        $query = $factory->createQuery(
+            $factory->selector('nt:unstructured'),
+            $factory->comparison($factory->propertyValue('ampersand'), QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO, $factory->literal('This is a test & I want to see it work'))
+        );
+
+        $result = $this->transport->query($query);
+
+        $this->assertCount(1, $result);
+
+        $query = $factory->createQuery(
+            $factory->selector('nt:unstructured'),
+            $factory->comparison($factory->propertyValue('quotes'), QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO, $factory->literal('So this isn\'t just a test, but an actual "quote" test.'))
+        );
+
+        var_dump($qomWalker->walkQOMQuery($query));
+
+        $result = $this->transport->query($query);
+
+        $this->assertCount(1, $result);
+    }
+
+
 }
