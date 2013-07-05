@@ -1580,33 +1580,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return UUIDHelper::generateUUID();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function storeProperty(Property $property)
-    {
-        $this->assertLoggedIn();
-
-        // just store the node with this property
-
-        // TODO: we should really delegate more of this from ObjectManager to transport.
-        // this is called for each property of a node - for jackrabbit it makes sense but not here
-
-        $node = $property->getParent();
-        $this->validateNode($node);
-
-        $path = $node->getPath();
-        $properties = $node->getProperties();
-        $this->syncNode(
-            $this->getIdentifier($path, $properties),
-            $path,
-            $node->getPropertyValue('jcr:primaryType'),
-            false,
-            $properties
-        );
-
-        return true;
-    }
 
     /**
      * Validation if all the data is correct before writing it into the database.
@@ -2256,5 +2229,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if ($right) {
             $this->validateSource($right);
         }
+    }
+    
+    /**
+     *
+     * @param string $path the path to store the node at
+     * @param array $properties the properties of this node
+     */
+    public function updateProperties($path, $properties)
+    {
+        $nodeIdentifier = $this->getIdentifier($path, $properties);
+        $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
+    
+        $this->syncNode($nodeIdentifier, $path, $type, false, $properties);
+    
+        return true;
     }
 }
