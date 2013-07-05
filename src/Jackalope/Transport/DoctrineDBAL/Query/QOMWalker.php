@@ -429,8 +429,7 @@ class QOMWalker
                 ($constraint->getOperand1() instanceOf QOM\LiteralInterface
                     && $constraint->getOperand2() instanceOf QOM\PropertyValueInterface)
             ) {
-                // Check weither the left is the property, at this point
-                // the other always is the literal operand
+                // Check whether the left is the property, at this point the other always is the literal operand
                 if ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface) {
                     $propertyOperand = $constraint->getOperand1();
                     $literalOperand = $constraint->getOperand2();
