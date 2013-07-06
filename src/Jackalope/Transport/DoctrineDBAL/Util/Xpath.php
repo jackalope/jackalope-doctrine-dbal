@@ -10,6 +10,17 @@ class Xpath
 {
 
     /**
+     * @param $query
+     * @return string
+     */
+    public static function escapeBackslashes($query)
+    {
+        return str_replace('\\', '\\\\', $query);
+        // Escape backslahes that aren't escape characters for quotes
+        return preg_replace('/([\\\\]+)([^"|\\\']{1})?/', '\1\1\2', $query);
+    }
+
+    /**
      * Escapes a string to be used in an xpath query
      * There is a lot of double escaping here because we use single
      * quote in the EXTRACTVALUE functions
@@ -25,10 +36,10 @@ class Xpath
      * @param string $enclosure
      * @return string
      */
-    public static function escape($query, $enclosure = '"')
+    public static function escape($query, $enclosure = '"', $doubleEscapeSingleQuote = true)
     {
-        // Escape backslahes that aren't escape characters for quotes
-        $query = preg_replace('/\\\\([^"|\\\'])/', '\\\\\\\\\1', $query);
+        $escapeSingleQuote = $doubleEscapeSingleQuote ? '"\'%s"' : '"%s"';
+        $escapeDoubleQuote = $doubleEscapeSingleQuote ? "''%s''" : "'%s'";
 
         if ((strpos($query, '\'') !== false) ||
             (strpos($query, '"') !== false))
@@ -40,14 +51,14 @@ class Xpath
             foreach (str_split($query) as $character) {
 
                 if (in_array($character, $quotechars)) {
-                    if ($current && '\\' !== substr($current, -1)) {
+                    if ('' !== $current && '\\' !== substr($current, -1)) {
                         $parts[] = $enclosure . $current . $enclosure;
                     }
 
                     if ($character == '\'') {
-                        $parts[] = '"\\' . $character . '"';
+                        $parts[] = sprintf($escapeSingleQuote, $character);
                     } else {
-                        $parts[] = '\\\'' . $character . '\\\'';
+                        $parts[] = sprintf($escapeDoubleQuote, $character);
                     }
 
                     $current = '';
