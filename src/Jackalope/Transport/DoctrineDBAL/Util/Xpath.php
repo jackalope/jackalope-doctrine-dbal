@@ -14,12 +14,18 @@ class Xpath
      * There is a lot of double escaping here because we use single
      * quote in the EXTRACTVALUE functions
      *
+     * The purpose of this method, is to escape a string quotes within a xpath expression
+     * which can be kind-of hard.
+     *
+     * Example:
+     *   query: Foo isn't bar
+     *   result: concat("Foo isn", "'", "t bar")
      *
      * @param $query
-     * @param string $delimiter
+     * @param string $enclosure
      * @return string
      */
-    public static function escape($query, $delimiter = '"', $doubleEscape = null)
+    public static function escape($query, $enclosure = '"')
     {
         // Escape backslahes that aren't escape characters for quotes
         $query = preg_replace('/\\\\([^"|\\\'])/', '\\\\\\\\\1', $query);
@@ -35,7 +41,7 @@ class Xpath
 
                 if (in_array($character, $quotechars)) {
                     if ($current && '\\' !== substr($current, -1)) {
-                        $parts[] = $delimiter . $current . $delimiter;
+                        $parts[] = $enclosure . $current . $enclosure;
                     }
 
                     if ($character == '\'') {
@@ -52,7 +58,7 @@ class Xpath
             }
 
             if ($current) {
-                $parts[] =  $delimiter . $current . $delimiter;
+                $parts[] =  $enclosure . $current . $enclosure;
             }
 
 
@@ -63,7 +69,7 @@ class Xpath
                 $ret = 'concat(' . join(', ', $parts) . ')';
             }
         } else {
-            $ret = $delimiter . $query . $delimiter;
+            $ret = $enclosure . $query . $enclosure;
         }
 
         return $ret;
