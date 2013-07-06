@@ -3,17 +3,10 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\DriverManager;
-use Jackalope\Factory;
-use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Test\TestCase;
-use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
-use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 
 class ClientTest extends TestCase
 {
-    /**
-     * @var \Jackalope\Transport\DoctrineDBAL\Client
-     */
     private $transport;
     /**
      * @var \Jackalope\Repository
@@ -221,5 +214,4 @@ class ClientTest extends TestCase
         $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '5');
     }
-
 }

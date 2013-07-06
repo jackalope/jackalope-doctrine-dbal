@@ -653,6 +653,7 @@ class QOMWalker
         }
         if ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
+            $value = '"' . $value . '"';
         }
 
         if (null === $expression) {
