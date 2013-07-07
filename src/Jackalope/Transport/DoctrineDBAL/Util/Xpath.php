@@ -51,7 +51,7 @@ class Xpath
             foreach (str_split($query) as $character) {
 
                 if (in_array($character, $quotechars)) {
-                    if ('' !== $current && '\\' !== substr($current, -1)) {
+                    if ('' !== $current) {
                         $parts[] = $enclosure . $current . $enclosure;
                     }
 
@@ -71,7 +71,6 @@ class Xpath
             if ($current) {
                 $parts[] =  $enclosure . $current . $enclosure;
             }
-
 
             if (count($parts) > 2) {
                 $part1 = array_shift($parts);
@@ -96,21 +95,12 @@ class Xpath
     public static function concatBy2(array $parts)
     {
         if (2 === count($parts)) {
-            return 'concat(' . join(', ', $parts) . ')';
+            return sprintf('concat(%s, %s)', $parts[0], $parts[1]);
         }
 
         $part1 = array_shift($parts);
 
-        $return = 'concat(' . $part1 . ', ';
-        foreach (array_chunk($parts, 2) as $twoParts) {
-            if (1 === count($twoParts)) {
-                $return .= $twoParts[0];
-            } else {
-                $return .= self::concatBy2($twoParts);
-            }
-        }
-
-        return $return . ')';
+        return 'concat(' . $part1 . ', ' . self::concatBy2($parts) . ')';
     }
 
 }
