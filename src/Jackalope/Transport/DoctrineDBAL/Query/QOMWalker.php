@@ -574,8 +574,6 @@ class QOMWalker
      */
     private function getLiteralValue(QOM\LiteralInterface $operand)
     {
-        $namespace = '';
-
         $value = $operand->getLiteralValue();
 
         if ($value instanceof \DateTime) {
@@ -584,7 +582,7 @@ class QOMWalker
             $literal = $value;
         }
 
-        return $namespace.$literal;
+        return $literal;
     }
 
     /**
