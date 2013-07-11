@@ -645,17 +645,11 @@ class QOMWalker
         if ($this->platform instanceof MySqlPlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
             $value = Xpath::escapeBackslashes($value);
-        }
-
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        } elseif ($this->platform instanceof PostgreSqlPlatform) {
             $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
-            $value = Xpath::escapeBackslashes($value);
-        }
-        if ($this->platform instanceof SqlitePlatform) {
+        } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
-        }
-
-        if (null === $expression) {
+        } else {
             throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
         }
 
