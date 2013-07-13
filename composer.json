@@ -4,7 +4,7 @@
     "description": "Jackalope Transport library",
     "keywords": ["transport implementation", "doctrine-dbal"],
     "homepage": "http://jackalope.github.com",
-    "license": "MIT",
+    "license": "Apache-2.0",
     "minimum-stability": "dev",
     "authors": [
         {
