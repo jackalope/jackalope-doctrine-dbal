@@ -22,13 +22,13 @@ class ClientTest extends TestCase
         parent::setUp();
 
         $conn = $this->getConnection();
-        $schema = RepositorySchema::create();
-
+        $schema = new RepositorySchema;
+        // do not use reset as we want to ignore exceptions on drop
         foreach ($schema->toDropSql($conn->getDatabasePlatform()) as $statement) {
             try {
                 $conn->exec($statement);
             } catch(\Exception $e) {
-
+                // ignore
             }
         }
 
