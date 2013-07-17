@@ -40,7 +40,7 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
 ));
 
 // recreate database schema
-$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($dbConn);
+$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema(array(), $dbConn);
 $repositorySchema->reset();
 
 // some constants

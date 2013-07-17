@@ -59,7 +59,7 @@ EOT
             $output->write('ATTENTION: This operation should not be executed in a production environment.' . PHP_EOL . PHP_EOL);
         }
 
-        $schema = RepositorySchema::create();
+        $schema = new RepositorySchema;
         try {
             if ($input->getOption('drop')) {
                 foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {

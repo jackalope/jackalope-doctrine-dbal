@@ -72,7 +72,7 @@ class QOMWalker
         $this->nodeTypeManager = $manager;
         $this->platform = $conn->getDatabasePlatform();
         $this->namespaces = $namespaces;
-        $this->schema = RepositorySchema::create();
+        $this->schema = new RepositorySchema;
     }
 
     /**
