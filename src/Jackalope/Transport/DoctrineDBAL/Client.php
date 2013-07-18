@@ -531,12 +531,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $namespaces = $this->getNamespaces();
-
         if (!isset($namespaces[$alias])) {
             throw new NamespaceException('the namespace ' . $alias . ' was not registered.');
         }
 
-        return array($namespaces[$alias], $name);
+        return array($alias, $name);
     }
 
     /**
@@ -567,7 +566,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         if ($isNewNode) {
-            list($namespace, $localName) = $this->getJcrName($path);
+            list($namespaceAlias, $localName) = $this->getJcrName($path);
 
             $qb = $this->conn->createQueryBuilder();
 
@@ -584,9 +583,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'type'          => $type,
                     'path'          => $path,
                     'local_name'    => $localName,
-                    'namespace'     => $namespace,
+                    'namespace'     => $namespaceAlias,
                     'parent'        => PathHelper::getParentPath($path),
-                    'workspace_name'  => $this->workspaceName,
+                    'workspace_name'=> $this->workspaceName,
                     'props'         => $propsData['dom']->saveXML(),
                     'depth'         => PathHelper::getPathDepth($path),
                     'parent_a'      => PathHelper::getParentPath($path),
