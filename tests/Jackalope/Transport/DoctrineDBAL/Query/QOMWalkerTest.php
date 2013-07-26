@@ -70,7 +70,7 @@ class QOMWalkerTest extends TestCase
         );
         $sql = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains('//sv:property[@sv:name="jcr:createdBy"]/sv:value[1]',
+        $this->assertContains('//sv:property[@sv:name="jcr:createdBy"]/sv:value',
             $sql
         );
     }
