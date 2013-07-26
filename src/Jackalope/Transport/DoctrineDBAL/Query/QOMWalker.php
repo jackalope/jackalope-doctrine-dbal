@@ -421,26 +421,52 @@ class QOMWalker
      */
     public function walkComparisonConstraint(QOM\ComparisonInterface $constraint)
     {
-        // When we encouter equal/not-equal do some checks to catch text comparison
-        if ($constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO || $constraint->getOperator() == QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO) {
+        $operator = $this->walkOperator($constraint->getOperator());
+
+        // When we encounter equal/not-equal do some checks to catch text comparison
+        if ('=' === $operator || '!=' === $operator) {
+            $operator1 = $constraint->getOperand1();
+            $operator2 = $constraint->getOperand2();
+
             // Check if we have a property and a literal value (in random order)
             if (
-                ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface
-                    && $constraint->getOperand2() instanceOf QOM\LiteralInterface) ||
-                ($constraint->getOperand1() instanceOf QOM\LiteralInterface
-                    && $constraint->getOperand2() instanceOf QOM\PropertyValueInterface)
+                ($operator1 instanceOf QOM\PropertyValueInterface
+                    && $operator2 instanceOf QOM\LiteralInterface)
+                || ($operator1 instanceOf QOM\LiteralInterface
+                    && $operator2 instanceOf QOM\PropertyValueInterface)
+                || ($operator1 instanceOf QOM\NodeNameInterface
+                    && $operator2 instanceOf QOM\LiteralInterface)
+                || ($operator1 instanceOf QOM\LiteralInterface
+                    && $operator2 instanceOf QOM\NodeNameInterface)
             ) {
-                // Check whether the left is the property, at this point the other always is the literal operand
-                if ($constraint->getOperand1() instanceOf QOM\PropertyValueInterface) {
-                    $propertyOperand = $constraint->getOperand1();
-                    $literalOperand = $constraint->getOperand2();
+                // Check whether the left is the literal, at this point the other always is the literal/nodename operand
+                if ($constraint->getOperand1() instanceOf QOM\LiteralInterface) {
+                    $operand = $operator2;
+                    $literalOperand = $operator1;
                 } else {
-                    $literalOperand = $constraint->getOperand1();
-                    $propertyOperand = $constraint->getOperand2();
+                    $literalOperand = $operator2;
+                    $operand = $operator1;
                 }
 
-                if ('jcr:path' !== $propertyOperand->getPropertyName() && 'jcr:uuid' !== $propertyOperand->getPropertyName()) {
-                    return $this->walkTextComparisonConstraint($propertyOperand, $literalOperand, $constraint->getOperator());
+                if ($operand instanceof QOM\NodeNameInterface) {
+                    $selectorName = $operand->getSelectorName();
+                    $alias = $this->getTableAlias($selectorName);
+
+                    $literal = $literalOperand->getLiteralValue();
+                    $parts = explode(':', $literal);
+                    if (!isset($this->namespaces[$parts[0]])) {
+                        throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
+                    }
+
+                    $parts[0] = $this->namespaces[$parts[0]];
+
+                    return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name") . " " .
+                        $operator . " " .
+                        $this->conn->quote(implode(':', $parts));
+                }
+
+                if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
+                    return $this->walkTextComparisonConstraint($operand, $literalOperand, $operator);
                 }
             }
         }
@@ -448,7 +474,7 @@ class QOMWalker
         // None of the checks above returned a constraint, return a simple constraint
         return
             $this->walkOperand($constraint->getOperand1()) . " " .
-            $this->walkOperator($constraint->getOperator()) . " " .
+            $operator . " " .
             $this->walkOperand($constraint->getOperand2());
     }
 
@@ -500,12 +526,6 @@ class QOMWalker
      */
     public function walkOperand(QOM\OperandInterface $operand)
     {
-        if ($operand instanceof QOM\NodeNameInterface) {
-            $selector = $operand->getSelectorName();
-            $alias = $this->getTableAlias($selector);
-
-            return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name");
-        }
         if ($operand instanceof QOM\NodeLocalNameInterface) {
             $selector = $operand->getSelectorName();
             $alias = $this->getTableAlias($selector);
@@ -519,7 +539,6 @@ class QOMWalker
             return $this->platform->getUpperExpression($this->walkOperand($operand->getOperand()));
         }
         if ($operand instanceof QOM\LiteralInterface) {
-
             return $this->conn->quote($this->getLiteralValue($operand));
         }
         if ($operand instanceof QOM\PropertyValueInterface) {
@@ -564,8 +583,14 @@ class QOMWalker
      */
     public function walkOrdering(QOM\OrderingInterface $ordering)
     {
-        return $this->walkOperand($ordering->getOperand()) . " " .
-               (($ordering->getOrder() == QOM\QueryObjectModelConstantsInterface::JCR_ORDER_ASCENDING) ? "ASC" : "DESC");
+        $direction = $ordering->getOrder();
+        if ($direction === QOM\QueryObjectModelConstantsInterface::JCR_ORDER_ASCENDING) {
+            $direction = 'ASC';
+        } elseif ($direction === QOM\QueryObjectModelConstantsInterface::JCR_ORDER_DESCENDING) {
+            $direction = 'DESC';
+        }
+
+        return $this->walkOperand($ordering->getOperand()) . " " . $direction;
     }
 
     /**
