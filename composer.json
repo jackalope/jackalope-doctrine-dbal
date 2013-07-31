@@ -19,7 +19,7 @@
         "doctrine/dbal": ">=2.2.0,<2.4"
     },
     "provide": {
-        "jackalope/jackalope-transport": "1.0.0-beta3"
+        "jackalope/jackalope-transport": "1.0.0-beta4"
     },
     "require-dev": {
         "phpcr/phpcr-api-tests": "dev-master"
