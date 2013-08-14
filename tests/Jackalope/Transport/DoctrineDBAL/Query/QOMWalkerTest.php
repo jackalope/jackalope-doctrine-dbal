@@ -212,7 +212,7 @@ class QOMWalkerTest extends TestCase
     /**
      * @expectedException \PHPCR\Query\InvalidQueryException
      */
-    public function testDescendantQuery_trailingSlash()
+    public function testDescendantQueryTrailingSlash()
     {
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
         $query = $this->factory->createQuery(
