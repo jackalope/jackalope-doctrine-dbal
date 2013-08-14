@@ -7,8 +7,11 @@ use Doctrine\Common\Cache\ArrayCache;
 
 use Doctrine\DBAL\Connection;
 
+use Jackalope\NotImplementedException;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
+
+use PHPCR\ItemNotFoundException;
 
 /**
  * Class to add caching to the Doctrine DBAL client.
@@ -20,7 +23,7 @@ use Jackalope\Node;
 class CachedClient extends Client
 {
     /**
-     * @var Doctrine\Common\Cache\Cache[]
+     * @var Cache[]
      */
     private $caches;
 
@@ -159,6 +162,35 @@ class CachedClient extends Client
             }
         }
         return $nodes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodeByIdentifier($uuid)
+    {
+        $path = $this->getNodePathForIdentifier($uuid);
+        $data = $this->getNode($path);
+        $data->{':jcr:path'} = $path;
+        return $data;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getNodesByIdentifier($uuids)
+    {
+        $data = array();
+        foreach ($uuids as $uuid) {
+            try {
+                $path = $this->getNodePathForIdentifier($uuid);
+                $data[$path] = $this->getNode($path);
+            } catch (ItemNotFoundException $e) {
+                // skip
+            }
+        }
+
+        return $data;
     }
 
     /**
