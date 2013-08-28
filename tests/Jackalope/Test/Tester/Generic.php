@@ -25,7 +25,7 @@ class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements Fix
      * Creates a new default database tester using the given connection.
      *
      * @param \PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection
-     * @param string $fixturePath
+     * @param string                                              $fixturePath
      */
     public function __construct(\PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection, $fixturePath)
     {

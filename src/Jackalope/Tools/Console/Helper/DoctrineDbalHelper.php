@@ -38,4 +38,3 @@ class DoctrineDbalHelper extends Helper
         return 'jackalope-doctrine-dbal';
     }
 }
-

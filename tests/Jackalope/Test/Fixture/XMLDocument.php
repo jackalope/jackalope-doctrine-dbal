@@ -33,8 +33,8 @@ abstract class XMLDocument extends \DOMDocument
     protected $namespaces;
 
     /**
-     * @param   string  $file       - file path
-     * @param   int     $options    - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * @param string $file    - file path
+     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      */
     public function __construct($file, $options = null)
     {
@@ -76,10 +76,10 @@ abstract class XMLDocument extends \DOMDocument
     /**
      * Load xml file.
      *
-     * @param   string  $file       - file path
-     * @param   int     $options    - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * @param string $file    - file path
+     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      *
-     * @return  \Jackalope\Test\XMLDocument
+     * @return \Jackalope\Test\XMLDocument
      */
     public function load($file = null, $options = null)
     {
@@ -99,10 +99,10 @@ abstract class XMLDocument extends \DOMDocument
     /**
      * Dumps the internal XML tree back into a string.
      *
-     * @param   \DOMNode    $node       - node to dump
-     * @param   int         $options    - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * @param \DOMNode $node    - node to dump
+     * @param int      $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      *
-     * @return  string
+     * @return string
      */
     public function saveXml(\DOMNode $node = null, $options = null)
     {
@@ -112,9 +112,9 @@ abstract class XMLDocument extends \DOMDocument
     /**
      * Dumps the internal XML tree back into a file.
      *
-     * @param   string  $file
+     * @param string $file
      *
-     * @return  \Jackalope\Test\XMLDocument
+     * @return \Jackalope\Test\XMLDocument
      */
     public function save($file = null)
     {

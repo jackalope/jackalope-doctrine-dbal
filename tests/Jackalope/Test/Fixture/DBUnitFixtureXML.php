@@ -5,8 +5,6 @@ namespace Jackalope\Test\Fixture;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\UUIDHelper;
 
-use PHPCR\PropertyType;
-
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files.
  *
@@ -20,7 +18,7 @@ class DBUnitFixtureXML extends XMLDocument
     /**
      * @var integer
      */
-    static protected $idCounter = 1;
+    protected static $idCounter = 1;
 
     /**
      * @var array
@@ -43,8 +41,8 @@ class DBUnitFixtureXML extends XMLDocument
     protected $expectedNodes;
 
     /**
-     * @param   string  $file       - file path
-     * @param   int     $options    - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * @param string $file    - file path
+     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      */
     public function __construct($file, $options = null)
     {
@@ -350,13 +348,13 @@ class DBUnitFixtureXML extends XMLDocument
     }
 
     /**
-     * @param   int     $id
-     * @param   string  $propertyName
-     * @param   string  $workspaceName
-     * @param   int     $idx
-     * @param   string  $data
+     * @param int    $id
+     * @param string $propertyName
+     * @param string $workspaceName
+     * @param int    $idx
+     * @param string $data
      *
-     * @return  int     - length of base64 decoded string
+     * @return int - length of base64 decoded string
      */
     public function addBinaryNode($id, $propertyName, $workspaceName, $idx, $data)
     {

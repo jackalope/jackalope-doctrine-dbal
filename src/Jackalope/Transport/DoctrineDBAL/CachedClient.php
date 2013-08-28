@@ -162,6 +162,7 @@ class CachedClient extends Client
                 // ignore
             }
         }
+
         return $nodes;
     }
 
@@ -173,6 +174,7 @@ class CachedClient extends Client
         $path = $this->getNodePathForIdentifier($uuid);
         $data = $this->getNode($path);
         $data->{':jcr:path'} = $path;
+
         return $data;
     }
 
@@ -222,6 +224,9 @@ class CachedClient extends Client
         return $result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function deleteNodeImmediately($absPath)
     {
         $result = parent::deleteNodeImmediately($absPath);
@@ -233,6 +238,9 @@ class CachedClient extends Client
         return $result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function deletePropertyImmediately($absPath)
     {
         $result = parent::deletePropertyImmediately($absPath);
@@ -258,6 +266,9 @@ class CachedClient extends Client
         return $result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     public function moveNodeImmediately($srcAbsPath, $dstAbsPath)
     {
         $result = parent::moveNodeImmediately($srcAbsPath, $dstAbsPath);

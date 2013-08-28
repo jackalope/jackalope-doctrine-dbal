@@ -128,7 +128,7 @@ class QOMWalkerTest extends TestCase
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND NOT (n0.path = '/')", $this->defaultColumns), $sql);
     }
 
-    static public function dataQueryWithOperator()
+    public static function dataQueryWithOperator()
     {
         return array(
             array(QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO, "="),

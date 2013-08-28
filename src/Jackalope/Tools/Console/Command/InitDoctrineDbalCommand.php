@@ -47,7 +47,7 @@ EOT
     }
 
     /**
-     * @see Command
+     * {@inheritDoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -88,6 +88,7 @@ EOT
         } catch (\PDOException $e) {
             if ("42S01" == $e->getCode()) {
                 $output->write(PHP_EOL.'<error>The tables already exist. Nothing was changed.</error>'.PHP_EOL.PHP_EOL); // TODO: add a parameter to drop old scheme first
+
                 return;
             }
             throw $e;

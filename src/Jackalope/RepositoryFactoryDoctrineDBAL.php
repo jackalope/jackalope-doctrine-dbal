@@ -23,21 +23,22 @@ use PHPCR\RepositoryFactoryInterface;
 class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 {
     /**
-     * list of required parameters for doctrine dbal
+     * List of required parameters for doctrine dbal.
      *
      * TODO: would be nice if alternatively one could also specify the parameters to let the factory build the connection
      *
      * @var array
      */
-    static private $required = array(
+    private static $required = array(
         'jackalope.doctrine_dbal_connection' => 'Doctrine\\DBAL\\Connection (required): connection instance',
     );
 
     /**
-     * list of optional parameters for doctrine dbal
+     * List of optional parameters for doctrine dbal.
+     *
      * @var array
      */
-    static private $optional = array(
+    private static $optional = array(
         'jackalope.factory' => 'string or object: Use a custom factory class for Jackalope objects',
         'jackalope.check_login_on_server' => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
         'jackalope.disable_transactions' => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
@@ -91,6 +92,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 
         $options['transactions'] = empty($parameters['jackalope.disable_transactions']);
         $options['stream_wrapper'] = empty($parameters['jackalope.disable_stream_wrapper']);
+
         return new Repository($factory, $transport, $options);
     }
 

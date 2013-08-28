@@ -13,11 +13,14 @@ class Xpath
 
     /**
      * @param $query
+     *
      * @return string
      */
     public static function escapeBackslashes($query)
     {
         return str_replace('\\', '\\\\', $query);
+
+        // TODO: is this dead code relevant?
         // Escape backslahes that aren't escape characters for quotes
         return preg_replace('/([\\\\]+)([^"|\\\']{1})?/', '\1\1\2', $query);
     }
@@ -34,8 +37,9 @@ class Xpath
      *   query: Foo isn't bar
      *   result: concat("Foo isn", "'", "t bar")
      *
-     * @param $query
+     * @param string $query
      * @param string $enclosure
+     *
      * @return string
      */
     public static function escape($query, $enclosure = '"', $doubleEscapeSingleQuote = true)
@@ -92,6 +96,7 @@ class Xpath
      * we need this recursive function
      *
      * @param array $parts
+     *
      * @return string
      */
     public static function concatBy2(array $parts)

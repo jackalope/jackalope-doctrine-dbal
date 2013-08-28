@@ -4,7 +4,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 use Doctrine\DBAL\Schema\Schema as Schema;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
-use Doctrine\ODM\PHPCR\PHPCRException;
+use PHPCR\RepositoryException;
 
 /**
  * Class to handle setup the RDBMS tables for the Doctrine DBAL transport.
@@ -15,12 +15,12 @@ use Doctrine\ODM\PHPCR\PHPCRException;
 class RepositorySchema extends Schema
 {
     /**
-     * @var \Doctrine\DBAL\Connection
+     * @var Connection
      */
     private $connection;
 
     /**
-     * @param array      $options    The options could be use to make the table
+     * @param array $options The options could be use to make the table
      *                               names configurable.
      * @param Connection $connection
      */
@@ -200,7 +200,7 @@ class RepositorySchema extends Schema
     public function reset()
     {
         if (null === $this->connection) {
-            throw new PHPCRException('Do not use RepositorySchema::reset when not instantiated with a connection');
+            throw new RepositoryException('Do not use RepositorySchema::reset when not instantiated with a connection');
         }
 
         $this->connection->getWrappedConnection()->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_SILENT);

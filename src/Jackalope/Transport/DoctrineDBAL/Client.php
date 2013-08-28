@@ -2,7 +2,12 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use PHPCR\LoginException;
+use PHPCR\NodeType\NodeDefinitionInterface;
+use PHPCR\NodeType\NodeTypeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
+use PHPCR\NodeType\PropertyDefinitionInterface;
+use PHPCR\Query\QOM\ColumnInterface;
 use PHPCR\Query\QOM\JoinInterface;
 use PHPCR\Query\QOM\SourceInterface;
 use PHPCR\RepositoryInterface;
@@ -18,6 +23,7 @@ use PHPCR\NoSuchWorkspaceException;
 use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
+use PHPCR\SimpleCredentials;
 use PHPCR\Util\ValueConverter;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
@@ -38,6 +44,8 @@ use Doctrine\DBAL\DBALException;
 use Jackalope\Node;
 use Jackalope\Property;
 use Jackalope\Query\Query;
+use Jackalope\Transport\AddNodeOperation;
+use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\WritingInterface;
@@ -48,8 +56,9 @@ use Jackalope\Transport\StandardNodeTypes;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\NodeType\NodeTypeManager;
 use Jackalope\NodeType\NodeType;
-use Jackalope\NotImplementedException;
+use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
+use Jackalope\NotImplementedException;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -74,7 +83,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected $valueConverter;
 
     /**
-     * @var \Doctrine\DBAL\Connection
+     * @var Connection
      */
     private $conn;
 
@@ -84,7 +93,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $loggedIn = false;
 
     /**
-     * @var \PHPCR\SimpleCredentials
+     * @var SimpleCredentials
      */
     private $credentials;
 
@@ -155,8 +164,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $referencesToDelete = array();
 
     /**
-     * @param \Jackalope\FactoryInterface $factory
-     * @param \Doctrine\DBAL\Connection $conn
+     * @param FactoryInterface $factory
+     * @param Connection       $conn
      */
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
@@ -211,7 +220,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @return \Doctrine\DBAL\Connection
+     * @return Connection
      */
     public function getConnection()
     {
@@ -255,7 +264,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * {@inheritDoc}
-     *
      */
     public function deleteWorkspace($name)
     {
@@ -348,13 +356,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         } catch (\Exception $e) {
             if ($e instanceof DBALException || $e instanceof \PDOException) {
                 if (1045 == $e->getCode()) {
-                    throw new \PHPCR\LoginException('Access denied with your credentials: '.$e->getMessage());
+                    throw new LoginException('Access denied with your credentials: '.$e->getMessage());
                 }
                 if ('42S02' == $e->getCode()) {
-                    throw new \PHPCR\RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
+                    throw new RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
                 }
 
-                throw new \PHPCR\RepositoryException('Unexpected error talking to the backend: '.$e->getMessage());
+                throw new RepositoryException('Unexpected error talking to the backend: '.$e->getMessage());
             }
 
             throw $e;
@@ -363,6 +371,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $result;
     }
 
+    /**
+     * Ensure that we are currently logged in, executing the login in case we
+     * did lazy login.
+     *
+     * @throws RepositoryException if this transport is not logged in.
+     */
     protected function assertLoggedIn()
     {
         if (!$this->loggedIn) {
@@ -519,6 +533,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * @param string $path
+     *
      * @return array
      */
     private function getJcrName($path)
@@ -543,16 +558,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Actually write the node into the database
      *
-     * @param string $uuid node uuid
-     * @param string $path absolute path of the node
-     * @param string $type node type
-     * @param bool $isNewNode new nodes to insert (true) or existing node to update (false)
-     * @param array $props
-     * @param array $propsData
+     * @param string  $uuid      node uuid
+     * @param string  $path      absolute path of the node
+     * @param string  $type      node type
+     * @param boolean $isNewNode new nodes to insert (true) or existing node to update (false)
+     * @param array   $props
+     * @param array   $propsData
      *
-     * @return bool|mixed|string
+     * @return boolean|string
      *
-     * @throws \Exception|\PHPCR\ItemExistsException|\PHPCR\RepositoryException
+     * @throws ItemExistsException
+     * @throws RepositoryException
      */
     private function syncNode($uuid, $path, $type, $isNewNode, $props = array(), $propsData = array())
     {
@@ -730,7 +746,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    static public function xmlToProps($xml, ValueConverter $valueConverter, $filter = null)
+    public static function xmlToProps($xml, ValueConverter $valueConverter, $filter = null)
     {
         $data = new \stdClass();
 
@@ -802,8 +818,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Seperate properties array into an xml and binary data.
      *
-     * @param array $properties
-     * @param bool $inlineBinaries
+     * @param array   $properties
+     * @param boolean $inlineBinaries
+     *
      * @return array ('dom' => $dom, 'binaryData' => streams, 'references' => array('type' => INT, 'values' => array(UUIDs)))
      */
     private function propsToXML($properties, $inlineBinaries = false)
@@ -912,6 +929,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $query = "SELECT DISTINCT name FROM phpcr_workspaces";
         $stmt = $this->conn->executeQuery($query);
+
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
@@ -1111,7 +1129,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $path;
     }
 
-
     /**
      * {@inheritDoc}
      */
@@ -1260,7 +1277,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function moveNodes(array $operations)
     {
-        /** @var $op \Jackalope\Transport\MoveNodeOperation */
+        /** @var $op MoveNodeOperation */
         foreach ($operations as $op) {
             $this->moveNode($op->srcPath, $op->dstPath);
         }
@@ -1421,7 +1438,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         array_unshift($nodeTypes, $nodeDef);
 
         foreach ($nodeTypes as $nodeType) {
-            /* @var $nodeType \PHPCR\NodeType\NodeTypeDefinitionInterface */
+            /* @var $nodeType NodeTypeDefinitionInterface */
             $this->validateNodeWithType($node, $nodeType);
         }
     }
@@ -1433,13 +1450,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Validate this node with the nodetype and generate not yet existing
      * autogenerated properties as necessary.
      *
-     * @param Node $node
+     * @param Node     $node
      * @param NodeType $def
      */
     private function validateNodeWithType(Node $node, NodeType $def)
     {
         foreach ($def->getDeclaredChildNodeDefinitions() as $childDef) {
-            /* @var $childDef \PHPCR\NodeType\NodeDefinitionInterface */
+            /* @var $childDef NodeDefinitionInterface */
             if (!$node->hasNode($childDef->getName())) {
                 if ('*' === $childDef->getName()) {
                     continue;
@@ -1459,7 +1476,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($def->getDeclaredPropertyDefinitions() as $propertyDef) {
-            /* @var $propertyDef \PHPCR\NodeType\PropertyDefinitionInterface */
+            /* @var $propertyDef PropertyDefinitionInterface */
             if ('*' == $propertyDef->getName()) {
                 continue;
             }
@@ -1527,7 +1544,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        /** @var $operation \Jackalope\Transport\AddNodeOperation */
+        /** @var $operation AddNodeOperation */
         foreach ($operations as $operation) {
             if ($operation->node->isDeleted()) {
                 $properties = $operation->node->getPropertiesForStoreDeletedNode();
@@ -1542,12 +1559,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Make sure we have a uuid and a primaryType, then sync data into the database
      *
-     * @param string $path the path to store the node at
+     * @param string     $path       the path to store the node at
      * @param Property[] $properties the properties of this node
      *
-     * @return bool true on success
+     * @return boolean true on success
      *
-     * @throws \PHPCR\RepositoryException if not logged in
+     * @throws RepositoryException if not logged in
      */
     protected function storeNode($path, $properties)
     {
@@ -1562,7 +1579,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Determine a UUID for the node at this path with these properties
      *
-     * @param string $path
+     * @param string     $path
      * @param Property[] $properties
      *
      * @return string a unique id
@@ -1612,11 +1629,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Validation if all the data is correct before writing it into the database.
      *
-     * @param \PHPCR\PropertyInterface $property
+     * @param PropertyInterface $property
      *
-     * @throws \PHPCR\ValueFormatException
-     *
-     * @return void
+     * @throws ValueFormatException
      */
     private function assertValidProperty($property)
     {
@@ -1689,6 +1704,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Fetch a user-defined node-type definition.
      *
      * @param string $name
+     *
      * @return array
      */
     protected function fetchUserNodeTypes()
@@ -1699,10 +1715,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $name = $data['name'];
             $result[$name] = array(
                 'name' => $name,
-                'isAbstract' => (bool)$data['is_abstract'],
-                'isMixin' => (bool)($data['is_mixin']),
-                'isQueryable' => (bool)$data['queryable'],
-                'hasOrderableChildNodes' => (bool)$data['orderable_child_nodes'],
+                'isAbstract' => (bool) $data['is_abstract'],
+                'isMixin' => (bool) ($data['is_mixin']),
+                'isQueryable' => (bool) $data['queryable'],
+                'hasOrderableChildNodes' => (bool) $data['orderable_child_nodes'],
                 'primaryItemName' => $data['primary_item'],
                 'declaredSuperTypeNames' => array_filter(explode(' ', $data['supertypes'])),
                 'declaredPropertyDefinitions' => array(),
@@ -1715,14 +1731,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $result[$name]['declaredPropertyDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
                     'name' => $propertyData['name'],
-                    'isAutoCreated' => (bool)$propertyData['auto_created'],
-                    'isMandatory' => (bool)$propertyData['mandatory'],
-                    'isProtected' => (bool)$propertyData['protected'],
+                    'isAutoCreated' => (bool) $propertyData['auto_created'],
+                    'isMandatory' => (bool) $propertyData['mandatory'],
+                    'isProtected' => (bool) $propertyData['protected'],
                     'onParentVersion' => $propertyData['on_parent_version'],
                     'requiredType' => $propertyData['required_type'],
-                    'multiple' => (bool)$propertyData['multiple'],
-                    'isFulltextSearchable' => (bool)$propertyData['fulltext_searchable'],
-                    'isQueryOrderable' => (bool)$propertyData['query_orderable'],
+                    'multiple' => (bool) $propertyData['multiple'],
+                    'isFulltextSearchable' => (bool) $propertyData['fulltext_searchable'],
+                    'isQueryOrderable' => (bool) $propertyData['query_orderable'],
                     'queryOperators' => array (
                         0 => 'jcr.operator.equal.to',
                         1 => 'jcr.operator.not.equal.to',
@@ -1742,9 +1758,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $result[$name]['declaredNodeDefinitions'][] = array(
                     'declaringNodeType' => $data['name'],
                     'name' => $childData['name'],
-                    'isAutoCreated' => (bool)$childData['auto_created'],
-                    'isMandatory' => (bool)$childData['mandatory'],
-                    'isProtected' => (bool)$childData['protected'],
+                    'isAutoCreated' => (bool) $childData['auto_created'],
+                    'isMandatory' => (bool) $childData['mandatory'],
+                    'isProtected' => (bool) $childData['protected'],
                     'onParentVersion' => $childData['on_parent_version'],
                     'allowsSameNameSiblings' => false,
                     'defaultPrimaryTypeName' => $childData['default_type'],
@@ -1762,7 +1778,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function registerNodeTypes($types, $allowUpdate)
     {
         foreach ($types as $type) {
-            /* @var $type \Jackalope\NodeType\NodeTypeDefinition */
+            /* @var $type NodeTypeDefinition */
 
             if ($allowUpdate) {
                 $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
@@ -1792,7 +1808,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($propDefs = $type->getDeclaredPropertyDefinitions()) {
                 foreach ($propDefs as $propertyDef) {
-                    /* @var $propertyDef \PHPCR\NodeType\PropertyDefinitionInterface */
+                    /* @var $propertyDef PropertyDefinitionInterface */
                     $this->conn->insert('phpcr_type_props', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $propertyDef->getName(),
@@ -1812,7 +1828,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($childDefs = $type->getDeclaredChildNodeDefinitions()) {
                 foreach ($childDefs as $childDef) {
-                    /* @var $childDef \PHPCR\NodeType\NodeDefinitionInterface */
+                    /* @var $childDef NodeDefinitionInterface */
                     $this->conn->insert('phpcr_type_childs', array(
                         'node_type_id' => $nodeTypeId,
                         'name' => $childDef->getName(),
@@ -1936,7 +1952,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         // The list of columns is required to filter each records props
         $columns = array();
-        /** @var $column \PHPCR\Query\QOM\ColumnInterface */
+        /** @var $column ColumnInterface */
         foreach ($query->getColumns() as $column) {
             $columns[$column->getPropertyName()] = $column->getSelectorName();
         }
@@ -2003,7 +2019,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $properties[$columnAlias] = array();
                     }
                 }
-                $props = (array)$properties[$columnAlias];
+                $props = (array) $properties[$columnAlias];
 
                 $dcrValue = null;
                 if ('jcr:uuid' === $columnName) {
@@ -2085,9 +2101,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @param string $path the path for which we need the references
-     * @param string $name the name of the referencing properties or null for all
-     * @param bool $weak_reference whether to get weak or strong references
+     * @param string  $path           the path for which we need the references
+     * @param string  $name           the name of the referencing properties or null for all
+     * @param boolean $weak_reference whether to get weak or strong references
      *
      * @return array list of paths to nodes that reference $path
      */
@@ -2106,6 +2122,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $stmt = $this->conn->executeQuery($query, $params);
+
         return $stmt->fetchAll(\PDO::FETCH_COLUMN);
     }
 
@@ -2212,7 +2229,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Validates the nodeTypes in given source
      *
      * @param SourceInterface $source
-     * @throws \PHPCR\Query\InvalidQueryException
+     *
+     * @throws InvalidQueryException
      */
     protected function validateSource(SourceInterface $source)
     {
@@ -2225,7 +2243,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * @param SelectorInterface $source
-     * @throws \PHPCR\Query\InvalidQueryException
+     *
+     * @throws InvalidQueryException
      */
     protected function validateSelectorSource(SelectorInterface $source)
     {
@@ -2243,7 +2262,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * @param JoinInterface $source
-     * @throws \PHPCR\Query\InvalidQueryException     *
+     *
+     * @throws InvalidQueryException
      */
     protected function validateJoinSource(JoinInterface $source)
     {

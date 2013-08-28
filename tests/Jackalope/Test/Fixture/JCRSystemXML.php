@@ -13,7 +13,7 @@ class JCRSystemXML extends XMLDocument
     /**
      * Returns all found namespaces.
      *
-     * @return  array
+     * @return array
      */
     public function getNamespaces()
     {

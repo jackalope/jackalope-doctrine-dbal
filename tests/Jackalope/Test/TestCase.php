@@ -26,6 +26,7 @@ abstract class TestCase extends \Jackalope\TestCase
                 ));
             }
         }
+
         return $this->conn;
     }
 }

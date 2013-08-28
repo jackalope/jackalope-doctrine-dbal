@@ -2,7 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\DBAL\DriverManager;
 use Jackalope\Test\TestCase;
 
 class ClientTest extends TestCase
@@ -27,7 +26,7 @@ class ClientTest extends TestCase
         foreach ($schema->toDropSql($conn->getDatabasePlatform()) as $statement) {
             try {
                 $conn->exec($statement);
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 // ignore
             }
         }
@@ -139,7 +138,7 @@ class ClientTest extends TestCase
         $this->assertEquals(4, $row['sort_order']);
 
         $retrieved = $this->session->getNode('/topic');
-        foreach($retrieved as $name => $child) {
+        foreach ($retrieved as $name => $child) {
             $check[] = $name;
         }
 

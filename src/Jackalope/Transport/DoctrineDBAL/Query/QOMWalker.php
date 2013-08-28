@@ -11,7 +11,6 @@ use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
-use PHPCR\Util\QOM\NotSupportedOperandException;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
@@ -63,9 +62,9 @@ class QOMWalker
     private $schema;
 
     /**
-     * @param \PHPCR\NodeType\NodeTypeManagerInterface $manager
-     * @param Connection $conn
-     * @param array $namespaces
+     * @param NodeTypeManagerInterface $manager
+     * @param Connection               $conn
+     * @param array                    $namespaces
      */
     public function __construct(NodeTypeManagerInterface $manager, Connection $conn, array $namespaces = array())
     {
@@ -79,7 +78,8 @@ class QOMWalker
     /**
      * Generate a table alias
      *
-     * @param $selectorName
+     * @param string $selectorName
+     *
      * @return string
      */
     private function getTableAlias($selectorName)
@@ -94,8 +94,9 @@ class QOMWalker
     }
 
     /**
-     * @param $selectorName
-     * @return mixed|string
+     * @param string $selectorName
+     *
+     * @return string
      */
     private function getSelectorAlias($selectorName)
     {
@@ -124,7 +125,8 @@ class QOMWalker
     }
 
     /**
-     * @param \PHPCR\Query\QOM\QueryObjectModelInterface $qom
+     * @param QOM\QueryObjectModelInterface $qom
+     *
      * @return string
      */
     public function walkQOMQuery(QOM\QueryObjectModelInterface $qom)
@@ -149,7 +151,6 @@ class QOMWalker
     }
 
     /**
-     * @param $columns
      * @return string
      */
     public function getColumns()
@@ -178,9 +179,11 @@ class QOMWalker
     }
 
     /**
-     * @param \PHPCR\Query\QOM\SourceInterface $source
+     * @param QOM\SourceInterface $source
+     *
      * @return string
-     * @throws \Jackalope\NotImplementedException
+     *
+     * @throws NotImplementedException
      */
     public function walkSource(QOM\SourceInterface $source)
     {
@@ -197,6 +200,7 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface $source
+     *
      * @return string
      */
     public function walkSelectorSource(QOM\SelectorInterface $source)
@@ -211,8 +215,10 @@ class QOMWalker
 
     /**
      * @param QOM\JoinInterface $source
+     *
      * @return string
-     * @throws \Jackalope\NotImplementedException
+     *
+     * @throws NotImplementedException
      */
     public function walkJoinSource(QOM\JoinInterface $source)
     {
@@ -250,7 +256,6 @@ class QOMWalker
         }
         $sql .= ')';
 
-
         return $sql;
     }
 
@@ -275,17 +280,20 @@ class QOMWalker
 
     /**
      * @param QOM\DescendantNodeJoinConditionInterface $condition
+     *
      * @return string
      */
     public function walkDescendantNodeJoinConditon(QOM\DescendantNodeJoinConditionInterface $condition)
     {
         $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
         $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
+
         return "$rightAlias.path LIKE CONCAT($leftAlias.path, '/%') ";
     }
 
     /**
      * @param QOM\EquiJoinConditionInterface $condition
+     *
      * @return string
      */
     public function walkEquiJoinCondition($leftSelectorName, $rightSelectorName, QOM\EquiJoinConditionInterface $condition)
@@ -297,8 +305,10 @@ class QOMWalker
 
     /**
      * @param \PHPCR\Query\QOM\ConstraintInterface $constraint
+     *
      * @return string
-     * @throws \PHPCR\Query\InvalidQueryException
+     *
+     * @throws InvalidQueryException
      */
     public function walkConstraint(QOM\ConstraintInterface $constraint)
     {
@@ -334,7 +344,8 @@ class QOMWalker
     }
 
     /**
-     * @param \PHPCR\Query\QOM\SameNodeInterface $constraint
+     * @param QOM\SameNodeInterface $constraint
+     *
      * @return string
      */
     public function walkSameNodeConstraint(QOM\SameNodeInterface $constraint)
@@ -343,7 +354,8 @@ class QOMWalker
     }
 
     /**
-     * @param \PHPCR\Query\QOM\FullTextSearchInterface $constraint
+     * @param QOM\FullTextSearchInterface $constraint
+     *
      * @return string
      */
     public function walkFullTextSearchConstraint(QOM\FullTextSearchInterface $constraint)
@@ -361,6 +373,7 @@ class QOMWalker
 
     /**
      * @param QOM\DescendantNodeInterface $constraint
+     *
      * @return string
      */
     public function walkDescendantNodeConstraint(QOM\DescendantNodeInterface $constraint)
@@ -376,7 +389,8 @@ class QOMWalker
     }
 
     /**
-     * @param \PHPCR\Query\QOM\ChildNodeInterface $constraint
+     * @param QOM\ChildNodeInterface $constraint
+     *
      * @return string
      */
     public function walkChildNodeConstraint(QOM\ChildNodeInterface $constraint)
@@ -386,6 +400,7 @@ class QOMWalker
 
     /**
      * @param QOM\AndInterface $constraint
+     *
      * @return string
      */
     public function walkAndConstraint(QOM\AndInterface $constraint)
@@ -395,6 +410,7 @@ class QOMWalker
 
     /**
      * @param QOM\OrInterface $constraint
+     *
      * @return string
      */
     public function walkOrConstraint(QOM\OrInterface $constraint)
@@ -404,6 +420,7 @@ class QOMWalker
 
     /**
      * @param QOM\NotInterface $constraint
+     *
      * @return string
      */
     public function walkNotConstraint(QOM\NotInterface $constraint)
@@ -418,6 +435,7 @@ class QOMWalker
      * a different xpath statement then with other comparisons
      *
      * @param QOM\ComparisonInterface $constraint
+     *
      * @return string
      */
     public function walkComparisonConstraint(QOM\ComparisonInterface $constraint)
@@ -481,6 +499,7 @@ class QOMWalker
 
     /**
      * @param QOM\ComparisonInterface $constraint
+     *
      * @return string
      */
     public function walkTextComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
@@ -493,6 +512,7 @@ class QOMWalker
 
     /**
      * @param string $operator
+     *
      * @return string
      */
     public function walkOperator($operator)
@@ -566,6 +586,7 @@ class QOMWalker
 
     /**
      * @param array $orderings
+     *
      * @return string
      */
     public function walkOrderings(array $orderings)
@@ -575,11 +596,13 @@ class QOMWalker
             $sql .= empty($sql) ? "ORDER BY " : ", ";
             $sql .= $this->walkOrdering($ordering);
         }
+
         return $sql;
     }
 
     /**
-     * @param \PHPCR\Query\QOM\OrderingInterface $ordering
+     * @param QOM\OrderingInterface $ordering
+     *
      * @return string
      */
     public function walkOrdering(QOM\OrderingInterface $ordering)
@@ -596,8 +619,10 @@ class QOMWalker
 
     /**
      * @param QOM\LiteralInterface $operand
+     *
      * @return string
-     * @throws \PHPCR\NamespaceException
+     *
+     * @throws NamespaceException
      */
     private function getLiteralValue(QOM\LiteralInterface $operand)
     {
@@ -617,6 +642,7 @@ class QOMWalker
      *
      * @param string $alias
      * @param string $property
+     *
      * @return string
      */
     private function sqlXpathValueExists($alias, $property)
@@ -639,6 +665,7 @@ class QOMWalker
      *
      * @param string $alias
      * @param string $property
+     *
      * @return string
      */
     private function sqlXpathExtractValue($alias, $property)
@@ -661,8 +688,11 @@ class QOMWalker
      * @param $property
      * @param $value
      * @param string $operator
+     *
      * @return string
-     * @throws \Jackalope\NotImplementedException
+     *
+     * @throws NotImplementedException if the storage backend is neither mysql
+     *      nor postgres nor sqlite
      */
     private function sqlXpathComparePropertyValue($alias, $property, $value, $operator)
     {
@@ -694,8 +724,9 @@ class QOMWalker
     /**
      * Returns the SQL part to select the given property
      *
-     * @param $alias
-     * @param $propertyName
+     * @param string $alias
+     * @param string $propertyName
+     *
      * @return string
      */
     private function sqlProperty($alias, $propertyName)
@@ -713,7 +744,8 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface $source
-     * @param string $alias
+     * @param string                $alias
+     *
      * @return string
      */
     private function sqlNodeTypeClause($alias, QOM\SelectorInterface $source)
