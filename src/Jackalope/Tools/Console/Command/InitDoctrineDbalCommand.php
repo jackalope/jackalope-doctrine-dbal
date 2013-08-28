@@ -12,7 +12,10 @@ use Doctrine\DBAL\Connection;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
 /**
- * Init doctrine dbal
+ * Init doctrine dbal.
+ *
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  *
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */

@@ -9,7 +9,8 @@ use Doctrine\ODM\PHPCR\PHPCRException;
 /**
  * Class to handle setup the RDBMS tables for the Doctrine DBAL transport.
  *
- * @license http://www.apache.org/licenses/LICENSE-2.0  Apache License Version 2.0, January 2004
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  */
 class RepositorySchema extends Schema
 {

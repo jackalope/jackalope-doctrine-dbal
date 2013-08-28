@@ -2,7 +2,7 @@
 
 Implementation of the persisting data into relational databases.
 
-Provide the [PHPCR API](http://phpcr.github.com) implementation
+Provide the [PHPCR API](http://phpcr.github.io) implementation
 [Jackalope](http://github.com/jackalope/jackalope) with storing data into
 relational databases with Doctrine DBAL. Tested to work with MySQL, PostgreSQL
 and SQLite.
@@ -11,8 +11,10 @@ For the moment, it is less feature complete and robust than [Jackalope-Jackrabbi
 
 Discuss on jackalope-dev@googlegroups.com or visit #jackalope on irc.freenode.net
 
-License: This code is licenced under the apache license.
-Please see the file LICENSE in this folder.
+## License
+
+This code is dual licensed under the MIT license and the Apache License Version
+2.0. Please see the file LICENSE in this folder.
 
 
 # Preconditions

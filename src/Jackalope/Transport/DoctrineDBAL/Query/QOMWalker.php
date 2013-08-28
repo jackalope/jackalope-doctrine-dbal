@@ -22,7 +22,8 @@ use Doctrine\DBAL\Platforms\SqlitePlatform;
 /**
  * Converts QOM to SQL Statements for the Doctrine DBAL database backend.
  *
- * @license http://www.apache.org/licenses/LICENSE-2.0  Apache License Version 2.0, January 2004
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  */
 class QOMWalker
 {

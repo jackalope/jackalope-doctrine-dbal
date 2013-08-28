@@ -54,7 +54,8 @@ use Jackalope\FactoryInterface;
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
  *
- * @license http://www.apache.org/licenses/LICENSE-2.0  Apache License Version 2.0, January 2004
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  *
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
@@ -1015,7 +1016,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
             $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
             $i++;
-        } 
+        }
 
         $query = rtrim($query, 'OR ');
         $query .= ') ORDER BY sort_order ASC';

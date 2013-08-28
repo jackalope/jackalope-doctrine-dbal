@@ -6,7 +6,10 @@ use Symfony\Component\Console\Helper\Helper;
 use Doctrine\DBAL\Connection;
 
 /**
- * Helper class to make the session instance available to console command
+ * Helper class to make the session instance available to console command.
+ *
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  */
 class DoctrineDbalHelper extends Helper
 {

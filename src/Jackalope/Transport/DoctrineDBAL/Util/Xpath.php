@@ -3,10 +3,12 @@
 namespace Jackalope\Transport\DoctrineDBAL\Util;
 
 /**
- * Xpath utilities
+ * Xpath utilities.
  *
+ * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
+ * @license http://opensource.org/licenses/MIT MIT License
  */
-class Xpath 
+class Xpath
 {
 
     /**
