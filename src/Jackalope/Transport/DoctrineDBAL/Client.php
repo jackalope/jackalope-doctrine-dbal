@@ -392,6 +392,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Remove characters which will cause DOMDocument to fail when parsing
+     * the XML string, for example the hex characters 00 01 02 03 etc.
+     *
+     * See: http://stackoverflow.com/questions/1401317/remove-non-utf8-characters-from-string
+     */
+    protected function sanitizeString($string)
+    {
+        $string = preg_replace('/[^(\x20-\x7F)]*/','', $string);
+        return $string;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function getRepositoryDescriptors()
@@ -860,7 +872,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 case PropertyType::URI:
                 case PropertyType::PATH:
                 case PropertyType::STRING:
-                    $values = $property->getString();
+                    $values = $this->sanitizeString($property->getString());
                     break;
                 case PropertyType::DECIMAL:
                     $values = $property->getDecimal();
