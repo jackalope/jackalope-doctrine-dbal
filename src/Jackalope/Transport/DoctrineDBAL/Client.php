@@ -2291,13 +2291,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * Checks for occurence of invalid UTF characters, that can not occur in valid XML document.
-     * If offurence is found, returns true, otherwise false
+     * If occurence is found, returns false, otherwise true.
      * Invalid characters were taken from this list: http://en.wikipedia.org/wiki/Valid_characters_in_XML#XML_1.0
      *
      * Uses regexp mentioned here: http://stackoverflow.com/a/961504
      *
-     * @param $string value of node
-     * @return bool
+     * @param $string string value
+     * @return bool true if string is OK, false otherwise.
      */
     protected function isStringValid($string)
     {
