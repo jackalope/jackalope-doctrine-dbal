@@ -213,4 +213,16 @@ class ClientTest extends TestCase
         $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '5');
     }
+
+    /**
+     * @expectedException \PHPCR\ValueFormatException
+     */
+    public function testOutOfRangeCharacterOccurence()
+    {
+        $invalidString = urldecode('%01%02%03%00');
+        $root = $this->session->getNode('/');
+        $article = $root->addNode('article');
+        $article->setProperty('test', $invalidString);
+        $this->session->save();
+    }
 }
