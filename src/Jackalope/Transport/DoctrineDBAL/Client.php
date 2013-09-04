@@ -1678,10 +1678,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 break;
             case PropertyType::DECIMAL:
             case PropertyType::STRING:
-                $values = ($property->isMultiple()) ? $property->getValue() : array($property->getValue());
-                foreach($values as $value){
+                $values = (array) $property->getValue();
+                foreach ($values as $value) {
                     if (!$this->isStringValid($value)) {
-                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing in valid XML string?');
+                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid XML string?');
                     }
                 }
                 break;   
@@ -2301,8 +2301,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function isStringValid($string)
     {
-        $regex = '/[^\x9\xa\xd\x20-\xD7FF\xE000-\xFFFD]+/x';
+        $regex = '/[^\x{9}\x{a}\x{d}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]+/u';
 
-        return (preg_match($regex, $string) === 0);
+        return (preg_match($regex, $string, $matches) === 0);
     }
 }

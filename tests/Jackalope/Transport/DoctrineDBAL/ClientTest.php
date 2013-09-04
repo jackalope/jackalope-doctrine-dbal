@@ -215,14 +215,40 @@ class ClientTest extends TestCase
     }
 
     /**
-     * @expectedException \PHPCR\ValueFormatException
+     * @dataProvider provideTestOutOfRangeCharacters
      */
-    public function testOutOfRangeCharacterOccurence()
+    public function testOutOfRangeCharacterOccurence($string, $isValid)
     {
-        $invalidString = urldecode('%01%02%03%00');
+        if (false === $isValid) {
+            $this->setExpectedException('PHPCR\ValueFormatException', 'Invalid character found in property "test". Are you passing a valid XML string?');
+        }
+
         $root = $this->session->getNode('/');
         $article = $root->addNode('article');
-        $article->setProperty('test', $invalidString);
+        $article->setProperty('test', $string);
         $this->session->save();
+    }
+
+    public function provideTestOutOfRangeCharacters()
+    {
+        return array(
+            array('This is valid too!'.$this->translateCharFromCode('\u0009'), true),
+            array('This is valid', true),
+            array($this->translateCharFromCode('\uD7FF'), true),
+            array('This is on the edge, but valid too.'. $this->translateCharFromCode('\uFFFD'), true),
+            array($this->translateCharFromCode('\u10000'), true),
+            array($this->translateCharFromCode('\u10FFFF'), true),
+            array($this->translateCharFromCode('\u0001'), false),
+            array($this->translateCharFromCode('\u0002'), false),
+            array($this->translateCharFromCode('\u0003'), false),
+            array($this->translateCharFromCode('\u0008'), false),
+            array($this->translateCharFromCode('\uFFFF'), false),
+
+        );
+    }
+
+    private function translateCharFromCode($char)
+    {
+        return json_decode('"'.$char.'"');
     }
 }
