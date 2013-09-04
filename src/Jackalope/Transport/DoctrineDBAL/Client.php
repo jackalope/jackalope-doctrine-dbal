@@ -1676,6 +1676,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     }
                 }
                 break;
+            case PropertyType::DECIMAL:
+            case PropertyType::STRING:
+                $values = (array) $property->getValue();
+                foreach ($values as $value) {
+                    if (!$this->isStringValid($value)) {
+                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid XML string?');
+                    }
+                }
+                break;   
         }
     }
 
@@ -2277,5 +2286,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if ($right) {
             $this->validateSource($right);
         }
+    }
+
+
+    /**
+     * Checks for occurence of invalid UTF characters, that can not occur in valid XML document.
+     * If occurence is found, returns false, otherwise true.
+     * Invalid characters were taken from this list: http://en.wikipedia.org/wiki/Valid_characters_in_XML#XML_1.0
+     *
+     * Uses regexp mentioned here: http://stackoverflow.com/a/961504
+     *
+     * @param $string string value
+     * @return bool true if string is OK, false otherwise.
+     */
+    protected function isStringValid($string)
+    {
+        $regex = '/[^\x{9}\x{a}\x{d}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]+/u';
+
+        return (preg_match($regex, $string, $matches) === 0);
     }
 }
