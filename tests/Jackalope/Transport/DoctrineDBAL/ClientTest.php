@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Test\TestCase;
 
 class ClientTest extends TestCase
@@ -21,7 +22,8 @@ class ClientTest extends TestCase
         parent::setUp();
 
         $conn = $this->getConnection();
-        $schema = new RepositorySchema;
+        $options = array('disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform);
+        $schema = new RepositorySchema($options, $conn);
         // do not use reset as we want to ignore exceptions on drop
         foreach ($schema->toDropSql($conn->getDatabasePlatform()) as $statement) {
             try {

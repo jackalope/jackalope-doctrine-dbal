@@ -40,7 +40,8 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
 ));
 
 // recreate database schema
-$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema(array(), $dbConn);
+$options = array('disable_fks' => $dbConn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform);
+$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($options, $dbConn);
 $repositorySchema->reset();
 
 // some constants

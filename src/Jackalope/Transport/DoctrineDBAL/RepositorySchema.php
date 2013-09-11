@@ -1,7 +1,7 @@
 <?php
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\DBAL\Schema\Schema as Schema;
+use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
 use PHPCR\RepositoryException;
@@ -133,9 +133,11 @@ class RepositorySchema extends Schema
         $references->addColumn('target_id', 'integer');
         $references->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
         $references->addIndex(array('target_id'));
-        $references->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
-        // TODO: this should be reenabled on RDBMS with deferred FK support
-        //$references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
+        if (!empty($this->options['disable_fk'])) {
+            $references->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
+            // TODO: this should be reenabled on RDBMS with deferred FK support
+            //$references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
+        }
     }
 
     protected function addNodesWeakreferencesTable(Table $nodes)
@@ -146,8 +148,10 @@ class RepositorySchema extends Schema
         $weakreferences->addColumn('target_id', 'integer');
         $weakreferences->setPrimaryKey(array('source_id', 'source_property_name', 'target_id'));
         $weakreferences->addIndex(array('target_id'));
-        $weakreferences->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
-        $weakreferences->addForeignKeyConstraint($nodes, array('target_id'), array('id'), array('onDelete' => 'CASCADE'));
+        if (!empty($this->options['disable_fk'])) {
+            $weakreferences->addForeignKeyConstraint($nodes, array('source_id'), array('id'), array('onDelete' => 'CASCADE'));
+            $weakreferences->addForeignKeyConstraint($nodes, array('target_id'), array('id'), array('onDelete' => 'CASCADE'));
+        }
     }
 
     protected function addTypeNodesTable()
