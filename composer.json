@@ -19,7 +19,7 @@
         "php": ">=5.3.3",
         "jackalope/jackalope": "1.0.0-beta4",
         "phpcr/phpcr-utils": "~1.0.0-beta13",
-        "doctrine/dbal": ">=2.2.0,<2.4"
+        "doctrine/dbal": ">=2.2.0,<2.5"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.0.0-beta4"
