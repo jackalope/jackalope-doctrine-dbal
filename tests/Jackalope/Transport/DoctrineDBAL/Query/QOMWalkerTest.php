@@ -28,17 +28,22 @@ class QOMWalkerTest extends TestCase
 
         $conn = $this->getConnection();
         $this->nodeTypeManager = $this->getMock('Jackalope\NodeType\NodeTypeManager', array(), array(), '', false);
+        $this->nodeTypeManager
+            ->expects($this->any())
+            ->method('hasNodeType')
+            ->will($this->returnValue(true))
+        ;
         $this->factory = new QueryObjectModelFactory(new Factory);
         $this->walker = new QOMWalker($this->nodeTypeManager, $conn);
-        $this->defaultColumns = 'n0.id AS id, n0.path AS path, n0.parent AS parent, n0.local_name AS local_name, n0.namespace AS namespace, n0.workspace_name AS workspace_name, n0.identifier AS identifier, n0.type AS type, n0.props AS props, n0.depth AS depth, n0.sort_order AS sort_order';
+        $this->defaultColumns = 'n0.id AS n0_id, n0.path AS n0_path, n0.parent AS n0_parent, n0.local_name AS n0_local_name, n0.namespace AS n0_namespace, n0.workspace_name AS n0_workspace_name, n0.identifier AS n0_identifier, n0.type AS n0_type, n0.props AS n0_props, n0.depth AS n0_depth, n0.sort_order AS n0_sort_order';
     }
 
     public function testDefaultQuery()
     {
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
-        $query = $this->factory->createQuery($this->factory->selector('nt:unstructured'), null, array(), array());
-        $sql = $this->walker->walkQOMQuery($query);
+        $query = $this->factory->createQuery($this->factory->selector('nt:unstructured', 'nt:unstructured'), null, array(), array());
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured')", $this->defaultColumns), $sql);
     }
@@ -48,12 +53,12 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/')),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/')),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path = '/'", $this->defaultColumns), $sql);
     }
@@ -63,12 +68,12 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->comparison($this->factory->propertyValue('jcr:createdBy'), '=', $this->factory->literal('beberlei')),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:createdBy'), '=', $this->factory->literal('beberlei')),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertContains('//sv:property[@sv:name="jcr:createdBy"]/sv:value',
             $sql
@@ -80,15 +85,15 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             $this->factory->andConstraint(
-                $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/')),
-                $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/'))
+                $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/')),
+                $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/'))
             ),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' AND n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -98,15 +103,15 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             $this->factory->orConstraint(
-                $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/')),
-                $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/'))
+                $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/')),
+                $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/'))
             ),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' OR n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -116,14 +121,14 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             $this->factory->notConstraint(
-                $this->factory->comparison($this->factory->propertyValue('jcr:path'), '=', $this->factory->literal('/'))
+                $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), '=', $this->factory->literal('/'))
             ),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND NOT (n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -151,12 +156,12 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->comparison($this->factory->propertyValue('jcr:path'), $const, $this->factory->literal('/')),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->comparison($this->factory->propertyValue('nt:unstructured', 'jcr:path'), $const, $this->factory->literal('/')),
             array(),
             array()
         );
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path $op '/'", $this->defaultColumns), $sql);
     }
@@ -166,13 +171,13 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             null,
-            array($this->factory->ascending($this->factory->propertyValue("jcr:path"))),
+            array($this->factory->ascending($this->factory->propertyValue('nt:unstructured', "jcr:path"))),
             array()
         );
 
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') ORDER BY n0.path ASC", $this->defaultColumns),
@@ -185,11 +190,11 @@ class QOMWalkerTest extends TestCase
         $this->nodeTypeManager->expects($this->exactly(2))->method('getSubtypes')->will($this->returnValue( array() ));
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->descendantNode('/')
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->descendantNode('nt:unstructured', '/')
         );
 
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/%%'", $this->defaultColumns),
@@ -197,11 +202,11 @@ class QOMWalkerTest extends TestCase
         );
 
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->descendantNode('/some/node')
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->descendantNode('nt:unstructured', '/some/node')
         );
 
-        $sql = $this->walker->walkQOMQuery($query);
+        list($selectors, $selectorAliases, $columns, $sql) = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/some/node/%%'", $this->defaultColumns),
@@ -216,10 +221,10 @@ class QOMWalkerTest extends TestCase
     {
         $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
         $query = $this->factory->createQuery(
-            $this->factory->selector('nt:unstructured'),
-            $this->factory->descendantNode('/some/node/')
+            $this->factory->selector('nt:unstructured', 'nt:unstructured'),
+            $this->factory->descendantNode('nt:unstructured', '/some/node/')
         );
 
-        $sql = $this->walker->walkQOMQuery($query);
+        $this->walker->walkQOMQuery($query);
     }
 }

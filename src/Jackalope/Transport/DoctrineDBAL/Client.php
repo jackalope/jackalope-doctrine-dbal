@@ -7,9 +7,6 @@ use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
-use PHPCR\Query\QOM\ColumnInterface;
-use PHPCR\Query\QOM\JoinInterface;
-use PHPCR\Query\QOM\SourceInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -24,22 +21,21 @@ use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
 use PHPCR\SimpleCredentials;
-use PHPCR\Util\ValueConverter;
 use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
 
-use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
+use PHPCR\Util\ValueConverter;
+use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
-use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Doctrine\DBAL\DBALException;
 
 use Jackalope\Node;
 use Jackalope\Property;
@@ -1903,105 +1899,54 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        $limit = $query->getLimit();
-        $offset = $query->getOffset();
-
-        if (null !== $offset && null == $limit &&
-            ($this->conn->getDatabasePlatform() instanceof MySqlPlatform
-                || $this->conn->getDatabasePlatform() instanceof SqlitePlatform
-            )
-        ) {
-            $limit = PHP_INT_MAX;
-        }
-
         if (!$query instanceof QueryObjectModelInterface) {
             $parser = new Sql2ToQomQueryConverter($this->factory->get('Query\QOM\QueryObjectModelFactory'));
             try {
-                $query = $parser->parse($query->getStatement());
+                $qom = $parser->parse($query->getStatement());
+                $qom->setLimit($query->getLimit());
+                $qom->setOffset($query->getOffset());
             } catch (\Exception $e) {
                 throw new InvalidQueryException('Invalid query: '.$query->getStatement());
             }
+        } else {
+            $qom = $query;
         }
-
-        $source = $query->getSource();
-
-        $this->validateSource($source);
 
         $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
-        $sql = $qomWalker->walkQOMQuery($query);
-        $sql = $this->conn->getDatabasePlatform()->modifyLimitQuery($sql, $limit, $offset);
+        list($selectors, $selectorAliases, $columns, $sql) = $qomWalker->walkQOMQuery($qom);
         $data = $this->conn->fetchAll($sql, array($this->workspaceName));
-
-        // The list of columns is required to filter each records props
-        $columns = array();
-        /** @var $column ColumnInterface */
-        foreach ($query->getColumns() as $column) {
-            $columns[$column->getPropertyName()] = $column->getSelectorName();
-        }
-
-        $selectors = array();
-        if ($source instanceOf SelectorInterface) {
-            $selectors[] = $source;
-            $mainSelector = $source;
-        } elseif ($source instanceof JoinInterface) {
-            if ($source->getLeft() instanceOf SelectorInterface) {
-                $selectors[] = $source->getLeft();
-                $mainSelector = $source->getLeft();
-            }
-
-            if ($source->getRight() instanceOf SelectorInterface) {
-                $selectors[] = $source->getRight();
-            }
-        }
-
-        if (!isset($mainSelector)) {
-            throw new InvalidQueryException('The source needs to be a Selector or a Join with left as Selector');
-        }
-
-        $mainSelectorName = $mainSelector->getSelectorName();
-        if (null === $mainSelectorName) {
-            $mainSelectorName = $mainSelector->getNodeTypeName();
-        }
-
-        if (empty($columns)) {
-            $columns = array(
-                'jcr:createdBy' => $mainSelectorName,
-                'jcr:created'   => $mainSelectorName,
-            );
-        }
-        $columns['jcr:primaryType'] = $mainSelectorName;
 
         $results = array();
         foreach ($data as $row) {
             $result = array();
             /** @var SelectorInterface $selector */
             foreach ($selectors as $selector) {
-                $columnPrefix   = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '_' : '';
-                $selectorPrefix = null !== $selector->getSelectorName() ? $selector->getSelectorName() . '.' : '';
                 $selectorName   = $selector->getSelectorName() ?: $selector->getNodeTypeName();
+                $columnPrefix   = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+                $selectorPrefix = null !== $selector->getSelectorName() && $columns['jcr:primaryType'] !== $selectorName  ? $selectorName . '.' : '';
 
                 $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',  'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
                 $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score', 'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
             }
 
             $properties = array();
-            foreach ($columns as $columnName => $columnAlias) {
-                $columnPrefix = null !== $mainSelector->getSelectorName() ? $columnAlias . '_' : '';
-                if (!isset($properties[$columnAlias])) {
+            foreach ($columns as $columnName => $selectorName) {
+                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+
+                if (!isset($properties[$selectorName])) {
                     if (isset($row[$columnPrefix . 'props'])) {
                         // extract only the properties that have been requested in the query
-                        $properties[$columnAlias] = static::xmlToProps(
+                        $properties[$selectorName] = (array)static::xmlToProps(
                             $row[$columnPrefix . 'props'],
                             $this->valueConverter,
-                            function ($name) use ($columns, $columnAlias, $columnName) {
-                                return array_key_exists($name, $columns) && $columns[$name] === $columnAlias;
+                            function ($name) use ($columns, $selectorName, $columnName) {
+                                return array_key_exists($name, $columns) && $columns[$name] === $selectorName;
                             }
                         );
                     } else { // props field is empty, can happen with OUTER joins
-                        $properties[$columnAlias] = array();
+                        $properties[$selectorName] = array();
                     }
                 }
-                $props = (array) $properties[$columnAlias];
 
                 $dcrValue = null;
                 if ('jcr:uuid' === $columnName) {
@@ -2009,9 +1954,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
 
                 $result[] = array(
-                    'dcr:name' => null === $columnAlias ? $columnName : "{$columnAlias}.{$columnName}",
-                    'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $props) ? $props[$columnName] : null),
-                    'dcr:selectorName' => $columnAlias ?: $mainSelectorName,
+                    'dcr:name' => "$selectorName.$columnName",
+                    'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $properties[$selectorName]) ? $properties[$selectorName][$columnName] : null),
+                    'dcr:selectorName' => $selectorName ?: $columns['jcr:primaryType'],
                 );
             }
 
@@ -2205,60 +2150,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->referencesToUpdate = $this->referencesToDelete = array();
         $this->conn->rollback();
-    }
-
-    /**
-     * Validates the nodeTypes in given source
-     *
-     * @param SourceInterface $source
-     *
-     * @throws InvalidQueryException
-     */
-    protected function validateSource(SourceInterface $source)
-    {
-        if ($source instanceOf SelectorInterface) {
-            $this->validateSelectorSource($source);
-        } elseif ($source instanceOf JoinInterface) {
-            $this->validateJoinSource($source);
-        }
-    }
-
-    /**
-     * @param SelectorInterface $source
-     *
-     * @throws InvalidQueryException
-     */
-    protected function validateSelectorSource(SelectorInterface $source)
-    {
-        $nodeType = $source->getNodeTypeName();
-
-        if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
-            $msg = 'Selected node type does not exist: ' . $nodeType;
-            if ($alias = $source->getSelectorName()) {
-                $msg .= ' AS ' . $alias;
-            }
-
-            throw new InvalidQueryException($msg);
-        }
-    }
-
-    /**
-     * @param JoinInterface $source
-     *
-     * @throws InvalidQueryException
-     */
-    protected function validateJoinSource(JoinInterface $source)
-    {
-        $left = $source->getLeft();
-        $right = $source->getRight();
-
-        if ($left) {
-            $this->validateSource($left);
-        }
-
-        if ($right) {
-            $this->validateSource($right);
-        }
     }
 
     /**
