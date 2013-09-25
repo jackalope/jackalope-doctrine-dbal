@@ -2280,15 +2280,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      *
-     * @param string $path the path to store the node at
-     * @param array $properties the properties of this node
+     * @param Node $node the node to update
      */
-    public function updateProperties($path, $properties)
+    public function updateProperties(Node $node)
     {
-        $nodeIdentifier = $this->getIdentifier($path, $properties);
-        $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : "nt:unstructured";
+        $this->assertLoggedIn();
+        $this->validateNode($node);
 
-        $this->syncNode($nodeIdentifier, $path, $type, false, $properties);
+        $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
     
         return true;
     }
