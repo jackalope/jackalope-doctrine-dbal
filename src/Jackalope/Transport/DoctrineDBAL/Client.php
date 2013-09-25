@@ -1598,33 +1598,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return UUIDHelper::generateUUID();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function storeProperty(Property $property)
-    {
-        $this->assertLoggedIn();
-
-        // just store the node with this property
-
-        // TODO: we should really delegate more of this from ObjectManager to transport.
-        // this is called for each property of a node - for jackrabbit it makes sense but not here
-
-        $node = $property->getParent();
-        $this->validateNode($node);
-
-        $path = $node->getPath();
-        $properties = $node->getProperties();
-        $this->syncNode(
-            $this->getIdentifier($path, $properties),
-            $path,
-            $node->getPropertyValue('jcr:primaryType'),
-            false,
-            $properties
-        );
-
-        return true;
-    }
 
     /**
      * Validation if all the data is correct before writing it into the database.
@@ -2288,7 +2261,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-
     /**
      * Checks for occurence of invalid UTF characters, that can not occur in valid XML document.
      * If occurence is found, returns false, otherwise true.
@@ -2304,5 +2276,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $regex = '/[^\x{9}\x{a}\x{d}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]+/u';
 
         return (preg_match($regex, $string, $matches) === 0);
+    }
+
+    /**
+     *
+     * @param Node $node the node to update
+     */
+    public function updateProperties(Node $node)
+    {
+        $this->assertLoggedIn();
+        $this->validateNode($node);
+
+        $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
+    
+        return true;
     }
 }
