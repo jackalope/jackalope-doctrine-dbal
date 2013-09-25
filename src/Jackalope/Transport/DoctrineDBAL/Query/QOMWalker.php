@@ -4,6 +4,7 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
+use Jackalope\Query\QOM\QueryObjectModel;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 use Jackalope\Transport\DoctrineDBAL\Util\Xpath;
 
@@ -37,9 +38,9 @@ class QOMWalker
     private $alias = array();
 
     /**
-     * @var string
+     * @var QOM\SelectorInterface
      */
-    private $sourceNodeType;
+    private $source;
 
     /**
      * @var \Doctrine\DBAL\Connection
@@ -117,7 +118,7 @@ class QOMWalker
             $selectorAlias = substr($selectorAlias, 1, -1);
         }
 
-        if ($this->sourceNodeType === $selectorAlias) {
+        if ($this->source && $this->source->getNodeTypeName() === $selectorAlias) {
             $selectorAlias = '';
         }
 
@@ -129,9 +130,12 @@ class QOMWalker
      *
      * @return string
      */
-    public function walkQOMQuery(QOM\QueryObjectModelInterface $qom)
+    public function walkQOMQuery(QueryObjectModel $qom)
     {
-        $sourceSql = " " . $this->walkSource($qom->getSource());
+        $source = $qom->getSource();
+        $selectors = $this->validateSource($source);
+
+        $sourceSql = " " . $this->walkSource($source);
         $constraintSql = '';
         if ($constraint = $qom->getConstraint()) {
             $constraintSql = " AND " . $this->walkConstraint($constraint);
@@ -147,7 +151,32 @@ class QOMWalker
         $sql .= $constraintSql;
         $sql .= $orderingSql;
 
-        return $sql;
+        $limit = $qom->getLimit();
+        $offset = $qom->getOffset();
+
+        if (null !== $offset && null == $limit
+            && ($this->platform instanceof MySqlPlatform || $this->platform instanceof SqlitePlatform)
+        ) {
+            $limit = PHP_INT_MAX;
+        }
+        $sql = $this->platform->modifyLimitQuery($sql, $limit, $offset);
+
+        $columns = array('jcr:primaryType' => $this->source->getSelectorName() ?: $this->source->getNodeTypeName());
+
+        // The list of columns is required to filter each records props
+        foreach ($qom->getColumns() as $column) {
+            $columns[$column->getPropertyName()] = $column->getSelectorName();
+        }
+
+        // TODO: this seems wrong, we should instead check the mixins of the selectors to decide on the columns
+        // Also potentially the issue is also in QueryResultsTest::testGetColumnName which assumes certain columns
+        // are returned despite this not being specified in the spec
+        if (1 === count($columns)) {
+            $columns['jcr:createdBy'] = $columns['jcr:primaryType'];
+            $columns['jcr:created'] = $columns['jcr:primaryType'];
+        }
+
+        return array($selectors, $this->alias, $columns, $sql);
     }
 
     /**
@@ -162,12 +191,9 @@ class QOMWalker
 
         if (count($this->alias)) {
             $aliasSql = array();
-            foreach ($this->alias as $selectorAlias => $alias) {
-                if ('' !== $selectorAlias) {
-                    $selectorAlias = $selectorAlias . '_';
-                }
+            foreach ($this->alias as $alias) {
                 foreach ($sqlColumns as $sqlColumn) {
-                    $aliasSql[] = sprintf('%s.%s AS %s%s', $alias, $sqlColumn, $selectorAlias, $sqlColumn);
+                    $aliasSql[] = sprintf('%s.%s AS %s_%s', $alias, $sqlColumn, $alias, $sqlColumn);
                 }
             }
             $sql = join(', ', $aliasSql);
@@ -176,6 +202,68 @@ class QOMWalker
         }
 
         return $sql;
+    }
+
+    /**
+     * Validates the nodeTypes in given source
+     *
+     * @param QOM\SourceInterface $source
+     * @return QOM\SelectorInterface[]
+     * @throws \PHPCR\Query\InvalidQueryException
+     */
+    protected function validateSource(QOM\SourceInterface $source)
+    {
+        if ($source instanceOf QOM\SelectorInterface) {
+            $selectors = array($source);
+            $this->validateSelectorSource($source);
+        } elseif ($source instanceOf QOM\JoinInterface) {
+            $selectors = $this->validateJoinSource($source);
+        } else {
+            $selectors = array();
+        }
+
+        return $selectors;
+    }
+
+    /**
+     * @param QOM\SelectorInterface $source
+     * @throws \PHPCR\Query\InvalidQueryException
+     */
+    protected function validateSelectorSource(QOM\SelectorInterface $source)
+    {
+        $nodeType = $source->getNodeTypeName();
+
+        if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
+            $msg = 'Selected node type does not exist: ' . $nodeType;
+            if ($alias = $source->getSelectorName()) {
+                $msg .= ' AS ' . $alias;
+            }
+
+            throw new InvalidQueryException($msg);
+        }
+    }
+
+    /**
+     * @return QOM\SelectorInterface[]
+     * @param QOM\JoinInterface $source
+     * @throws \PHPCR\Query\InvalidQueryException
+     */
+    protected function validateJoinSource(QOM\JoinInterface $source)
+    {
+        $left = $source->getLeft();
+        $right = $source->getRight();
+
+        if ($left) {
+            $selectors = $this->validateSource($left);
+        } else {
+            $selectors = array();
+        }
+
+        if ($right) {
+            $selectors = array_merge($selectors, $this->validateSource($right));
+        }
+
+        return $selectors;
     }
 
     /**
@@ -205,7 +293,7 @@ class QOMWalker
      */
     public function walkSelectorSource(QOM\SelectorInterface $source)
     {
-        $this->sourceNodeType = $source->getNodeTypeName();
+        $this->source = $source;
         $alias = $this->getTableAlias($source->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($alias, $source);
         $sql = "FROM phpcr_nodes $alias WHERE $alias.workspace_name = ? AND $nodeTypeClause";
@@ -226,6 +314,7 @@ class QOMWalker
             throw new NotImplementedException("Join with Joins");
         }
 
+        $this->source = $source->getLeft();
         $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
         $sql = "FROM phpcr_nodes $leftAlias ";
 
@@ -547,9 +636,15 @@ class QOMWalker
      */
     public function walkOperand(QOM\OperandInterface $operand)
     {
+        if ($operand instanceof QOM\NodeNameInterface) {
+            $selectorName = $operand->getSelectorName();
+            $alias = $this->getTableAlias($selectorName);
+
+            return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name");
+        }
         if ($operand instanceof QOM\NodeLocalNameInterface) {
-            $selector = $operand->getSelectorName();
-            $alias = $this->getTableAlias($selector);
+            $selectorName = $operand->getSelectorName();
+            $alias = $this->getTableAlias($selectorName);
 
             return "$alias.local_name";
         }

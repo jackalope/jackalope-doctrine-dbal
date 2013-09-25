@@ -17,12 +17,13 @@
     ],
     "require": {
         "php": ">=5.3.3",
-        "jackalope/jackalope": "1.0.0-beta4",
-        "phpcr/phpcr-utils": "~1.0.0-beta13",
-        "doctrine/dbal": ">=2.2.0,<2.5"
+        "doctrine/dbal": ">=2.2.0,<2.5",
+        "phpcr/phpcr": "~2.1.0-RC1",
+        "phpcr/phpcr-utils": "~1.0.0-RC1",
+        "jackalope/jackalope": "1.0.0-RC1"
     },
     "provide": {
-        "jackalope/jackalope-transport": "1.0.0-beta4"
+        "jackalope/jackalope-transport": "1.0.0-RC1"
     },
     "require-dev": {
         "phpcr/phpcr-api-tests": "dev-master"
