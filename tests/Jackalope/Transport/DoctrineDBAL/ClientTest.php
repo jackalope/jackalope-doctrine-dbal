@@ -245,7 +245,6 @@ class ClientTest extends TestCase
             array($this->translateCharFromCode('\u0003'), false),
             array($this->translateCharFromCode('\u0008'), false),
             array($this->translateCharFromCode('\uFFFF'), false),
-
         );
     }
 

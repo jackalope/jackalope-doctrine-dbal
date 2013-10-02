@@ -1650,7 +1650,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $values = (array) $property->getValue();
                 foreach ($values as $value) {
                     if (!$this->isStringValid($value)) {
-                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid XML string?');
+                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid string?');
                     }
                 }
                 break;   
@@ -2153,8 +2153,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Checks for occurence of invalid UTF characters, that can not occur in valid XML document.
-     * If occurence is found, returns false, otherwise true.
+     * Checks for occurrence of invalid UTF characters, that can not occur in valid XML document.
+     * If occurrence is found, returns false, otherwise true.
      * Invalid characters were taken from this list: http://en.wikipedia.org/wiki/Valid_characters_in_XML#XML_1.0
      *
      * Uses regexp mentioned here: http://stackoverflow.com/a/961504
