@@ -219,7 +219,7 @@ class ClientTest extends TestCase
     /**
      * @dataProvider provideTestOutOfRangeCharacters
      */
-    public function testOutOfRangeCharacterOccurence($string, $isValid)
+    public function testOutOfRangeCharacterOccurrence($string, $isValid)
     {
         if (false === $isValid) {
             $this->setExpectedException('PHPCR\ValueFormatException', 'Invalid character found in property "test". Are you passing a valid string?');
