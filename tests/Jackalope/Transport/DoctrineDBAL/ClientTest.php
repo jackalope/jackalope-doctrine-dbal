@@ -222,7 +222,7 @@ class ClientTest extends TestCase
     public function testOutOfRangeCharacterOccurence($string, $isValid)
     {
         if (false === $isValid) {
-            $this->setExpectedException('PHPCR\ValueFormatException', 'Invalid character found in property "test". Are you passing a valid XML string?');
+            $this->setExpectedException('PHPCR\ValueFormatException', 'Invalid character found in property "test". Are you passing a valid string?');
         }
 
         $root = $this->session->getNode('/');
