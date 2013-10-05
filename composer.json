@@ -1,8 +1,8 @@
 {
     "name": "jackalope/jackalope-doctrine-dbal",
     "type": "library",
-    "description": "Jackalope Transport library",
-    "keywords": ["transport implementation", "doctrine-dbal"],
+    "description": "Jackalope Transport library for Doctrine DBAL",
+    "keywords": ["transport implementation", "doctrine-dbal", "phpcr"],
     "homepage": "http://jackalope.github.io",
     "license": [
         "MIT",
@@ -20,7 +20,7 @@
         "doctrine/dbal": ">=2.2.0,<2.5",
         "phpcr/phpcr": "~2.1.0-RC1",
         "phpcr/phpcr-utils": "~1.0.0-RC1",
-        "jackalope/jackalope": "1.0.0-RC1"
+        "jackalope/jackalope": "~1.0.0-RC1"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.0.0-RC1"
