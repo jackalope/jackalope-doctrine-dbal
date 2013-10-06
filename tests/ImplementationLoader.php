@@ -74,7 +74,8 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\QueryResultsTest::testBooleanField',
                     // TODO https://github.com/jackalope/jackalope-doctrine-dbal/issues/130
                     'Query\QuerySql2OperationsTest::testQueryJoin',
-
+                    // TODO fix handling of order by with missing properties
+                    'Query\QuerySql2OperationsTest::testQueryOrderWithMissingProperty',
 
                     // this seems a bug in php with arrayiterator - and jackalope is using
                     // arrayiterator for the search result
