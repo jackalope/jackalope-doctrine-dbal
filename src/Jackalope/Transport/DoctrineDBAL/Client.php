@@ -1913,51 +1913,73 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
-        list($selectors, $selectorAliases, $columns, $sql) = $qomWalker->walkQOMQuery($qom);
+        list($selectors, $selectorAliases, $sql) = $qomWalker->walkQOMQuery($qom);
+
+        // TODO: might need to do more work to figure out the primary source
+        $primarySource = reset($selectors);
+        $primaryType = $primarySource->getSelectorName() ?: $primarySource->getNodeTypeName();
         $data = $this->conn->fetchAll($sql, array($this->workspaceName));
 
         $results = array();
         foreach ($data as $row) {
-            $result = array();
+            $result = $properties = $mixinColumns = array();
+
             /** @var SelectorInterface $selector */
             foreach ($selectors as $selector) {
                 $selectorName   = $selector->getSelectorName() ?: $selector->getNodeTypeName();
                 $columnPrefix   = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
-                $selectorPrefix = null !== $selector->getSelectorName() && $columns['jcr:primaryType'] !== $selectorName  ? $selectorName . '.' : '';
+                $selectorPrefix = null !== $selector->getSelectorName() ? $selectorName . '.' : '';
 
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',  'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score', 'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
-            }
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:primaryType','dcr:value' => $primaryType,                 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' =>                   'jcr:path',       'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score',      'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
 
-            $properties = array();
-            foreach ($columns as $columnName => $selectorName) {
-                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
-
-                if (!isset($properties[$selectorName])) {
-                    if (isset($row[$columnPrefix . 'props'])) {
-                        // extract only the properties that have been requested in the query
-                        $properties[$selectorName] = (array)static::xmlToProps(
-                            $row[$columnPrefix . 'props'],
-                            $this->valueConverter,
-                            function ($name) use ($columns, $selectorName, $columnName) {
-                                return array_key_exists($name, $columns) && $columns[$name] === $selectorName;
-                            }
-                        );
-                    } else { // props field is empty, can happen with OUTER joins
-                        $properties[$selectorName] = array();
-                    }
+                if (isset($row[$columnPrefix . 'props'])) {
+                    $properties[$selectorName] = (array) static::xmlToProps(
+                        $row[$columnPrefix . 'props'],
+                        $this->valueConverter
+                    );
+                } else {
+                    $properties[$selectorName] = array();
                 }
 
-                $dcrValue = null;
-                if ('jcr:uuid' === $columnName) {
-                    $dcrValue = $row[$columnPrefix . 'identifier'];
+                $mixinTypes = isset($properties[$selectorName]['jcr:mixinTypes']) ? $properties[$selectorName]['jcr:mixinTypes'] : array();
+                $mixinTypes[] = 'mix:created';
+                if (in_array('mix:created', $mixinTypes)) {
+                    $mixinColumns[$selectorName]['jcr:createdBy'] = 'jcr:createdBy';
+                    $mixinColumns[$selectorName]['jcr:created'] = 'jcr:created';
+                }
+            }
+
+            foreach ($qom->getColumns() as $column) {
+                $selectorName = $column->getSelectorName();
+                $columnName = $column->getPropertyName();
+                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+
+                $dcrValue = 'jcr:uuid' === $columnName
+                    ? $row[$columnPrefix . 'identifier']
+                    : (array_key_exists($columnName, $properties[$selectorName]) ? $properties[$selectorName][$columnName] : null)
+                ;
+
+                if (isset($mixinColumns[$selectorName][$columnName])) {
+                    unset($mixinColumns[$selectorName][$columnName]);
                 }
 
                 $result[] = array(
-                    'dcr:name' => "$selectorName.$columnName",
-                    'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $properties[$selectorName]) ? $properties[$selectorName][$columnName] : null),
-                    'dcr:selectorName' => $selectorName ?: $columns['jcr:primaryType'],
+                    'dcr:name' => $selectorName.'.'.$column->getColumnName(),
+                    'dcr:value' => $dcrValue,
+                    'dcr:selectorName' => $selectorName ?: $primaryType,
                 );
+            }
+
+            foreach ($mixinColumns as $selectorName => $columns) {
+                foreach ($columns as $columnName) {
+                    $result[] = array(
+                        'dcr:name' => $primaryType.'.'.$columnName,
+                        'dcr:value' => array_key_exists($columnName, $properties[$selectorName]) ? $properties[$selectorName][$columnName] : null,
+                        'dcr:selectorName' => $selectorName,
+                    );
+                }
             }
 
             $results[] = $result;
