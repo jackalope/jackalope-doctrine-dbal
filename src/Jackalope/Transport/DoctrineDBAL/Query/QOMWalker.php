@@ -161,22 +161,7 @@ class QOMWalker
         }
         $sql = $this->platform->modifyLimitQuery($sql, $limit, $offset);
 
-        $columns = array('jcr:primaryType' => $this->source->getSelectorName() ?: $this->source->getNodeTypeName());
-
-        // The list of columns is required to filter each records props
-        foreach ($qom->getColumns() as $column) {
-            $columns[$column->getPropertyName()] = $column->getSelectorName();
-        }
-
-        // TODO: this seems wrong, we should instead check the mixins of the selectors to decide on the columns
-        // Also potentially the issue is also in QueryResultsTest::testGetColumnName which assumes certain columns
-        // are returned despite this not being specified in the spec
-        if (1 === count($columns)) {
-            $columns['jcr:createdBy'] = $columns['jcr:primaryType'];
-            $columns['jcr:created'] = $columns['jcr:primaryType'];
-        }
-
-        return array($selectors, $this->alias, $columns, $sql);
+        return array($selectors, $this->alias, $sql);
     }
 
     /**
