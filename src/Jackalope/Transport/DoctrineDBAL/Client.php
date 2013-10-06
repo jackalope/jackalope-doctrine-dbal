@@ -1913,51 +1913,80 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
-        list($selectors, $selectorAliases, $columns, $sql) = $qomWalker->walkQOMQuery($qom);
+        list($selectors, $selectorAliases, $sql) = $qomWalker->walkQOMQuery($qom);
+
+        $primarySource = reset($selectors);
+        $primaryType = $primarySource->getSelectorName() ?: $primarySource->getNodeTypeName();
         $data = $this->conn->fetchAll($sql, array($this->workspaceName));
 
-        $results = array();
+        $results = $properties = $standardColumns = array();
         foreach ($data as $row) {
             $result = array();
+
             /** @var SelectorInterface $selector */
             foreach ($selectors as $selector) {
                 $selectorName   = $selector->getSelectorName() ?: $selector->getNodeTypeName();
                 $columnPrefix   = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
-                $selectorPrefix = null !== $selector->getSelectorName() && $columns['jcr:primaryType'] !== $selectorName  ? $selectorName . '.' : '';
+                $selectorPrefix = null !== $selector->getSelectorName() ? $selectorName . '.' : '';
 
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path',  'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score', 'dcr:value' => 0,                            'dcr:selectorName' => $selectorName);
-            }
-
-            $properties = array();
-            foreach ($columns as $columnName => $selectorName) {
-                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
-
-                if (!isset($properties[$selectorName])) {
-                    if (isset($row[$columnPrefix . 'props'])) {
-                        // extract only the properties that have been requested in the query
-                        $properties[$selectorName] = (array)static::xmlToProps(
-                            $row[$columnPrefix . 'props'],
-                            $this->valueConverter,
-                            function ($name) use ($columns, $selectorName, $columnName) {
-                                return array_key_exists($name, $columns) && $columns[$name] === $selectorName;
-                            }
-                        );
-                    } else { // props field is empty, can happen with OUTER joins
-                        $properties[$selectorName] = array();
-                    }
+                if ($primaryType === $selector->getNodeTypeName()) {
+                    $result[] = array('dcr:name' => 'jcr:path', 'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
                 }
 
-                $dcrValue = null;
-                if ('jcr:uuid' === $columnName) {
-                    $dcrValue = $row[$columnPrefix . 'identifier'];
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path'       ,'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score',      'dcr:value' => 0                           , 'dcr:selectorName' => $selectorName);
+                if (0 === count($qom->getColumns())) {
+                    $result[] = array('dcr:name' => $selectorPrefix . 'jcr:primaryType','dcr:value' => $primaryType                , 'dcr:selectorName' => $selectorName);
+                }
+
+                if (isset($row[$columnPrefix . 'props'])) {
+                    $properties[$selectorName] = (array) static::xmlToProps(
+                        $row[$columnPrefix . 'props'],
+                        $this->valueConverter
+                    );
+                } else {
+                    $properties[$selectorName] = array();
+                }
+
+                // TODO: add other default columns that Jackrabbit provides to provide a more consistent behavior
+                if (isset($properties[$selectorName]['jcr:createdBy'])) {
+                    $standardColumns[$selectorName]['jcr:createdBy'] = $properties[$selectorName]['jcr:createdBy'];
+                }
+                if (isset($properties[$selectorName]['jcr:created'])) {
+                    $standardColumns[$selectorName]['jcr:created'] = $properties[$selectorName]['jcr:created'];
+                }
+            }
+
+            foreach ($qom->getColumns() as $column) {
+                $selectorName = $column->getSelectorName();
+                $columnName = $column->getPropertyName();
+                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+
+                $dcrValue = 'jcr:uuid' === $columnName
+                    ? $row[$columnPrefix . 'identifier']
+                    : (isset($properties[$selectorName][$columnName]) ? $properties[$selectorName][$columnName] : '')
+                ;
+
+                if (isset($standardColumns[$selectorName][$columnName])) {
+                    unset($standardColumns[$selectorName][$columnName]);
                 }
 
                 $result[] = array(
-                    'dcr:name' => "$selectorName.$columnName",
-                    'dcr:value' => null !== $dcrValue ? $dcrValue : (array_key_exists($columnName, $properties[$selectorName]) ? $properties[$selectorName][$columnName] : null),
-                    'dcr:selectorName' => $selectorName ?: $columns['jcr:primaryType'],
+                    'dcr:name' => ($column->getColumnName() === $columnName && isset($properties[$selectorName][$columnName])
+                        ? $selectorName.'.'.$columnName : $column->getColumnName()),
+                    'dcr:value' => $dcrValue,
+                    'dcr:selectorName' => $selectorName ?: $primaryType,
                 );
+            }
+
+            foreach ($standardColumns as $selectorName => $columns) {
+                foreach ($columns as $columnName => $value) {
+                    $result[] = array(
+                        'dcr:name' => $primaryType.'.'.$columnName,
+                        'dcr:value' => $value,
+                        'dcr:selectorName' => $selectorName,
+                    );
+                }
             }
 
             $results[] = $result;
