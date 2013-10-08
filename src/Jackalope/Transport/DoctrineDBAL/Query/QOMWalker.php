@@ -198,10 +198,10 @@ class QOMWalker
      */
     protected function validateSource(QOM\SourceInterface $source)
     {
-        if ($source instanceOf QOM\SelectorInterface) {
+        if ($source instanceof QOM\SelectorInterface) {
             $selectors = array($source);
             $this->validateSelectorSource($source);
-        } elseif ($source instanceOf QOM\JoinInterface) {
+        } elseif ($source instanceof QOM\JoinInterface) {
             $selectors = $this->validateJoinSource($source);
         } else {
             $selectors = array();
@@ -265,11 +265,11 @@ class QOMWalker
      */
     public function walkSource(QOM\SourceInterface $source)
     {
-        if ($source instanceOf QOM\SelectorInterface) {
+        if ($source instanceof QOM\SelectorInterface) {
             return $this->walkSelectorSource($source);
         }
 
-        if ($source instanceOf QOM\JoinInterface) {
+        if ($source instanceof QOM\JoinInterface) {
             return $this->walkJoinSource($source);
         }
 
@@ -300,7 +300,7 @@ class QOMWalker
      */
     public function walkJoinSource(QOM\JoinInterface $source)
     {
-        if (!$source->getLeft() instanceOf QOM\SelectorInterface || !$source->getRight() instanceOf QOM\SelectorInterface) {
+        if (!$source->getLeft() instanceof QOM\SelectorInterface || !$source->getRight() instanceof QOM\SelectorInterface) {
             throw new NotImplementedException("Join with Joins");
         }
 
@@ -340,19 +340,19 @@ class QOMWalker
 
     public function walkJoinCondition(QOM\SelectorInterface $left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
-        if ($condition instanceOf QOM\ChildNodeJoinConditionInterface) {
+        if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
             throw new NotImplementedException("ChildNodeJoinCondition");
         }
 
-        if ($condition instanceOf QOM\DescendantNodeJoinConditionInterface) {
+        if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
             return $this->walkDescendantNodeJoinConditon($condition);
         }
 
-        if ($condition instanceOf QOM\EquiJoinConditionInterface) {
+        if ($condition instanceof QOM\EquiJoinConditionInterface) {
             return $this->walkEquiJoinCondition($left->getSelectorName(), $right->getSelectorName(), $condition);
         }
 
-        if ($condition instanceOf QOM\SameNodeJoinConditionInterface) {
+        if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
             throw new NotImplementedException("SameNodeJoinCondtion");
         }
     }
@@ -528,17 +528,17 @@ class QOMWalker
 
             // Check if we have a property and a literal value (in random order)
             if (
-                ($operator1 instanceOf QOM\PropertyValueInterface
-                    && $operator2 instanceOf QOM\LiteralInterface)
-                || ($operator1 instanceOf QOM\LiteralInterface
-                    && $operator2 instanceOf QOM\PropertyValueInterface)
-                || ($operator1 instanceOf QOM\NodeNameInterface
-                    && $operator2 instanceOf QOM\LiteralInterface)
-                || ($operator1 instanceOf QOM\LiteralInterface
-                    && $operator2 instanceOf QOM\NodeNameInterface)
+                ($operator1 instanceof QOM\PropertyValueInterface
+                    && $operator2 instanceof QOM\LiteralInterface)
+                || ($operator1 instanceof QOM\LiteralInterface
+                    && $operator2 instanceof QOM\PropertyValueInterface)
+                || ($operator1 instanceof QOM\NodeNameInterface
+                    && $operator2 instanceof QOM\LiteralInterface)
+                || ($operator1 instanceof QOM\LiteralInterface
+                    && $operator2 instanceof QOM\NodeNameInterface)
             ) {
                 // Check whether the left is the literal, at this point the other always is the literal/nodename operand
-                if ($constraint->getOperand1() instanceOf QOM\LiteralInterface) {
+                if ($constraint->getOperand1() instanceof QOM\LiteralInterface) {
                     $operand = $operator2;
                     $literalOperand = $operator1;
                 } else {
