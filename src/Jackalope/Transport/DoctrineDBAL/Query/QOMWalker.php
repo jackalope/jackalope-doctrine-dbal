@@ -161,8 +161,6 @@ class QOMWalker
         }
         $sql = $this->platform->modifyLimitQuery($sql, $limit, $offset);
 
-        //echo $sql."\n";
-
         return array($selectors, $this->alias, $sql);
     }
 
