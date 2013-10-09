@@ -698,12 +698,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         // TODO on RDBMS that support deferred FKs we could skip this step
         if ($this->referencesToDelete) {
-            $params = array(array_keys($this->referencesToDelete));
+            $params = array_keys($this->referencesToDelete);
 
             // remove all PropertyType::REFERENCE with a source_id on a deleted node
             try {
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
-                $this->conn->executeUpdate($query, $params, array(Connection::PARAM_INT_ARRAY));
+                if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+                    foreach (array_chunk($params, 999) as $chunk) {
+                        $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
+                    }
+                } else {
+                    $this->conn->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
             }
@@ -717,8 +723,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 LEFT OUTER JOIN phpcr_nodes n ON r.target_id = n.id
             WHERE r.target_id IN (?)';
 
-            $stmt = $this->conn->executeQuery($query, $params, array(Connection::PARAM_INT_ARRAY));
-            $missingTargets = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+                $missingTargets = array();
+                foreach (array_chunk($params, 999) as $chunk) {
+                    $stmt = $this->conn->executeQuery($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
+                    $missingTargets = array_merge($missingTargets, $stmt->fetchAll(\PDO::FETCH_COLUMN));
+                }
+            } else {
+                $stmt = $this->conn->executeQuery($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                $missingTargets = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            }
             if ($missingTargets) {
                 $paths = array();
                 foreach ($missingTargets as $id) {
@@ -734,7 +748,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE target_id IN (?)";
-                    $this->conn->executeUpdate($query, $params, array(Connection::PARAM_INT_ARRAY));
+                    if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+                        foreach (array_chunk($params, 999) as $chunk) {
+                            $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
+                        }
+                    } else {
+                        $this->conn->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                    }
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
@@ -1653,7 +1673,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid string?');
                     }
                 }
-                break;   
+                break;
         }
     }
 
@@ -2208,7 +2228,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->validateNode($node);
 
         $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
-    
+
         return true;
     }
 }
