@@ -201,7 +201,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             // @TODO: don't know if there are expressions returning more then one row
             if ($list->length > 0) {
-                return $list->item(0)->textContent;
+                $type = $list->item(0)->parentNode->attributes->getNamedItem('type')->value;
+                $content = $list->item(0)->textContent;
+
+                switch ($type) {
+                    case 'long':
+                        return (int) $content;
+                        break;
+                    case 'double':
+                        return (double) $content;
+                        break;
+                    default:
+                        return $content;
+                }
             }
 
             // @TODO: don't know if return value is right
