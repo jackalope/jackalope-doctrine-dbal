@@ -521,59 +521,69 @@ class QOMWalker
     {
         $operator = $this->walkOperator($constraint->getOperator());
 
-        // When we encounter equal/not-equal do some checks to catch text comparison
-        if ('=' === $operator || '!=' === $operator) {
-            $operator1 = $constraint->getOperand1();
-            $operator2 = $constraint->getOperand2();
+        $operator1 = $constraint->getOperand1();
+        $operator2 = $constraint->getOperand2();
 
-            // Check if we have a property and a literal value (in random order)
-            if (
-                ($operator1 instanceof QOM\PropertyValueInterface
-                    && $operator2 instanceof QOM\LiteralInterface)
-                || ($operator1 instanceof QOM\LiteralInterface
-                    && $operator2 instanceof QOM\PropertyValueInterface)
-                || ($operator1 instanceof QOM\NodeNameInterface
-                    && $operator2 instanceof QOM\LiteralInterface)
-                || ($operator1 instanceof QOM\LiteralInterface
-                    && $operator2 instanceof QOM\NodeNameInterface)
-            ) {
-                // Check whether the left is the literal, at this point the other always is the literal/nodename operand
-                if ($constraint->getOperand1() instanceof QOM\LiteralInterface) {
-                    $operand = $operator2;
-                    $literalOperand = $operator1;
-                } else {
-                    $literalOperand = $operator2;
-                    $operand = $operator1;
+        // Check if we have a property and a literal value (in random order)
+        if (
+            ($operator1 instanceOf QOM\PropertyValueInterface
+                && $operator2 instanceOf QOM\LiteralInterface)
+            || ($operator1 instanceOf QOM\LiteralInterface
+                && $operator2 instanceOf QOM\PropertyValueInterface)
+            || ($operator1 instanceOf QOM\NodeNameInterface
+                && $operator2 instanceOf QOM\LiteralInterface)
+            || ($operator1 instanceOf QOM\LiteralInterface
+                && $operator2 instanceOf QOM\NodeNameInterface)
+        ) {
+            // Check whether the left is the literal, at this point the other always is the literal/nodename operand
+            if ($operator1 instanceOf QOM\LiteralInterface) {
+                $operand = $operator2;
+                $literalOperand = $operator1;
+            } else {
+                $literalOperand = $operator2;
+                $operand = $operator1;
+            }
+
+            if (is_string($literalOperand->getLiteralValue()) && '=' !== $operator && '!=' !== $operator) {
+                return
+                    $this->walkOperand($operator1) . " " .
+                    $operator . " " .
+                    $this->walkOperand($operator2);
+            }
+
+            if ($operand instanceof QOM\NodeNameInterface) {
+                $selectorName = $operand->getSelectorName();
+                $alias = $this->getTableAlias($selectorName);
+
+                $literal = $literalOperand->getLiteralValue();
+                $parts = explode(':', $literal);
+                if (!isset($this->namespaces[$parts[0]])) {
+                    throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
                 }
 
-                if ($operand instanceof QOM\NodeNameInterface) {
-                    $selectorName = $operand->getSelectorName();
-                    $alias = $this->getTableAlias($selectorName);
+                $parts[0] = $this->namespaces[$parts[0]];
 
-                    $literal = $literalOperand->getLiteralValue();
-                    $parts = explode(':', $literal);
-                    if (!isset($this->namespaces[$parts[0]])) {
-                        throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
-                    }
+                return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name") . " " .
+                    $operator . " " .
+                    $this->conn->quote(implode(':', $parts));
+            }
 
-                    $parts[0] = $this->namespaces[$parts[0]];
-
-                    return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name") . " " .
-                        $operator . " " .
-                        $this->conn->quote(implode(':', $parts));
+            if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
+                if (is_int($literalOperand->getLiteralValue()) || is_float($literalOperand->getLiteralValue())) {
+                    return $this->walkNumComparisonConstraint($operand, $literalOperand, $operator);
+                }
+                if (is_bool($literalOperand->getLiteralValue())) {
+                    return $this->walkBoolComparisonConstraint($operand, $literalOperand, $operator);
                 }
 
-                if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
-                    return $this->walkTextComparisonConstraint($operand, $literalOperand, $operator);
-                }
+                return $this->walkTextComparisonConstraint($operand, $literalOperand, $operator);
             }
         }
 
-        // None of the checks above returned a constraint, return a simple constraint
         return
-            $this->walkOperand($constraint->getOperand1()) . " " .
+            $this->walkOperand($operator1) . " " .
             $operator . " " .
-            $this->walkOperand($constraint->getOperand2());
+            $this->walkOperand($operator2);
     }
 
     /**
@@ -587,6 +597,24 @@ class QOMWalker
         $property = $propertyOperand->getPropertyName();
 
         return $this->sqlXpathComparePropertyValue($alias, $property, $this->getLiteralValue($literalOperand), $operator);
+    }
+
+    public function walkBoolComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
+    {
+        $value = true === $literalOperand->getLiteralValue() ? '1' : '0';
+
+        return $this->walkOperand($propertyOperand) . " " . $operator . " " . $this->conn->quote($value);
+    }
+
+    public function walkNumComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
+    {
+        $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
+        $property = $propertyOperand->getPropertyName();
+
+        return 
+            $this->sqlXpathExtractNumValue($alias, $property) . " " .
+            $operator . " " .
+            $literalOperand->getLiteralValue();
     }
 
     /**
@@ -713,13 +741,7 @@ class QOMWalker
     {
         $value = $operand->getLiteralValue();
 
-        if ($value instanceof \DateTime) {
-            $literal = $value->format('c');
-        } else {
-            $literal = $value;
-        }
-
-        return $literal;
+        return $value instanceof \DateTime ? $value->format('c') : $value;
     }
 
     /**
@@ -766,6 +788,15 @@ class QOMWalker
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
+    }
+
+    private function sqlXpathExtractNumValue($alias, $property)
+    {
+        if ($this->platform instanceof PostgreSqlPlatform) {
+            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
+        }
+
+        return $this->sqlXpathExtractValue($alias, $property);
     }
 
     /**
