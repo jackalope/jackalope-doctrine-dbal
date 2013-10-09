@@ -4,6 +4,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Test\TestCase;
+use PHPCR\Util\NodeHelper;
 
 class ClientTest extends TestCase
 {
@@ -251,5 +252,23 @@ class ClientTest extends TestCase
     private function translateCharFromCode($char)
     {
         return json_decode('"'.$char.'"');
+    }
+
+    public function testDeleteMoreThanOneThousandNodes()
+    {
+        $session = $this->session;
+        $nodes = array();
+        $root = $this->session->getNode('/');
+        $parent = $root->addNode('test-more-than-one-thousand');
+
+        for ($i = 0; $i <= 1200; $i++) {
+            $nodes[] = $parent->addNode('node-'.$i);
+        }
+
+        $this->session->save();
+
+        NodeHelper::purgeWorkspace($this->session);
+
+        $this->session->save();
     }
 }
