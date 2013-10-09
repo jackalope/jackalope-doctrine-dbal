@@ -741,13 +741,7 @@ class QOMWalker
     {
         $value = $operand->getLiteralValue();
 
-        if ($value instanceof \DateTime) {
-            $literal = $value->format('c');
-        } else {
-            $literal = $value;
-        }
-
-        return $literal;
+        return $value instanceof \DateTime ? $value->format('c') : $value;
     }
 
     /**
@@ -800,9 +794,9 @@ class QOMWalker
     {
         if ($this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
-        } else {
-            return $this->sqlXpathExtractValue($alias, $property);
         }
+
+        return $this->sqlXpathExtractValue($alias, $property);
     }
 
     /**
