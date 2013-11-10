@@ -44,6 +44,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         'jackalope.disable_transactions' => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
         'jackalope.disable_stream_wrapper' => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
         'jackalope.data_caches' => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
+        'jackalope.logger' => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
     );
 
     /**
@@ -88,6 +89,9 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 
         if (isset($parameters['jackalope.check_login_on_server'])) {
             $transport->setCheckLoginOnServer($parameters['jackalope.check_login_on_server']);
+        }
+        if (isset($parameters['jackalope.logger'])) {
+            $transport = $factory->get('Transport\DoctrineDBAL\LoggingClient', array($transport, $parameters['jackalope.logger']));
         }
 
         $options['transactions'] = empty($parameters['jackalope.disable_transactions']);
