@@ -3,6 +3,8 @@
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use Jackalope\Test\TestCase;
+use Jackalope\Query\QOM\Length;
+use Jackalope\Query\QOM\PropertyValue;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Factory;
 
@@ -227,6 +229,12 @@ class QOMWalkerTest extends TestCase
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/some/node/%%'", $this->defaultColumns),
             $sql
         );
+    }
+
+    public function testWalkOperand()
+    {
+        $operand = new Length(new PropertyValue('foo', 'bar'));
+        $this->assertRegExp('/^(CHAR_)?LENGTH\((.*?)sv:property\[@sv:name="bar"\](.*?)\)$/', $this->walker->walkOperand($operand));
     }
 
     /**

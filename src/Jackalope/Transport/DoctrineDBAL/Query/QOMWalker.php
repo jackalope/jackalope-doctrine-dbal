@@ -691,7 +691,11 @@ class QOMWalker
             $alias = $this->getTableAlias($operand->getPropertyValue()->getSelectorName());
             $property = $operand->getPropertyValue()->getPropertyName();
 
-            return $this->sqlProperty($alias, $property);
+            if ($this->conn->getDatabasePlatform() instanceOf SqlitePlatform) {
+                return sprintf('LENGTH(%s)', $this->sqlProperty($alias, $property));
+            } else {
+                return sprintf('CHAR_LENGTH(%s)', $this->sqlProperty($alias, $property));
+            }
         }
 
         throw new InvalidQueryException("Dynamic operand " . get_class($operand) . " not yet supported.");
