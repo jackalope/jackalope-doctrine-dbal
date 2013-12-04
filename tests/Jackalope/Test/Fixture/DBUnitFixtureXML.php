@@ -281,13 +281,16 @@ class DBUnitFixtureXML extends XMLDocument
 
     public function createValueNodeByType($workspaceName, $type, $value, $id, $propertyName, $binaryDataIdx, \DOMDocument $dom)
     {
+        $length = is_scalar($value) ? strlen($value) : null;
         switch ($type) {
             case 'binary':
                 $value = $this->addBinaryNode($id, $propertyName, $workspaceName, $binaryDataIdx, $value);
+                $length = $value;
                 break;
 
             case 'boolean':
                 $value = ('true' === $value) ? '1' : '0';
+                $length = 1;
                 break;
 
             case 'date':
@@ -311,10 +314,10 @@ class DBUnitFixtureXML extends XMLDocument
                 break;
         }
 
-        return $this->createValueNode($value, $dom);
+        return $this->createValueNode($value, $dom, $length);
     }
 
-    public function createValueNode($value, \DOMDocument $dom)
+    public function createValueNode($value, \DOMDocument $dom, $length)
     {
         $valueNode = $dom->createElement('sv:value');
 
@@ -322,6 +325,12 @@ class DBUnitFixtureXML extends XMLDocument
             $valueNode->appendChild($dom->createCDATASection($value));
         } else {
             $valueNode->appendChild($dom->createTextNode($value));
+        }
+
+        if (null !== $length) {
+            $lengthAttribute = $dom->createAttribute('length');
+            $lengthAttribute->value = $length;
+            $valueNode->appendChild($lengthAttribute);
         }
 
         return $valueNode;

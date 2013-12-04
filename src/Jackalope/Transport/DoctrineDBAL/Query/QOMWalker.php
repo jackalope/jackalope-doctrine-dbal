@@ -691,11 +691,7 @@ class QOMWalker
             $alias = $this->getTableAlias($operand->getPropertyValue()->getSelectorName());
             $property = $operand->getPropertyValue()->getPropertyName();
 
-            if ($this->conn->getDatabasePlatform() instanceOf SqlitePlatform) {
-                return sprintf('LENGTH(%s)', $this->sqlProperty($alias, $property));
-            } else {
-                return sprintf('CHAR_LENGTH(%s)', $this->sqlProperty($alias, $property));
-            }
+            return $this->sqlXpathExtractValueAttribute($alias, $property, 'length');
         }
 
         throw new InvalidQueryException("Dynamic operand " . get_class($operand) . " not yet supported.");
@@ -801,6 +797,21 @@ class QOMWalker
         }
 
         return $this->sqlXpathExtractValue($alias, $property);
+    }
+
+    private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)
+    {
+        if ($this->platform instanceof MySqlPlatform) {
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
+        }
+        if ($this->platform instanceof PostgreSqlPlatform) {
+            return sprintf("(xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
+        }
+        if ($this->platform instanceof SqlitePlatform) {
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
+        }
+
+        throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
 
     /**

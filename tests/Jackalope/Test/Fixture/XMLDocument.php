@@ -69,6 +69,7 @@ abstract class XMLDocument extends \DOMDocument
             'xs'    => 'http://www.w3.org/2001/XMLSchema',
             'jcr'   => 'http://www.jcp.org/jcr/1.0',
             'sv'    => 'http://www.jcp.org/jcr/sv/1.0',
+            'phpcr' => 'http://www.jcp.org/jcr/phpcr/1.0',
             'rep'   => 'internal'
         );
     }

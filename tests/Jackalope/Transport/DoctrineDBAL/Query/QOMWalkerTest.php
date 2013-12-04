@@ -234,7 +234,7 @@ class QOMWalkerTest extends TestCase
     public function testWalkOperand()
     {
         $operand = new Length(new PropertyValue('foo', 'bar'));
-        $this->assertRegExp('/^(CHAR_)?LENGTH\((.*?)sv:property\[@sv:name="bar"\](.*?)\)$/', $this->walker->walkOperand($operand));
+        $this->assertRegExp('/\/\/sv:property\[@sv:name="bar"\]\/sv:value\[1\]\/@length/', $this->walker->walkOperand($operand));
     }
 
     /**

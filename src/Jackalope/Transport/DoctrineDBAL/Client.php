@@ -859,7 +859,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'xs' => "http://www.w3.org/2001/XMLSchema",
             'jcr' => "http://www.jcp.org/jcr/1.0",
             'sv' => "http://www.jcp.org/jcr/sv/1.0",
-            'rep' => "internal"
+            'rep' => "internal",
         );
 
         $dom = new \DOMDocument('1.0', 'UTF-8');
@@ -910,7 +910,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                                 fclose($stream);
                             }
                             $binaryData[$property->getName()][] = $binary;
-                            $values[] = strlen($binary);
+                            $length = strlen($binary);
+                            $values[] = $length;
                         }
                     } else {
                         $values = $property->getLength();
@@ -939,9 +940,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     throw new RepositoryException('unknown type '.$property->getType());
             }
 
-            foreach ((array) $values as $value) {
+            $lengths = (array) $property->getLength();
+            foreach ((array) $values as $key => $value) {
                 $element = $propertyNode->appendChild($dom->createElement('sv:value'));
                 $element->appendChild($dom->createTextNode($value));
+                if (isset($lengths[$key])) {
+                    $lengthAttribute = $dom->createAttribute('length');
+                    $lengthAttribute->value = $lengths[$key];
+                    $element->appendChild($lengthAttribute);
+                }
             }
 
             $rootNode->appendChild($propertyNode);
