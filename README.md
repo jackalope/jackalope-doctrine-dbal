@@ -1,4 +1,4 @@
-# Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
+# Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=1.0)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
 
 Implementation of the persisting data into relational databases.
 
