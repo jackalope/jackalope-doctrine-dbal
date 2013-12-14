@@ -18,7 +18,7 @@
     "require": {
         "php": ">=5.3.3",
         "doctrine/dbal": ">=2.2.0,<2.5",
-        "phpcr/phpcr": "~2.1.0-RC1",
+        "phpcr/phpcr": "~2.1.0",
         "phpcr/phpcr-utils": "~1.0.0",
         "jackalope/jackalope": "~1.0.0"
     },
