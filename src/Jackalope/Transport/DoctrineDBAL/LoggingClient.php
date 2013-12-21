@@ -64,7 +64,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      */
     public function query(Query $query)
     {
-        $this->logger->startCall(__FUNCTION__, func_get_args());
+        $this->logger->startCall(__FUNCTION__, func_get_args(), array('fetchDepth' => $this->transport->getFetchDepth()));
         $result = $this->transport->query($query);
         $this->logger->stopCall();
         return $result;
