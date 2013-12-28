@@ -1,6 +1,13 @@
 Changelog
 =========
 
+* **2013-12-26**: cleanup of phpcr-utils lead to adjust cli-config.php.dist.
+  If you use the console, you need to sync your cli-config.php file with the
+  dist file.
+
+1.0.0
+-----
+
 * **2013-06-07**: [#75] split the references into 2 tables
  * This splits the phpcr_nodes_foreignkeys into two separate tables
  * Improves performance and allows using native deferred FK capabilities in the future
