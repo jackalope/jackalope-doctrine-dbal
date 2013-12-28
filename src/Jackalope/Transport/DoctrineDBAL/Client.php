@@ -1211,6 +1211,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
             $this->conn->executeUpdate($query, $params);
+            unset($this->nodeIdentifiers[$path]);
         } catch (DBALException $e) {
             throw new RepositoryException('Unexpected exception while deleting node ' . $path, $e->getCode(), $e);
         }
