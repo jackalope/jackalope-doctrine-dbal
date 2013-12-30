@@ -277,6 +277,7 @@ class ClientTest extends TestCase
         $this->session->save();
     }
 
+<<<<<<< HEAD
     public function testPropertyLengthAttribute()
     {
         $rootNode = $this->session->getRootNode();
@@ -346,5 +347,32 @@ class ClientTest extends TestCase
         });
 
         $this->assertEquals('like-a-uuid', $method->invoke($this->transport));
+    }
+
+    public function testMoveAndReplace()
+    {
+        $root = $this->session->getNode('/');
+        $topic1 = $root->addNode('topic1');
+        $this->session->save();
+        $this->session->move('/topic1', '/topic2');
+        $root->addNode('topic1');
+        $this->session->save();
+
+        $conn = $this->getConnection();
+        $qb = $conn->createQueryBuilder();
+
+        $qb->select('local_name')
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path');
+
+        $query = $qb->getSql();
+
+        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1'));
+        $row = $stmnt->fetch();
+        $this->assertNotEmpty($row, '/topic1 exists in database');
+
+        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic2'));
+        $row = $stmnt->fetch();
+        $this->assertNotEmpty($row, '/topic2 exists in database');
     }
 }
