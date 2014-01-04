@@ -45,6 +45,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         'jackalope.disable_stream_wrapper' => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
         'jackalope.data_caches' => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
         'jackalope.logger' => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
+        Session::OPTION_AUTO_LASTMODIFIED => 'boolean: Whether to automatically update nodes having mix:lastModified. Defaults to true.',
     );
 
     /**
@@ -99,6 +100,9 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 
         $options['transactions'] = empty($parameters['jackalope.disable_transactions']);
         $options['stream_wrapper'] = empty($parameters['jackalope.disable_stream_wrapper']);
+        if (isset($parameters[Session::OPTION_AUTO_LASTMODIFIED])) {
+            $options[Session::OPTION_AUTO_LASTMODIFIED] = $parameters[Session::OPTION_AUTO_LASTMODIFIED];
+        }
 
         return new Repository($factory, $transport, $options);
     }
