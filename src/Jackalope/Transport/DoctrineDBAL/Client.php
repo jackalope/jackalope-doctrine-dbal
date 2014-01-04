@@ -1211,8 +1211,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
             $this->conn->executeUpdate($query, $params);
+            $this->cleanIdentifierCache($path);
         } catch (DBALException $e) {
             throw new RepositoryException('Unexpected exception while deleting node ' . $path, $e->getCode(), $e);
+        }
+    }
+
+    /**
+     * Clean all identifiers under path $root.
+     *
+     * @param string $root Path to the root node to be cleared
+     */
+    private function cleanIdentifierCache($root)
+    {
+        unset($this->nodeIdentifiers[$root]);
+        foreach($this->nodeIdentifiers as $path => $uuid) {
+            if (strpos($path, "$root/") === 0) {
+                unset($this->nodeIdentifiers[$path]);
+            }
         }
     }
 
