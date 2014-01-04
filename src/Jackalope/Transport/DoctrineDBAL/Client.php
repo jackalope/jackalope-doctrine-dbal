@@ -972,13 +972,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $values[':path'] = $path;
         $values[':pathd'] = rtrim($path,'/') . '/%';
         $values[':workspace'] = $this->workspaceName;
-        $values[':fetchDepth'] = $this->fetchDepth;
 
-        $query = 'SELECT * FROM phpcr_nodes
-            WHERE (path LIKE :pathd OR path = :path)
+        if ($this->fetchDepth > 0) {
+            $values[':fetchDepth'] = $this->fetchDepth;
+            $query = '
+              SELECT * FROM phpcr_nodes
+              WHERE (path LIKE :pathd OR path = :path)
                 AND workspace_name = :workspace
                 AND depth <= ((SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace) + :fetchDepth)
-            ORDER BY sort_order ASC';
+              ORDER BY sort_order ASC';
+        } else {
+            $query = '
+              SELECT * FROM phpcr_nodes
+              WHERE path = :path
+                AND workspace_name = :workspace
+              ORDER BY sort_order ASC';
+        }
 
         $stmt = $this->conn->executeQuery($query, $values);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -1050,18 +1059,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $params[':workspace'] = $this->workspaceName;
-        $params[':fetchDepth'] = $this->fetchDepth;
 
-        $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
-            FROM phpcr_nodes WHERE workspace_name = :workspace AND (';
+        if ($this->fetchDepth > 0) {
+            $params[':fetchDepth'] = $this->fetchDepth;
 
-        $i = 0;
-        foreach ($paths as $path) {
-            $params[':path'.$i] = $path;
-            $params[':pathd'.$i] = rtrim($path,'/') . '/%';
-            $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
-            $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
-            $i++;
+            $query = '
+              SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+              FROM phpcr_nodes
+              WHERE workspace_name = :workspace
+                AND (';
+
+            $i = 0;
+            foreach ($paths as $path) {
+                $params[':path'.$i] = $path;
+                $params[':pathd'.$i] = rtrim($path,'/') . '/%';
+                $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
+                $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
+                $i++;
+            }
+        } else {
+            $query = 'SELECT path AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+                FROM phpcr_nodes WHERE workspace_name = :workspace AND (';
+
+            $i = 0;
+            foreach ($paths as $path) {
+                $params[':path'.$i] = $path;
+                $query .= 'path = :path'.$i.' OR ';
+                $i++;
+            }
         }
 
         $query = rtrim($query, 'OR ');
@@ -1074,8 +1099,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($paths as $path) {
             if (isset($all[$path])) {
                 $nodes[$path] = $this->getNodeData($path, $all[$path]);
+                unset($all[$path]);
             }
         }
+        // TODO: OPTIMIZE to profit from fetchDepth, we need to store the
+        // prefetched data that was not directly requested somewhere now.
+        // https://github.com/jackalope/jackalope-doctrine-dbal/issues/157
 
         return $nodes;
     }
