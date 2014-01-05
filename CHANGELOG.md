@@ -5,6 +5,8 @@ Changelog
   If you use the console, you need to sync your cli-config.php file with the
   dist file.
 
+* **2013-12-14**: Added support for logging PHPCR database queries.
+
 1.0.0
 -----
 
