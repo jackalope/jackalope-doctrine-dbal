@@ -4,6 +4,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Test\TestCase;
+use PHPCR\PropertyType;
 use PHPCR\Util\NodeHelper;
 
 class ClientTest extends TestCase
@@ -270,5 +271,61 @@ class ClientTest extends TestCase
         NodeHelper::purgeWorkspace($this->session);
 
         $this->session->save();
+    }
+
+    public function testPropertyLengthAttribute()
+    {
+        $rootNode = $this->session->getRootNode();
+        $node = $rootNode->addNode('testLengthAttribute');
+
+        $data = array(
+            // PropertyName         PropertyValue                   PropertyType            Expected Length
+            'simpleString'  => array('simplestring',                PropertyType::STRING,   12),
+            'mbString'      => array('stringMultibit漢',             PropertyType::STRING,   17),
+            'long'          => array(42,                            PropertyType::LONG,     2),
+            'double'        => array(3.1415,                        PropertyType::DOUBLE,   6),
+            'decimal'       => array(3.141592,                      PropertyType::DECIMAL,  8),
+            'date'          => array(new \DateTime('now'),          PropertyType::DATE,     29),
+            'booleanTrue'   => array(true,                          PropertyType::BOOLEAN,  1),
+            'booleanFalse'  => array(false,                         PropertyType::BOOLEAN,  0),
+            'name'          => array('nt:unstructured',             PropertyType::NAME,     15),
+            'uri'           => array('https://google.com',          PropertyType::URI,      18),
+            'path'          => array('/root/testLengthAttribute',   PropertyType::PATH,     25),
+            // 'multiString'   => array(array('foo', 'bar'),           PropertyType::STRING,   array(3,3)),
+            // (weak)reference...
+        );
+
+        foreach ($data as $propertyName => $propertyInfo) {
+            $node->setProperty($propertyName, $propertyInfo[0], $propertyInfo[1]);
+        }
+
+        $this->session->save();
+
+        $statement = $this->getConnection()->executeQuery('SELECT props FROM phpcr_nodes WHERE path = ?', array('/testLengthAttribute'));
+        $xml = $statement->fetchColumn();
+
+        $this->assertNotEquals(false, $xml);
+
+        $doc = new \DOMDocument('1.0', 'utf-8');
+        $doc->loadXML($xml);
+
+        $xpath = new \DOMXPath($doc);
+        foreach ($data as $propertyName => $propertyInfo) {
+
+            $propertyElement = $xpath->query(sprintf('sv:property[@sv:name="%s"]', $propertyName));
+            $this->assertEquals(1, $propertyElement->length);
+
+            $values = $xpath->query('sv:value', $propertyElement->item(0));
+
+            /** @var $value \DOMElement */
+            foreach ($values as $index => $value) {
+
+                $lengthAttribute = $value->attributes->getNamedItem('length');
+                if (null === $lengthAttribute) {
+                    $this->fail(sprintf('Value %d for property "%s" is expected to have an attribute "length"', $index, $propertyName));
+                }
+                $this->assertEquals($propertyInfo[2], $lengthAttribute->nodeValue);
+            }
+        }
     }
 }
