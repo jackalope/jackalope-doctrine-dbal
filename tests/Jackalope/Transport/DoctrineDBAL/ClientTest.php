@@ -9,11 +9,16 @@ use PHPCR\Util\NodeHelper;
 
 class ClientTest extends TestCase
 {
+    /**
+     * @var Client
+     */
     private $transport;
+
     /**
      * @var \Jackalope\Repository
      */
     private $repository;
+
     /**
      * @var \Jackalope\Session
      */
@@ -257,7 +262,6 @@ class ClientTest extends TestCase
 
     public function testDeleteMoreThanOneThousandNodes()
     {
-        $session = $this->session;
         $nodes = array();
         $root = $this->session->getNode('/');
         $parent = $root->addNode('test-more-than-one-thousand');
@@ -327,5 +331,20 @@ class ClientTest extends TestCase
                 $this->assertEquals($propertyInfo[2], $lengthAttribute->nodeValue);
             }
         }
+    }
+
+    public function testUuid()
+    {
+        $class = new \ReflectionClass('Jackalope\Transport\DoctrineDBAL\Client');
+        $method = $class->getMethod('generateUuid');
+        $method->setAccessible(true);
+
+        $this->assertInternalType('string', $method->invoke($this->transport));
+
+        $this->transport->setUuidGenerator(function () {
+            return 'like-a-uuid';
+        });
+
+        $this->assertEquals('like-a-uuid', $method->invoke($this->transport));
     }
 }

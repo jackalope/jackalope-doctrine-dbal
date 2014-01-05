@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* **2014-01-05**: Allowing to set a closure for a custom uuid generator. Set
+  the parameter `jackalope.uuid_generator` to a function returning a UUID
+  string and pass it as parameter to the repository factory.
+
 * **2013-12-26**: cleanup of phpcr-utils lead to adjust cli-config.php.dist.
   If you use the console, you need to sync your cli-config.php file with the
   dist file.

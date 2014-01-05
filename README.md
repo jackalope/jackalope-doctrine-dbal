@@ -170,8 +170,9 @@ usage (except for supported features, that is).
 See [PHPCR Tutorial](https://github.com/phpcr/phpcr-docs/blob/master/tutorial/Tutorial.md)
 for a more detailed tutorial on how to use the PHPCR API.
 
+# Advanced configuration
 
-# Logging
+## Logging
 
 Jackalope supports logging, for example to investigate the number and type of
 queries used. To enable logging, provide a logger instance to the repository
@@ -196,6 +197,12 @@ Psr3Logger class.
 
 Note that when using jackalope in Symfony2, the logger is integrated in the
 debug toolbar.
+
+## Custom UUID generator
+
+By default, Jackalope uses the UUIDHelper class from phpcr-utils. If you want
+to use something else, you can provide a closure that returns UUIDs as option
+`jackalope.uuid_generator` to `$factory->getRepository($options)`
 
 # Implementation notes
 

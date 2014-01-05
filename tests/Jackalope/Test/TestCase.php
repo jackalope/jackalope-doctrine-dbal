@@ -2,10 +2,14 @@
 
 namespace Jackalope\Test;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 
 abstract class TestCase extends \Jackalope\TestCase
 {
+    /**
+     * @var Connection
+     */
     protected $conn;
 
     protected function getConnection()

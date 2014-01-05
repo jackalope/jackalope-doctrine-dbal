@@ -90,6 +90,9 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         if (isset($parameters['jackalope.check_login_on_server'])) {
             $transport->setCheckLoginOnServer($parameters['jackalope.check_login_on_server']);
         }
+        if (isset($parameters['jackalope.uuid_generator'])) {
+            $transport->setUuidGenerator($parameters['jackalope.uuid_generator']);
+        }
         if (isset($parameters['jackalope.logger'])) {
             $transport = $factory->get('Transport\DoctrineDBAL\LoggingClient', array($transport, $parameters['jackalope.logger']));
         }
