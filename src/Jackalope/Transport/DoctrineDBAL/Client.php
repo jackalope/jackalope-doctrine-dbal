@@ -1517,7 +1517,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
         }
 
-        unset($this->nodeIdentifiers[$srcAbsPath]);
+        $this->cleanIdentifierCache($srcAbsPath);
     }
 
     /**
