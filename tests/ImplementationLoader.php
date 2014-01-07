@@ -113,7 +113,17 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         return array(
             'jackalope.doctrine_dbal_connection' => $this->connection,
             'jackalope.data_caches' => $caches,
+            \Jackalope\Session::OPTION_AUTO_LASTMODIFIED => false,
         );
+    }
+
+    public function getSessionWithLastModified()
+    {
+        /** @var $session \Jackalope\Session */
+        $session = $this->getSession();
+        $session->setSessionOption(\Jackalope\Session::OPTION_AUTO_LASTMODIFIED, true);
+
+        return $session;
     }
 
     public function getCredentials()
@@ -160,7 +170,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
             }
         }
 
-        return new \Jackalope\Repository(null, $transport);
+        return new \Jackalope\Repository(null, $transport, $this->getRepositoryFactoryParameters());
     }
 
     public function getFixtureLoader()

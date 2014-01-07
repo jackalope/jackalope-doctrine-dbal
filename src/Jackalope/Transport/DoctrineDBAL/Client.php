@@ -1647,6 +1647,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $propertyDef->getRequiredType()
                     );
                 }
+            } elseif ($propertyDef->isAutoCreated()) {
+                $prop = $node->getProperty($propertyDef->getName());
+                if (!$prop->isModified() && !$prop->isNew()) {
+                    switch($propertyDef->getName()) {
+                        case 'jcr:lastModified':
+                            if ($this->getAutoLastModified()) {
+                                $prop->setValue(new \DateTime());
+                            }
+                            break;
+                        case 'jcr:lastModifiedBy':
+                            if ($this->getAutoLastModified()) {
+                                $prop->setValue($this->credentials->getUserID());
+                            }
+                            break;
+                        case 'jcr:etag':
+                            // TODO: update etag if needed
+                            break;
+                    }
+
+                }
             }
         }
 

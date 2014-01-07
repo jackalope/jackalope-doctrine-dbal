@@ -5,6 +5,9 @@ Changelog
   the parameter `jackalope.uuid_generator` to a function returning a UUID
   string and pass it as parameter to the repository factory.
 
+* **2014-01-04**: mix:lastModified is now handled automatically. To disable,
+  set the option jackalope.auto_lastmodified to `false`.
+
 * **2013-12-26**: cleanup of phpcr-utils lead to adjust cli-config.php.dist.
   If you use the console, you need to sync your cli-config.php file with the
   dist file.
