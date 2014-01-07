@@ -7,6 +7,7 @@ use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
+use PHPCR\PropertyInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -82,6 +83,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @var Connection
      */
     private $conn;
+
+    /**
+     * @var \Closure
+     */
+    private $uuidGenerator;
 
     /**
      * @var bool
@@ -236,6 +242,42 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Set the UUID generator to use. If not set, the phpcr-utils UUIDHelper
+     * will be used.
+     *
+     * @param callable $generator
+     */
+    public function setUuidGenerator(\Closure $generator)
+    {
+        $this->uuidGenerator = $generator;
+    }
+
+    /**
+     * @return callable a uuid generator function.
+     */
+    protected function getUuidGenerator()
+    {
+        if (!$this->uuidGenerator) {
+            $this->uuidGenerator = function() {
+                return UUIDHelper::generateUUID();
+            };
+        }
+
+        return $this->uuidGenerator;
+    }
+
+    /**
+     * @return string a universally unique id.
+     */
+    protected function generateUuid()
+    {
+        // php 5.3 compatibility, no direct execution of this function.
+        $g = $this->getUuidGenerator();
+
+        return $g();
+    }
+
+    /**
      * {@inheritDoc}
      *
      */
@@ -259,7 +301,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'path'          => '/',
             'parent'        => '',
             'workspace_name'=> $name,
-            'identifier'    => UUIDHelper::generateUUID(),
+            'identifier'    => $this->generateUuid(),
             'type'          => 'nt:unstructured',
             'local_name'    => '',
             'namespace'     => '',
@@ -581,14 +623,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function syncNode($uuid, $path, $type, $isNewNode, $props = array(), $propsData = array())
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
-        // TODO: Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
+        // TODO: PERFORMANCE Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
 
         if (!$propsData) {
             $propsData = $this->propsToXML($props);
         }
 
         if (null === $uuid) {
-            $uuid = UUIDHelper::generateUUID();
+            $uuid = $this->generateUuid();
         }
 
         if ($isNewNode) {
@@ -1571,7 +1613,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if ($propertyDef->isAutoCreated()) {
                     switch ($propertyDef->getName()) {
                         case 'jcr:uuid':
-                            $value = UUIDHelper::generateUUID();
+                            $value = $this->generateUuid();
                             break;
                         case 'jcr:createdBy':
                         case 'jcr:lastModifiedBy':
@@ -1675,7 +1717,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
-        return UUIDHelper::generateUUID();
+        return $this->generateUuid();
     }
 
 
