@@ -1145,15 +1145,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
-        foreach ($paths as $path) {
-            if (isset($all[$path])) {
-                $nodes[$path] = $this->getNodeData($path, $all[$path]);
-                unset($all[$path]);
-            }
+        foreach ($all as $path => $row) {
+            $nodes[$path] = $this->getNodeData($path, $row);
         }
-        // TODO: OPTIMIZE to profit from fetchDepth, we need to store the
-        // prefetched data that was not directly requested somewhere now.
-        // https://github.com/jackalope/jackalope-doctrine-dbal/issues/157
 
         return $nodes;
     }
