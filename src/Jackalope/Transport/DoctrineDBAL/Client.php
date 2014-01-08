@@ -1477,9 +1477,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $i = 0;
         $values = $ids = array();
+        $srcAbsPathPattern = '/^' . preg_quote($srcAbsPath, '/') . '/';
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
             $values[':id' . $i]     = $row['id'];
-            $values[':path' . $i]   = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
+            $values[':path' . $i]   = preg_replace($srcAbsPathPattern, $dstAbsPath, $row['path'], 1);
             $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
             $values[':depth' . $i]  = PathHelper::getPathDepth($values[':path' . $i]);
 
@@ -1516,6 +1517,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         } catch (DBALException $e) {
             throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
         }
+
+        $this->cleanIdentifierCache($srcAbsPath);
     }
 
     /**
