@@ -4,9 +4,25 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Jackalope\Functional\Transport\PrefetchTestCase;
+use Jackalope\TestCase;
 
-class PrefetchTest extends PrefetchTestCase
+/**
+ * Extend this test case in your jackalope transport and provide the transport
+ * instance to be tested.
+ *
+ * The fixtures must contain the following tree:
+ *
+ * * node-a
+ * * * child-a
+ * * * child-b
+ * * node-b
+ * * * child-a
+ * * * child-b
+ *
+ * each child has a property "prop" with the corresponding a and b value in it:
+ * /node-a/child-a get "prop" => "aa".
+ */
+class PrefetchTest extends TestCase
 {
     protected $conn;
 
@@ -42,6 +58,61 @@ class PrefetchTest extends PrefetchTestCase
         $b->addNode('child-a')->setProperty('prop', 'ba');
         $b->addNode('child-b')->setProperty('prop', 'bb');
         $session->save();
+    }
+
+    public function testGetNode()
+    {
+        $transport = $this->getTransport();
+        $transport->setFetchDepth(1);
+
+        $raw = $transport->getNode('/node-a');
+
+        $this->assertNode($raw, 'a');
+    }
+
+    public function testGetNodes()
+    {
+        $transport = $this->getTransport();
+        $transport->setFetchDepth(1);
+
+        $list = $transport->getNodes(array('/node-a', '/node-b'));
+
+        $this->assertCount(6, $list);
+
+
+        $keys = array_keys($list);
+        sort($keys);
+
+        $this->assertEquals(
+            array('/node-a', '/node-a/child-a', '/node-a/child-b', '/node-b', '/node-b/child-a', '/node-b/child-b'),
+            $keys
+        );
+
+        $this->assertNode($list['/node-a']);
+        $this->assertChildNode($list['/node-a/child-a'], 'a', 'a');
+        $this->assertChildNode($list['/node-a/child-b'], 'a', 'b');
+
+        $this->assertNode($list['/node-b']);
+        $this->assertChildNode($list['/node-b/child-a'], 'b', 'a');
+        $this->assertChildNode($list['/node-b/child-b'], 'b', 'b');
+    }
+
+    protected function assertNode($raw) {
+        $this->assertInstanceOf('\stdClass', $raw);
+
+        $name = "child-a";
+        $this->assertTrue(isset($raw->$name), "The raw data is missing child $name");
+
+        $name = 'child-b';
+        $this->assertTrue(isset($raw->$name));
+    }
+
+    protected function assertChildNode($raw, $parent, $child)
+    {
+        $this->assertInstanceOf('\stdClass', $raw);
+
+        $this->assertTrue(isset($raw->prop), "The child $child is missing property 'prop'");
+        $this->assertEquals($parent . $child, $raw->prop);
     }
 
     protected function getConnection()
@@ -81,10 +152,5 @@ class PrefetchTest extends PrefetchTestCase
         $transport->login(new \PHPCR\SimpleCredentials("user", "passwd"), $GLOBALS['phpcr.workspace']);
 
         return $transport;
-    }
-
-    public function testGetNodes()
-    {
-        $this->markTestSkipped('Not implemented, see https://github.com/jackalope/jackalope-doctrine-dbal/issues/157');
     }
 }
