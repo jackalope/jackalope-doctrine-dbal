@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.1.0-RC1
+---------
+
+* Various bugfixes have been merged.
+
+* **2014-01-08**: The fetch depth performance optimization is now fully
+  supported.
+
 * **2014-01-08**: You now get a RepositoryException if you try to overwrite one
   of the built-in node types. In 1.0, you got no exception but the custom type
   with the same name as a built-in type was simply ignored.
