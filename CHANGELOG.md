@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* **2014-01-07**: We now properly support LENGTH in queries. This required a
+  change to the stored data. To update existing installations, you can use this
+  migration: https://github.com/wjzijderveld/jackalope-doctrine-dbal-length-migration
+
 * **2014-01-05**: Allowing to set a closure for a custom uuid generator. Set
   the parameter `jackalope.uuid_generator` to a function returning a UUID
   string and pass it as parameter to the repository factory.
