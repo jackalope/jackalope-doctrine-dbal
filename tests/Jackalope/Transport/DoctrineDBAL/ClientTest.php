@@ -353,7 +353,7 @@ class ClientTest extends TestCase
         $root = $this->session->getNode('/');
         $topic1 = $root->addNode('topic1');
         $topic1->addNode('thisisanewnode');
-        $topic1->addNode('topic1-why-this-changes-to-topic2?');
+        $topic1->addNode('topic1Child');
 
         $this->session->save();
         $this->session->move('/topic1', '/topic2');
@@ -371,11 +371,11 @@ class ClientTest extends TestCase
         $query = $qb->getSql();
 
         foreach (array(
-            '/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1-why-this-changes-to-topic2?'
+            '/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'
         ) as $path) {
             $stmnt = $this->conn->executeQuery($query, array('path' => $path));
             $row = $stmnt->fetch();
-            $this->assertNotEquals(false, $row, $path . ' exists in database');
+            $this->assertTrue(false !== $row, $path . ' does not exist in database');
         }
     }
 }
