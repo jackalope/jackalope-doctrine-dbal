@@ -1,6 +1,10 @@
 Changelog
 =========
 
+* **2014-01-08**: You now get a RepositoryException if you try to overwrite one
+  of the built-in node types. In 1.0, you got no exception but the custom type
+  with the same name as a built-in type was simply ignored.
+
 * **2014-01-07**: We now properly support LENGTH in queries. This required a
   change to the stored data. To update existing installations, you can use this
   migration: https://github.com/wjzijderveld/jackalope-doctrine-dbal-length-migration
