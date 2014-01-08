@@ -347,4 +347,35 @@ class ClientTest extends TestCase
 
         $this->assertEquals('like-a-uuid', $method->invoke($this->transport));
     }
+
+    public function testMoveAndReplace()
+    {
+        $root = $this->session->getNode('/');
+        $topic1 = $root->addNode('topic1');
+        $topic1->addNode('thisisanewnode');
+        $topic1->addNode('topic1-why-this-changes-to-topic2?');
+
+        $this->session->save();
+        $this->session->move('/topic1', '/topic2');
+
+        $root->addNode('topic1');
+        $this->session->save();
+
+        $conn = $this->getConnection();
+        $qb = $conn->createQueryBuilder();
+
+        $qb->select('local_name')
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path');
+
+        $query = $qb->getSql();
+
+        foreach (array(
+            '/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1-why-this-changes-to-topic2?'
+        ) as $path) {
+            $stmnt = $this->conn->executeQuery($query, array('path' => $path));
+            $row = $stmnt->fetch();
+            $this->assertNotEquals(false, $row, $path . ' exists in database');
+        }
+    }
 }
