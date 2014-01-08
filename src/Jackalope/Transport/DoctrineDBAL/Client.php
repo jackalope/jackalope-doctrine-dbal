@@ -1811,16 +1811,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNodeTypes($nodeTypes = array())
     {
-        $standardTypes = array();
-        foreach (StandardNodeTypes::getNodeTypeData() as $nodeTypeData) {
-            $standardTypes[$nodeTypeData['name']] = $nodeTypeData;
-        }
+        $standardTypes = StandardNodeTypes::getNodeTypeData();
 
         $userTypes = $this->fetchUserNodeTypes();
 
         if ($nodeTypes) {
             $nodeTypes = array_flip($nodeTypes);
-            // TODO: check if user types can override standard types.
             return array_values(array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($userTypes, $nodeTypes));
         }
 
@@ -1904,8 +1900,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function registerNodeTypes($types, $allowUpdate)
     {
+        $builtinTypes = StandardNodeTypes::getNodeTypeData();
+
+        /* @var $type NodeTypeDefinition */
         foreach ($types as $type) {
-            /* @var $type NodeTypeDefinition */
+            if (isset($builtinTypes[$type->getName()])) {
+                throw new RepositoryException(sprintf('%s: can\'t reregister built-in node type.', $type->getName()));
+            }
 
             if ($allowUpdate) {
                 $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
