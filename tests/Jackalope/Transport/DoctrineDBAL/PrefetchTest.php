@@ -97,7 +97,8 @@ class PrefetchTest extends TestCase
         $this->assertChildNode($list['/node-b/child-b'], 'b', 'b');
     }
 
-    protected function assertNode($raw) {
+    protected function assertNode($raw)
+    {
         $this->assertInstanceOf('\stdClass', $raw);
 
         $name = "child-a";
