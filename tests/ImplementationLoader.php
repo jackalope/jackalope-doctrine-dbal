@@ -114,6 +114,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
             'jackalope.doctrine_dbal_connection' => $this->connection,
             'jackalope.data_caches' => $caches,
             \Jackalope\Session::OPTION_AUTO_LASTMODIFIED => false,
+            'jackalope.logger' => new \Jackalope\Transport\Logging\Psr3Logger(new \Psr\Log\NullLogger()),
         );
     }
 
