@@ -4,6 +4,7 @@ php:
   - 5.3
   - 5.4
   - 5.5
+  - hhvm
 
 env:
   - DB=mysql
@@ -19,6 +20,11 @@ before_script:
   - php tests/generate_phpunit_config.php $DB
 
 script: phpunit -c $DB.phpunit.xml
+
+matrix:
+  allow_failures:
+    - php: hhvm
+# hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
 
 notifications:
   irc: "irc.freenode.org#jackalope"
