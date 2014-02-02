@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.1.0
+-----
+
+Maintenance release with lots of new features and cleanups.
+
 1.1.0-RC1
 ---------
 

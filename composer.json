@@ -23,7 +23,7 @@
         "jackalope/jackalope": "~1.1.0"
     },
     "provide": {
-        "jackalope/jackalope-transport": "1.0.0"
+        "jackalope/jackalope-transport": "1.1.0"
     },
     "require-dev": {
         "psr/log": "~1.0",

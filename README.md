@@ -1,15 +1,17 @@
 # Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
 
-Implementation of the persisting data into relational databases.
+Implementation of the PHP Content Repository API ([PHPCR](http://phpcr.github.io))
+using a relational database to persist data.
 
-Provide the [PHPCR API](http://phpcr.github.io) implementation
-[Jackalope](http://github.com/jackalope/jackalope) with storing data into
-relational databases with Doctrine DBAL. Tested to work with MySQL, PostgreSQL
-and SQLite.
+Jackalope uses Doctrine DBAL to abstract the database layer. It is currently
+tested to work with MySQL, PostgreSQL and SQLite.
 
-For the moment, it is less feature complete and robust than [Jackalope-Jackrabbit](http://github.com/jackalope/jackalope-jackrabbit).
+For the moment, it is less feature complete, performant and robust than
+[Jackalope-Jackrabbit](http://github.com/jackalope/jackalope-jackrabbit) but it
+can run on any server with PHP and an SQL database.
 
 Discuss on jackalope-dev@googlegroups.com or visit #jackalope on irc.freenode.net
+
 
 ## License
 
@@ -73,25 +75,18 @@ NOTE: If you are using PHPCR inside of **Symfony**, the DoctrinePHPCRBundle
 provides the commands inside the normal Symfony console and you don't need to
 prepare anything special.
 
-Jackalope specific commands:
+There is the Jackalope specific command ``jackalope:init:dbal`` which you need
+to run to initialize a database before you can use it.
 
-* ``jackalope:init:dbal``: Initialize the configured database for jackalope with the
-    Doctrine DBAL transport.
+You have many useful commands available from the phpcr-utils. To get a list of
+all commands, type:
 
-Commands available from the phpcr-utils:
+    ./bin/jackalope
 
-* ``phpcr:workspace:create <name>``: Create a workspace *name* in the repository
-* ``phpcr:register-node-types --allow-update [cnd-file]``: Register namespaces
-    and node types from a "Compact Node Type Definition" .cnd file
-* ``phpcr:dump [--sys_nodes[="..."]] [--props[="..."]] [path]``: Show the node
-    names under the specified path. If you set sys_nodes=yes you will also see
-    system nodes. If you set props=yes you will additionally see all properties
-    of the dumped nodes.
-* ``phpcr:purge``: Remove all content from the configured repository in the
-     configured workspace
-* ``phpcr:sql2``: Run a query in the JCR SQL2 language against the repository
-    and dump the resulting rows to the console.
+To get more information on a specific command, use the `help` command. To learn
+more about the `phpcr:workspace:export` command for example, you would type:
 
+    ./bin/jackalope help phpcr:workspace:export
 
 
 # Bootstrapping
@@ -170,6 +165,22 @@ usage (except for supported features, that is).
 See [PHPCR Tutorial](https://github.com/phpcr/phpcr-docs/blob/master/tutorial/Tutorial.md)
 for a more detailed tutorial on how to use the PHPCR API.
 
+
+# Performance tweaks
+
+If you know that you will need many child nodes of a node you are about to
+request, use the depth hint on Session::getNode.  This will prefetch the
+children to reduce the round trips to the database. It is part of the PHPCR
+standard. You can also globally set a fetch depth, but that is Jackalope
+specific: Call Session::setSessionOption with Session::OPTION_FETCH_DEPTH
+to something bigger than 1.
+
+Use Node::getNodeNames if you only need to know the names of child nodes, but
+don't need the actual nodes. Note that you should not use the typeFilter on
+getNodeNames with jackalope. Using the typeFilter with getNodes to only fetch
+the nodes of types that interest you can make a lot of sense however.
+
+
 # Advanced configuration
 
 ## Logging
@@ -203,6 +214,7 @@ debug toolbar.
 By default, Jackalope uses the UUIDHelper class from phpcr-utils. If you want
 to use something else, you can provide a closure that returns UUIDs as option
 `jackalope.uuid_generator` to `$factory->getRepository($options)`
+
 
 # Implementation notes
 
