@@ -34,13 +34,14 @@ The recommended way to install jackalope is through [composer](http://getcompose
 You can of course do without, but then you will need to resolve the dependencies
 manually.
 
-    mkdir my-project
-    cd my-project
-    curl -s http://getcomposer.org/installer | php
-    ./composer.phar init
-    ./composer.phar require jackalope/jackalope-doctrine-dbal
-    ./composer.phar install
-
+```sh
+$ mkdir my-project
+$ cd my-project
+$ curl -s http://getcomposer.org/installer | php
+$ ./composer.phar init
+$ ./composer.phar require jackalope/jackalope-doctrine-dbal
+$ ./composer.phar install
+```
 
 ## Create a repository
 
@@ -50,15 +51,19 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 
 Note that you need at least version 5.1.5 of MySQL, otherwise you will get ``QLSTATE[42000]: Syntax error or access violation: 1305 FUNCTION cmf-app.EXTRACTVALUE does not exist``
 
-    mysqladmin -u root -p  create jackalope
-    echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
-
+```sh
+$ mysqladmin -u root -p  create jackalope
+$ echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
+```
 ### PostgreSQL
-    psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
-    psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
+
+```sh
+$ psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
+$ psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
+```
 
 ### SQLite
-    Database is created automagically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Databasename is not needed.
+    Database is created automatically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Database name is not needed.
 
 For further details, please see the [Doctrine configuration page](http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details).
 
@@ -81,13 +86,16 @@ to run to initialize a database before you can use it.
 You have many useful commands available from the phpcr-utils. To get a list of
 all commands, type:
 
-    ./bin/jackalope
+```sh
+$ ./bin/jackalope
+```
 
 To get more information on a specific command, use the `help` command. To learn
 more about the `phpcr:workspace:export` command for example, you would type:
 
-    ./bin/jackalope help phpcr:workspace:export
-
+```sh
+$ ./bin/jackalope help phpcr:workspace:export
+```
 
 # Bootstrapping
 
@@ -102,37 +110,41 @@ Before you can use jackalope with a database, you need to set the database up.
 Create a database as described above, then make sure the command line utility
 is set up (see above "Enable the commands"). Now you can run:
 
-    bin/jackalope jackalope:init:dbal
+```sh
+$ bin/jackalope jackalope:init:dbal
+```
 
 Once these steps are done, you can bootstrap the library. A minimalist
 sample code to get a PHPCR session with the doctrine-dbal backend:
 
-    // For further details, please see Doctrine configuration page.
-    // http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
-    $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
-    $host      = 'localhost';
-    $user      = 'jackalope';
-    $password  = '';
-    $database  = 'jackalope'; // $path = 'jackalope.db'; // for SQLite
-    $workspace = 'default';
+```php
+// For further details, please see Doctrine configuration page.
+// http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+$driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
+$host      = 'localhost';
+$user      = 'jackalope';
+$password  = '';
+$database  = 'jackalope'; // $path = 'jackalope.db'; // for SQLite
+$workspace = 'default';
 
-    // Bootstrap Doctrine
-    $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
-        'driver'    => $driver,
-        'host'      => $host,
-        'user'      => $user,
-        'password'  => $pass,
-        'dbname'    => $database,
-        // 'path'   => $path, // for SQLite
-    ));
+// Bootstrap Doctrine
+$dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
+  'driver'    => $driver,
+  'host'      => $host,
+  'user'      => $user,
+  'password'  => $pass,
+  'dbname'    => $database,
+  // 'path'   => $path, // for SQLite
+));
 
-    $factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
-    $repository = $factory->getRepository(
-        array('jackalope.doctrine_dbal_connection' => $dbConn)
-    );
-    // dummy credentials to comply with the API
-    $credentials = new \PHPCR\SimpleCredentials(null, null);
-    $session = $repository->login($credentials, $workspace);
+$factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+$repository = $factory->getRepository(
+  array('jackalope.doctrine_dbal_connection' => $dbConn)
+);
+// dummy credentials to comply with the API
+$credentials = new \PHPCR\SimpleCredentials(null, null);
+$session = $repository->login($credentials, $workspace);
+```
 
 To use a workspace different than ``default`` you need to create it first. The
 easiest is to run the command ``bin/jackalope phpcr:workspace:create <myworkspace>``
@@ -145,22 +157,23 @@ The entry point is to create the repository factory. The factory specifies the
 storage backend as well. From this point on, there are no differences in the
 usage (except for supported features, that is).
 
-    // see Bootstrapping for how to get the session.
+```php
+// see Bootstrapping for how to get the session.
 
-    $rootNode = $session->getNode("/");
-    $whitewashing = $rootNode->addNode("www-whitewashing-de");
-    $session->save();
+$rootNode = $session->getNode("/");
+$whitewashing = $rootNode->addNode("www-whitewashing-de");
+$session->save();
 
-    $posts = $whitewashing->addNode("posts");
-    $session->save();
+$posts = $whitewashing->addNode("posts");
+$session->save();
 
-    $post = $posts->addNode("welcome-to-blog");
-    $post->addMixin("mix:title");
-    $post->setProperty("jcr:title", "Welcome to my Blog!");
-    $post->setProperty("jcr:description", "This is the first post on my blog! Do you like it?");
+$post = $posts->addNode("welcome-to-blog");
+$post->addMixin("mix:title");
+$post->setProperty("jcr:title", "Welcome to my Blog!");
+$post->setProperty("jcr:description", "This is the first post on my blog! Do you like it?");
 
-    $session->save();
-
+$session->save();
+```
 
 See [PHPCR Tutorial](https://github.com/phpcr/phpcr-docs/blob/master/tutorial/Tutorial.md)
 for a more detailed tutorial on how to use the PHPCR API.
@@ -189,18 +202,20 @@ Jackalope supports logging, for example to investigate the number and type of
 queries used. To enable logging, provide a logger instance to the repository
 factory:
 
-    $factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
-    $logger = new Jackalope\Transport\Logging\DebugStack();
-    $options = array(
-        'jackalope.doctrine_dbal_connection' => $dbConn,
-        'jackalope.logger' => $logger,
-    );
-    $repository = $factory->getRepository($options);
+```php
+$factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+$logger = new Jackalope\Transport\Logging\DebugStack();
+$options = array(
+  'jackalope.doctrine_dbal_connection' => $dbConn,
+  'jackalope.logger' => $logger,
+);
+$repository = $factory->getRepository($options);
 
-    ...
+//...
 
-    // at the end, output debug information
-    var_dump($logger->calls);
+// at the end, output debug information
+var_dump($logger->calls);
+```
 
 You can also wrap a [PSR-3](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-3-logger-interface.md)
 compatible logger like [monolog](https://github.com/Seldaek/monolog) with the
