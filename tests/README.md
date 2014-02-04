@@ -37,12 +37,17 @@ database is dropped each time you run a test.**
 You can use your favorite GUI frontend or just do something like this:
 
 ### MySQL
-    mysqladmin -u root -p  create phpcr_tests
-    echo "grant all privileges on phpcr_tests.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 
+```sh
+$ mysqladmin -u root -p  create phpcr_tests
+$ echo "grant all privileges on phpcr_tests.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
+```
 ### PostgreSQL
-    psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
-    psql -c "CREATE DATABASE phpcr_tests WITH OWNER = jackalope;" -U postgres
+
+```sh
+$ psql -c "CREATE ROLE jackalope WITH ENCRYPTED PASSWORD '1234test' NOINHERIT LOGIN;" -U postgres
+$ psql -c "CREATE DATABASE phpcr_tests WITH OWNER = jackalope;" -U postgres
+```
 
 Test fixtures for functional tests are written in the JCR System XML format.
 The converted fixtures are not tracked in the repository, and get regenerated
@@ -55,22 +60,26 @@ successfully be executed (minimum 512M).
 
 To run the tests, execute:
 
-    cd /path/to/jackalope-doctrine-dbal
-    # cp phpunit.xml.dist phpunit.xml
-    # adjust phpunit.xml as necessary
-    phpunit
+```sh
+$ cd /path/to/jackalope-doctrine-dbal
+# cp phpunit.xml.dist phpunit.xml
+# adjust phpunit.xml as necessary
+$ phpunit
+```
 
 ## Installing phpunit as project dependency
 
 If you haven't installed phpunit globally and you want to keep it as a dependency
 of the jackalope doctrine-dbal project, add the following dependencies to your
-`composer.json`:
 
-    "require-dev": {
-        [...]
-        "phpunit/phpunit": "dev-master",
-        "phpunit/dbunit": "dev-master"
-    }
+`composer.json`:
+```json
+"require-dev": {
+    [...]
+    "phpunit/phpunit": "dev-master",
+    "phpunit/dbunit": "dev-master"
+}
+```
 
 You can then run the tests as follows:
 
