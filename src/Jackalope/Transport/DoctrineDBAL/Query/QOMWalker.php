@@ -341,11 +341,11 @@ class QOMWalker
     public function walkJoinCondition(QOM\SelectorInterface $left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
         if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
-            throw new NotImplementedException("ChildNodeJoinCondition");
+            return $this->walkChildNodeJoinCondition($condition);
         }
 
         if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
-            return $this->walkDescendantNodeJoinConditon($condition);
+            return $this->walkDescendantNodeJoinCondition($condition);
         }
 
         if ($condition instanceof QOM\EquiJoinConditionInterface) {
@@ -358,11 +358,24 @@ class QOMWalker
     }
 
     /**
+     * @param QOM\ChildNodeJoinConditionInterface $condition
+     *
+     * @return string
+     */
+    public function walkChildNodeJoinCondition(QOM\ChildNodeJoinConditionInterface $condition)
+    {
+        $rightAlias = $this->getTableAlias($condition->getChildSelectorName());
+        $leftAlias = $this->getTableAlias($condition->getParentSelectorName());
+
+        return "($rightAlias.path LIKE CONCAT($leftAlias.path, '/%') AND $rightAlias.depth = $leftAlias.depth + 1) ";
+    }
+
+    /**
      * @param QOM\DescendantNodeJoinConditionInterface $condition
      *
      * @return string
      */
-    public function walkDescendantNodeJoinConditon(QOM\DescendantNodeJoinConditionInterface $condition)
+    public function walkDescendantNodeJoinCondition(QOM\DescendantNodeJoinConditionInterface $condition)
     {
         $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
         $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
@@ -611,7 +624,7 @@ class QOMWalker
         $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
 
-        return 
+        return
             $this->sqlXpathExtractNumValue($alias, $property) . " " .
             $operator . " " .
             $literalOperand->getLiteralValue();
