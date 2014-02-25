@@ -2050,7 +2050,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $qom->setLimit($query->getLimit());
                 $qom->setOffset($query->getOffset());
             } catch (\Exception $e) {
-                throw new InvalidQueryException('Invalid query: '.$query->getStatement());
+                throw new InvalidQueryException('Invalid query: '.$query->getStatement(), null, $e);
             }
         } else {
             $qom = $query;
