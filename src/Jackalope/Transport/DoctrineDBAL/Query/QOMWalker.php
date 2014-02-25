@@ -353,7 +353,7 @@ class QOMWalker
         }
 
         if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
-            throw new NotImplementedException("SameNodeJoinCondtion");
+            return $this->walkSameNodeJoinCondition($condition);
         }
     }
 
@@ -393,6 +393,39 @@ class QOMWalker
         return $this->walkOperand(new PropertyValue($leftSelectorName, $condition->getProperty1Name())) . " " .
                $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) . " " .
                $this->walkOperand(new PropertyValue($rightSelectorName, $condition->getProperty2Name()));
+    }
+
+    /**
+     * @param QOM\SameNodeJoinConditionInterface $condition
+     *
+     * @return string
+     */
+    public function walkSameNodeJoinCondition(QOM\SameNodeJoinConditionInterface $condition)
+    {
+        $rightAlias = $this->getTableAlias($condition->getSelector1Name());
+        $leftAlias = $this->getTableAlias($condition->getSelector2Name());
+        $path = $condition->getSelector2Path();
+
+        if (!$path) {
+            return "$rightAlias.path = $leftAlias.path ";
+        }
+
+        $append = '';
+
+        $matches = array();
+        $strip = preg_match_all('|^(\.\./)+|', $path, $matches);
+        if (strlen($path) >= 2 && '..' == substr($path, -2)) {
+            $strip++;
+        } else {
+            $append = substr($path, $strip*3);
+        }
+
+        $replace = $strip
+            ? sprintf("REGEXP_REPLACE($rightAlias.path, '|(/[!/]+){,%s}$|', '')", $strip)
+            : "$rightAlias.path"
+        ;
+
+        return "CONCAT($replace, '/$append') = $leftAlias.path ";
     }
 
     /**
