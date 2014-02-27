@@ -18,6 +18,9 @@ class QOMWalkerTest extends TestCase
      */
     private $factory;
 
+    /**
+     * @var QOMWalker
+     */
     private $walker;
 
     private $nodeTypeManager;
