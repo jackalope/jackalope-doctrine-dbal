@@ -21,10 +21,5 @@ before_script:
 
 script: phpunit -c $DB.phpunit.xml
 
-matrix:
-  allow_failures:
-    - php: hhvm
-# hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
-
 notifications:
   irc: "irc.freenode.org#jackalope"
