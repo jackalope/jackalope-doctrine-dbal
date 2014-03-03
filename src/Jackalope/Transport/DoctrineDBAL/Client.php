@@ -1154,7 +1154,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     private function pathExists($path)
     {
-        $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+        if ($this->conn->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
+            $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
+        } else {
+            $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+        }
+
         if ($nodeId = $this->conn->fetchColumn($query, array($path, $this->workspaceName))) {
             return $nodeId;
         }
