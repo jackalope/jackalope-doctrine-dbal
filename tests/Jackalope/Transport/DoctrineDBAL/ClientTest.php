@@ -378,4 +378,14 @@ class ClientTest extends TestCase
             $this->assertTrue(false !== $row, $path . ' does not exist in database');
         }
     }
+
+    public function testCaseInsensativeRename()
+    {
+        $root = $this->session->getNode('/');
+        $topic1 = $root->addNode('topic');
+
+        $this->session->save();
+        $this->session->move('/topic', '/Topic');
+        $this->session->save();
+    }
 }
