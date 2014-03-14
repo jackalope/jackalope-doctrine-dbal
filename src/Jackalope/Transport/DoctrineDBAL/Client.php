@@ -658,10 +658,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'depth'         => PathHelper::getPathDepth($path),
                     'parent_a'      => PathHelper::getParentPath($path),
                 ));
-            } catch (\PDOException $e) {
-                throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-            } catch (DBALException $e) {
-                throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+            } catch(\Exception $e) {
+                if ($e instanceof \PDOException || $e instanceof DBALException) {
+                   if(strpos($e->getMessage(), "SQLSTATE[23") !== false) {
+                       throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                   } else {
+                       throw new RepositoryException('Unknown database error while inserting item ' . $path . ': '.$e->getMessage(), 0, $e);
+                   }
+                } else {
+                    throw $e;
+                }
             }
 
             $nodeId = $this->conn->lastInsertId($this->sequenceNodeName);
