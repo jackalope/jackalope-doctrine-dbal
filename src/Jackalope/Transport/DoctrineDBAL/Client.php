@@ -412,7 +412,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     throw new RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
                 }
 
-                throw new RepositoryException('Unexpected error talking to the backend: '.$e->getMessage());
+                throw new RepositoryException('Unexpected error talking to the backend: '.$e->getMessage(), 0, $e);
             }
 
             throw $e;
