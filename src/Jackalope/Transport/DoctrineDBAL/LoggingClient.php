@@ -9,7 +9,7 @@ use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\PermissionInterface;
 use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\VersioningInterface;
-use Jackalope\Transport\NodeTypeCndManagementInterface;
+use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\LockingInterface;
 use Jackalope\Transport\ObservationInterface;
 use Jackalope\Transport\WorkspaceManagementInterface;
@@ -30,7 +30,7 @@ use Jackalope\Transport\Logging\LoggerInterface;
  */
 
 // PermissionInterface, VersioningInterface, LockingInterface, ObservationInterface
-class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTransport, NodeTypeCndManagementInterface, WorkspaceManagementInterface, TransactionInterface
+class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTransport, NodeTypeManagementInterface, WorkspaceManagementInterface, TransactionInterface
 {
     /**
      * @var Client
@@ -97,9 +97,9 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
     /**
      * {@inheritDoc}
      */
-    public function registerNodeTypesCnd($cnd, $allowUpdate)
+    public function registerNodeTypes($types, $allowUpdate)
     {
-        return $this->transport->registerNodeTypesCnd($cnd, $allowUpdate);
+        return $this->transport->registerNodeTypes($types, $allowUpdate);
     }
 
     /**
