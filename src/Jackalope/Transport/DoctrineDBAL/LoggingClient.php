@@ -50,6 +50,14 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
     }
 
     /**
+     * @return Connection
+     */
+    public function getConnection()
+    {
+        return $this->transport->getConnection();
+    }
+
+    /**
      * Configure whether to check if we are logged in before doing a request.
      *
      * Will improve error reporting at the cost of some round trips.
