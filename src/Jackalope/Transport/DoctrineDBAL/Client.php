@@ -207,7 +207,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             // @TODO: don't know if there are expressions returning more then one row
             if ($list->length > 0) {
-                $type = $list->item(0)->parentNode->attributes->getNamedItem('type')->value;
+                // @TODO: why it can happen that we do not have a type? https://github.com/phpcr/phpcr-api-tests/pull/132
+                $type = is_object($list->item(0)->parentNode->attributes->getNamedItem('type'))
+                    ? $list->item(0)->parentNode->attributes->getNamedItem('type')->value
+                    : null;
                 $content = $list->item(0)->textContent;
 
                 switch ($type) {
@@ -1035,37 +1038,41 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
               WHERE (path LIKE :pathd OR path = :path)
                 AND workspace_name = :workspace
                 AND depth <= ((SELECT depth FROM phpcr_nodes WHERE path = :path AND workspace_name = :workspace) + :fetchDepth)
-              ORDER BY sort_order ASC';
+              ORDER BY depth, sort_order ASC';
         } else {
             $query = '
               SELECT * FROM phpcr_nodes
               WHERE path = :path
                 AND workspace_name = :workspace
-              ORDER BY sort_order ASC';
+              ORDER BY depth, sort_order ASC';
         }
 
         $stmt = $this->conn->executeQuery($query, $values);
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
-
-        $nodeData = array();
-        foreach ($rows as $row) {
-            if ($row['path'] === $path) {
-                $node = $this->getNodeData($path, $row);
-            } else {
-                $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
-                $nodeData[$pathDiff] = $this->getNodeData($row['path'], $row);
-            }
-        }
-
-        if (empty($node)) {
+        if (empty($rows)) {
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
-        foreach ($nodeData as $key => $value) {
-            $node->{$key} = $value;
+        $node = $this->getNodeData($path, array_shift($rows));
+        foreach ($rows as $row) {
+            $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+            $nodeNames = explode('/', $pathDiff);
+            $this->nestNode($node, $this->getNodeData($row['path'], $row), $nodeNames);
         }
 
         return $node;
+    }
+
+    private function nestNode($parentNode, $node, array $nodeNames)
+    {
+        $name = array_shift($nodeNames);
+
+        if (empty($nodeNames)) {
+            $parentNode->{$name} = $node;
+            return;
+        }
+
+        $this->nestNode($parentNode->{$name}, $node, $nodeNames);
     }
 
     private function getNodeData($path, $row)
