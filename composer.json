@@ -20,7 +20,8 @@
         "doctrine/dbal": ">=2.2.0,<2.5",
         "phpcr/phpcr": "~2.1.0",
         "phpcr/phpcr-utils": "~1.1.0",
-        "jackalope/jackalope": "~1.1.1"
+        "jackalope/jackalope": "~1.1.1",
+	"phpunit/dbunit": "~1.3"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.1.0"

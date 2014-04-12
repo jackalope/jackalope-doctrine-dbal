@@ -15,8 +15,6 @@ before_script:
   - composer update --prefer-source
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
-  - pear channel-discover pear.phpunit.de
-  - pear install phpunit/DBUnit-1.1.2
   - php tests/generate_phpunit_config.php $DB
 
 script: phpunit -c $DB.phpunit.xml
