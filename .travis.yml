@@ -13,7 +13,7 @@ env:
   - DB=sqlite
 
 before_script:
-  - composer update --prefer-dist
+  - composer update --prefer-dist --no-interaction
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
