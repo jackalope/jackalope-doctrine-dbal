@@ -530,14 +530,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
     {
         $this->assertLoggedIn();
-
-        if (null !== $srcWorkspace) {
-            if (!$this->workspaceExists($srcWorkspace)) {
-                throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
-            }
-        } else {
-            $srcWorkspace = $this->workspaceName;
+        
+        if (null !== $srcWorkspace && !$this->workspaceExists($srcWorkspace)) {
+            throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
         }
+        $srcWorkspace = srcWorkspace ?: $this->workspaceName;
 
         PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
@@ -1168,7 +1165,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     private function pathExists($path, $workspaceName = null)
     {
-        if ($workspaceName === null) {
+        if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
         
