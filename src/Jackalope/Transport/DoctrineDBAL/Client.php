@@ -534,7 +534,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (null !== $srcWorkspace && !$this->workspaceExists($srcWorkspace)) {
             throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
         }
-        $srcWorkspace = srcWorkspace ?: $this->workspaceName;
+        $srcWorkspace = $srcWorkspace ?: $this->workspaceName;
 
         PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
