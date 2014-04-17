@@ -530,17 +530,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
     {
         $this->assertLoggedIn();
-
-        $workspaceName = $this->workspaceName;
-        if (null !== $srcWorkspace) {
-            if (!$this->workspaceExists($srcWorkspace)) {
-                throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
-            }
+        
+        if (null !== $srcWorkspace && !$this->workspaceExists($srcWorkspace)) {
+            throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
         }
+        $srcWorkspace = $srcWorkspace ?: $this->workspaceName;
 
         PathHelper::assertValidAbsolutePath($dstAbsPath, true);
 
-        $srcNodeId = $this->pathExists($srcAbsPath);
+        $srcNodeId = $this->pathExists($srcAbsPath, $srcWorkspace);
         if (!$srcNodeId) {
             throw new PathNotFoundException("Source path '$srcAbsPath' not found");
         }
@@ -561,7 +559,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // 5. "May drop mixin types"
 
         $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_name = ?';
-        $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $workspaceName));
+        $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $srcWorkspace));
 
         foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
             $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
@@ -1165,15 +1163,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $nodes;
     }
 
-    private function pathExists($path)
+    private function pathExists($path, $workspaceName = null)
     {
+        if (null === $workspaceName) {
+            $workspaceName = $this->workspaceName;
+        }
+        
         if ($this->conn->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
             $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
         } else {
             $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
         }
 
-        if ($nodeId = $this->conn->fetchColumn($query, array($path, $this->workspaceName))) {
+        if ($nodeId = $this->conn->fetchColumn($query, array($path, $workspaceName))) {
             return $nodeId;
         }
 
