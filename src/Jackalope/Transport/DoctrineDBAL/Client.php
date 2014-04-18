@@ -166,6 +166,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $referencesToDelete = array();
 
     /**
+     * @var array
+     */
+    private $additionalNodeAddOperations = array();
+
+    /**
      * @param FactoryInterface $factory
      * @param Connection       $conn
      */
@@ -1609,7 +1614,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
 
                 if ($childDef->isAutoCreated()) {
-                    throw new NotImplementedException("Auto-creation of child node '".$def->getName()."#".$childDef->getName()."' is not yet supported in DoctrineDBAL transport.");
+                    $requiredPrimaryTypeNames = $childDef->getRequiredPrimaryTypeNames();
+                    $primaryType = count($requiredPrimaryTypeNames) ? current($requiredPrimaryTypeNames) : null;
+                    $newNode = $node->addNode($childDef->getName(), $primaryType);
+                    $absPath = $node->getPath() . '/' . $childDef->getName();
+                    $operation = new AddNodeOperation($absPath, $newNode);
+                    $this->additionalNodeAddOperations[] = $operation;
                 }
             }
         }
@@ -1712,6 +1722,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $properties = $operation->node->getProperties();
             }
             $this->storeNode($operation->srcPath, $properties);
+        }
+
+        $additionalNodeAddOperations = $this->additionalNodeAddOperations;
+        if (!empty($additionalNodeAddOperations)) {
+            $this->additionalNodeAddOperations = array();
+            $this->storeNodes($additionalNodeAddOperations);
         }
     }
 
