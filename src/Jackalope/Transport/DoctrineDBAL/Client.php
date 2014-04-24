@@ -361,27 +361,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->credentials = $credentials;
 
-        if (empty($workspaceName)) {
-            $workspaceName = 'default';
-        }
-        $this->workspaceName = $workspaceName;
-
+        $this->workspaceName = $workspaceName ?: 'default';
         if (!$this->checkLoginOnServer) {
-            return $workspaceName;
+            return $this->workspaceName;
         }
 
-        if (!$this->workspaceExists($workspaceName)) {
-            if ('default' !== $workspaceName) {
-                throw new NoSuchWorkspaceException("Requested workspace: '$workspaceName'");
+        if (!$this->workspaceExists($this->workspaceName)) {
+            if ('default' !== $this->workspaceName) {
+                throw new NoSuchWorkspaceException("Requested workspace: '{$this->workspaceName}'");
             }
 
             // create default workspace if it not exists
-            $this->createWorkspace($workspaceName);
+            $this->createWorkspace($this->workspaceName);
         }
 
         $this->loggedIn = true;
 
-        return $workspaceName;
+        return $this->workspaceName;
     }
 
     /**
@@ -459,7 +455,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             RepositoryInterface::REP_NAME_DESC  => 'jackalope_doctrine_dbal',
             RepositoryInterface::REP_VENDOR_DESC => 'Jackalope Community',
             RepositoryInterface::REP_VENDOR_URL_DESC => 'http://github.com/jackalope',
-            RepositoryInterface::REP_VERSION_DESC => '1.0.0-DEV',
+            RepositoryInterface::REP_VERSION_DESC => '1.1.0-DEV',
             RepositoryInterface::SPEC_NAME_DESC => 'Content Repository for PHP',
             RepositoryInterface::SPEC_VERSION_DESC => '2.1',
             RepositoryInterface::NODE_TYPE_MANAGEMENT_AUTOCREATED_DEFINITIONS_SUPPORTED => true,
@@ -2239,7 +2235,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @param string  $path           the path for which we need the references
      * @param string  $name           the name of the referencing properties or null for all
-     * @param boolean $weak_reference whether to get weak or strong references
+     * @param boolean $weakReference  whether to get weak or strong references
      *
      * @return array list of paths to nodes that reference $path
      */
