@@ -1897,7 +1897,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         5 => 'jcr.operator.less.than.or.equal.to',
                         6 => 'jcr.operator.like',
                     ),
-                    'defaultValue' => array($propertyData['default_value']),
+                    'defaultValues' => array($propertyData['default_value']),
                 );
             }
 
