@@ -96,7 +96,7 @@ class RepositorySchema extends Schema
         $nodes->addColumn('sort_order', 'integer', array('notnull' => false));
         $nodes->setPrimaryKey(array('id'));
         $nodes->addUniqueIndex(array('path', 'workspace_name'));
-        $nodes->addUniqueIndex(array('identifier'));
+        $nodes->addUniqueIndex(array('identifier', 'workspace_name'));
         $nodes->addIndex(array('parent'));
         $nodes->addIndex(array('type'));
         $nodes->addIndex(array('local_name', 'namespace'));
