@@ -624,10 +624,7 @@ class QOMWalker
         $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
 
-        return
-            $this->sqlXpathExtractNumValue($alias, $property) . " " .
-            $operator . " " .
-            $literalOperand->getLiteralValue();
+        return $this->sqlXpathCompareNumValue($alias, $property, $this->getLiteralValue($literalOperand), $operator);
     }
 
     /**
@@ -803,13 +800,23 @@ class QOMWalker
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
 
-    private function sqlXpathExtractNumValue($alias, $property)
+    private function sqlXpathCompareNumValue($alias, $property, $value, $operator)
     {
-        if ($this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
+        if ($this->platform instanceof SqlitePlatform) {
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
+
+            return sprintf($expression, $this->walkOperator($operator), Xpath::escape($value));
         }
 
-        return $this->sqlXpathExtractValue($alias, $property);
+        if ($this->platform instanceof PostgreSqlPlatform) {
+            $expression = "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
+        } elseif ($this->platform instanceof MySqlPlatform) {
+            $expression = $this->sqlXpathExtractValue($alias, $property);
+        } else {
+            throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
+        }
+
+        return "$expression $operator $value";
     }
 
     private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)

@@ -97,7 +97,7 @@ class QOMWalkerTest extends TestCase
         );
         list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains('> 100', $sql);
+        $this->assertContains('100', $sql);
     }
 
     public function testQueryWithAndConstraint()
