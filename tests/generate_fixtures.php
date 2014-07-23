@@ -8,7 +8,7 @@
 function generate_fixtures($srcDir, $destDir)
 {
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir)) as $srcFile) {
-        if (!$srcFile->isFile()) {
+        if (!$srcFile->isFile() || $srcFile->getExtension() !== 'xml') {
             continue;
         }
 
