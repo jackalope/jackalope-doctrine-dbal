@@ -569,16 +569,19 @@ class QOMWalker
                 $alias = $this->getTableAlias($selectorName);
 
                 $literal = $literalOperand->getLiteralValue();
-                $parts = explode(':', $literal);
-                if (!isset($this->namespaces[$parts[0]])) {
-                    throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
-                }
+                if (false !== strpos($literal, ':')) {
+                    $parts = explode(':', $literal);
+                    if (!isset($this->namespaces[$parts[0]])) {
+                        throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
+                    }
 
-                $parts[0] = $this->namespaces[$parts[0]];
+                    $parts[0] = $this->namespaces[$parts[0]];
+                    $literal = implode(':', $parts);
+                }
 
                 return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name") . " " .
                     $operator . " " .
-                    $this->conn->quote(implode(':', $parts));
+                    $this->conn->quote($literal);
             }
 
             if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
