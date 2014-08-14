@@ -1133,6 +1133,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($childrenRows as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
+            if (!isset($data[$child['parent']])) {
+                print("No data set for parent node: \n"). var_dump($child); print(" And possible childname: $childName \n");
+                print("Got rows: \n"); var_dump($rows);
+                continue;
+            }
             if (!isset($data[$child['parent']]->{$childName})) {
                 $data[$child['parent']]->{$childName} = new \stdClass();
             }
@@ -1152,7 +1157,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         return $data;
     }
-
 
     /**
      * {@inheritDoc}
@@ -1206,7 +1210,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->conn->executeQuery($query, $params);
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
-        $nodes = $this->getNodesData($all);
+        $nodes = array();
+        if ($all) {
+            $nodes = $this->getNodesData($all);
+        }
 
         return $nodes;
     }
@@ -1266,7 +1273,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
-        $nodes = $this->getNodesData($all);
+        $nodes = array();
+        if ($all) {
+            $nodes = $this->getNodesData($all);
+        }
 
         return $nodes;
     }
