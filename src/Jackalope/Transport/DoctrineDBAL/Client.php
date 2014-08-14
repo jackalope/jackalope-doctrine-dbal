@@ -1105,6 +1105,56 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Instead of fetching each node's data one by one this method is
+     * able to get them all by an array of paths.
+     *
+     * @param  array $rows
+     * @return array
+     */
+    private function getNodesData($rows)
+    {
+        $data = array();
+
+        foreach ($rows as $row) {
+            $this->nodeIdentifiers[$row['path']] = $row['identifier'];
+        }
+
+        $paths = array();
+        foreach ($rows as $row) {
+            $data[$row['path']] = self::xmlToProps($row['props'], $this->valueConverter);
+            $data[$row['path']]->{'jcr:primaryType'} = $row['type'];
+            $paths[] = $row['path'];
+        }
+
+
+        $query = 'SELECT path, parent FROM phpcr_nodes WHERE parent IN  (?) AND workspace_name = ? ORDER BY sort_order ASC';
+        $childrenRows = $this->conn->fetchAll($query, array(implode(',', $paths), $this->workspaceName));
+
+        foreach ($childrenRows as $child) {
+            $childName = explode('/', $child['path']);
+            $childName = end($childName);
+            if (!isset($data[$child['parent']]->{$childName})) {
+                $data[$child['parent']]->{$childName} = new \stdClass();
+            }
+        }
+
+        foreach ($data as $path => $node) {
+            // If the node is referenceable, return jcr:uuid.
+            if (isset($data[$path]->{"jcr:mixinTypes"})) {
+                foreach ((array) $data[$path]->{"jcr:mixinTypes"} as $mixin) {
+                    if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
+                        $data[$path]->{'jcr:uuid'} = $this->nodeIdentifiers[$path];
+                        break;
+                    }
+                }
+            }
+        }
+
+        return $data;
+    }
+
+
+    /**
      * {@inheritDoc}
      */
     public function getNodes($paths)
@@ -1156,10 +1206,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->conn->executeQuery($query, $params);
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
-        $nodes = array();
-        foreach ($all as $path => $row) {
-            $nodes[$path] = $this->getNodeData($path, $row);
-        }
+        $nodes = $this->getNodesData($all);
 
         return $nodes;
     }
@@ -1219,13 +1266,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
-        $nodes = array();
-        foreach ($identifiers as $id) {
-            if (isset($all[$id])) {
-                $path = $all[$id]['path'];
-                $nodes[$path] = $this->getNodeData($path, $all[$id]);
-            }
-        }
+        $nodes = $this->getNodesData($all);
 
         return $nodes;
     }
