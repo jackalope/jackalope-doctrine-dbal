@@ -1074,29 +1074,71 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->nestNode($parentNode->{$name}, $node, $nodeNames);
     }
 
+    /**
+     * @param $path
+     * @param $row
+     * @return array|mixed
+     */
     private function getNodeData($path, $row)
     {
-        $this->nodeIdentifiers[$path] = $row['identifier'];
+        $data = $this->getNodesData(array($row));
 
-        $data = self::xmlToProps($row['props'], $this->valueConverter);
-        $data->{'jcr:primaryType'} = $row['type'];
+        return array_shift($data);
+    }
 
-        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_name = ? ORDER BY sort_order ASC';
-        $children = $this->conn->fetchAll($query, array($path, $this->workspaceName));
-        foreach ($children as $child) {
+    /**
+     * Instead of fetching each node's data one by one this method is
+     * able to get them all by an array of paths.
+     *
+     * @param  array $rows
+     * @return array
+     */
+    private function getNodesData($rows)
+    {
+        $data = array();
+        $paths = array();
+
+        foreach ($rows as $row) {
+            $this->nodeIdentifiers[$row['path']] = $row['identifier'];
+            $data[$row['path']] = self::xmlToProps($row['props'], $this->valueConverter);
+            $data[$row['path']]->{'jcr:primaryType'} = $row['type'];
+            $paths[] = $row['path'];
+        }
+
+        $query = 'SELECT path, parent FROM phpcr_nodes WHERE parent IN (?) AND workspace_name = ? ORDER BY sort_order ASC';
+        $childrenRows = array();
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            foreach (array_chunk($paths, 999) as $chunk) {
+                $childrenRows = $this->conn->fetchAll(
+                    $query,
+                    array($chunk, $this->workspaceName),
+                    array(Connection::PARAM_STR_ARRAY, null)
+                );
+            }
+        } else {
+            $childrenRows = $this->conn->fetchAll(
+                $query,
+                array($paths, $this->workspaceName),
+                array(Connection::PARAM_STR_ARRAY, null)
+            );
+        }
+
+        foreach ($childrenRows as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
-            if (!isset($data->{$childName})) {
-                $data->{$childName} = new \stdClass();
+            if (!isset($data[$child['parent']]->{$childName})) {
+                $data[$child['parent']]->{$childName} = new \stdClass();
             }
         }
 
-        // If the node is referenceable, return jcr:uuid.
-        if (isset($data->{"jcr:mixinTypes"})) {
-            foreach ((array) $data->{"jcr:mixinTypes"} as $mixin) {
-                if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
-                    $data->{'jcr:uuid'} = $row['identifier'];
-                    break;
+        foreach ($data as $path => $node) {
+            // If the node is referenceable, return jcr:uuid.
+            if (isset($data[$path]->{"jcr:mixinTypes"})) {
+                foreach ((array) $data[$path]->{"jcr:mixinTypes"} as $mixin) {
+                    if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
+                        $data[$path]->{'jcr:uuid'} = $this->nodeIdentifiers[$path];
+                        break;
+                    }
                 }
             }
         }
@@ -1157,8 +1199,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
-        foreach ($all as $path => $row) {
-            $nodes[$path] = $this->getNodeData($path, $row);
+        if ($all) {
+            $nodes = $this->getNodesData($all);
         }
 
         return $nodes;
@@ -1220,11 +1262,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
-        foreach ($identifiers as $id) {
-            if (isset($all[$id])) {
-                $path = $all[$id]['path'];
-                $nodes[$path] = $this->getNodeData($path, $all[$id]);
-            }
+        if ($all) {
+            $nodes = $this->getNodesData($all);
         }
 
         return $nodes;
