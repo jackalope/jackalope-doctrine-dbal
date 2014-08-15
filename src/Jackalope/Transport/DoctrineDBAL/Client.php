@@ -1083,7 +1083,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $data = $this->getNodesData(array($row));
 
-        return count($data) === 1 ? array_shift($data) : array();
+        return array_shift($data);
     }
 
     /**
