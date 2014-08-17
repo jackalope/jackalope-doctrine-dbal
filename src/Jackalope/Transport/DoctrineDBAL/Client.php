@@ -1255,15 +1255,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return array();
         }
 
-        $query = 'SELECT identifier AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+        $query = 'SELECT id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND identifier IN (?)';
         $params = array($this->workspaceName, $identifiers);
         $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
-        $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+        $all = $stmt->fetchAll();
 
         $nodes = array();
         if ($all) {
-            $nodes = $this->getNodesData($all);
+            $nodesData = $this->getNodesData($all);
+            // ensure that the nodes are returned in the order if how the identifiers were passed in
+            $pathByUuid = array();
+            foreach ($nodesData as $path => $node) {
+                $pathByUuid[$node->{'jcr:uuid'}] = $path;
+            }
+            foreach ($identifiers as $identifier) {
+                if (isset($pathByUuid[$identifier])) {
+                    $nodes[$pathByUuid[$identifier]] = $nodesData[$pathByUuid[$identifier]];
+                }
+            }
         }
 
         return $nodes;
