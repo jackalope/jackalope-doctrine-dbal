@@ -69,6 +69,12 @@ use Jackalope\NotImplementedException;
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
     /**
+     * SQlite can only handle a maximum of 999 parameters inside an IN statement
+     * see https://github.com/jackalope/jackalope-doctrine-dbal/pull/149/files#diff-a3a0165ed79ca1ba3513ec5ecd59ec56R707
+     */
+    const SQLITE_MAXIMUM_IN_PARAM_COUNT = 999;
+
+    /**
      * The factory to instantiate objects
      * @var FactoryInterface
      */
@@ -729,7 +735,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
-                    $this->conn->executeUpdate($query, array(array_keys($toUpdate)), array(Connection::PARAM_INT_ARRAY));
+                    $params = array_keys($toUpdate);
+                    if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                            $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
+                        }
+                    } else {
+                        $this->conn->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                    }
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
@@ -766,7 +779,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
                 if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-                    foreach (array_chunk($params, 999) as $chunk) {
+                    foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                         $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                     }
                 } else {
@@ -787,7 +800,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
                 $missingTargets = array();
-                foreach (array_chunk($params, 999) as $chunk) {
+                foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                     $stmt = $this->conn->executeQuery($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                     $missingTargets = array_merge($missingTargets, $stmt->fetchAll(\PDO::FETCH_COLUMN));
                 }
@@ -811,7 +824,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE target_id IN (?)";
                     if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-                        foreach (array_chunk($params, 999) as $chunk) {
+                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                             $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                         }
                     } else {
@@ -1106,10 +1119,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $query = 'SELECT path, parent FROM phpcr_nodes WHERE parent IN (?) AND workspace_name = ? ORDER BY sort_order ASC';
-        $childrenRows = array();
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-            foreach (array_chunk($paths, 999) as $chunk) {
-                $childrenRows = $this->conn->fetchAll(
+            $childrenRows = array();
+            foreach (array_chunk($paths, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                $childrenRows += $this->conn->fetchAll(
                     $query,
                     array($chunk, $this->workspaceName),
                     array(Connection::PARAM_STR_ARRAY, null)
@@ -1257,9 +1270,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND identifier IN (?)';
-        $params = array($this->workspaceName, $identifiers);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
-        $all = $stmt->fetchAll();
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            $all = array();
+            foreach (array_chunk($identifiers, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                $all += $this->conn->fetchAll(
+                    $query,
+                    array($this->workspaceName, $chunk),
+                    array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY)
+                );
+            }
+        } else {
+            $all = $this->conn->fetchAll(
+                $query,
+                array($this->workspaceName, $identifiers),
+                array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY)
+            );
+        }
 
         $nodes = array();
         if ($all) {
