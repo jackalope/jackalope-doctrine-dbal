@@ -537,7 +537,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
     {
         $this->assertLoggedIn();
-        
+
         if (null !== $srcWorkspace && !$this->workspaceExists($srcWorkspace)) {
             throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
         }
@@ -1065,11 +1065,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
-        $node = $this->getNodeData($path, array_shift($rows));
-        foreach ($rows as $row) {
-            $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+        $nestedNodes = $this->getNodesData($rows);
+        $node = array_shift($nestedNodes);
+        foreach ($nestedNodes as $nestedPath => $nested) {
+            // generate a path relative to $path from $nestedPath
+            // ie. $nestedPath.'/'.$pathDiff === $path
+            $pathDiff = ltrim(substr($nestedPath, strlen($path)),'/');
             $nodeNames = explode('/', $pathDiff);
-            $this->nestNode($node, $this->getNodeData($row['path'], $row), $nodeNames);
+            $this->nestNode($node, $nested, $nodeNames);
         }
 
         return $node;
@@ -1088,11 +1091,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @param $path
-     * @param $row
-     * @return array|mixed
+     * Convert a node result row to the stdClass representing all raw data.
+     *
+     * @param array $row
+     *
+     * @return \stdClass raw node data
      */
-    private function getNodeData($path, $row)
+    private function getNodeData($row)
     {
         $data = $this->getNodesData(array($row));
 
@@ -1100,11 +1105,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Instead of fetching each node's data one by one this method is
-     * able to get them all by an array of paths.
+     * Build the raw data for a list of database result rows, fetching the
+     * additional information in one single query.
      *
-     * @param  array $rows
-     * @return array
+     * @param array $rows
+     *
+     * @return \stdClass[]
      */
     private function getNodesData($rows)
     {
@@ -1224,7 +1230,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
-        
+
         if ($this->conn->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
             $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
         } else {
@@ -1252,7 +1258,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $path = $row['path'];
-        $data = $this->getNodeData($path, $row);
+        $data = $this->getNodeData($row);
         $data->{':jcr:path'} = $path;
 
         return $data;
