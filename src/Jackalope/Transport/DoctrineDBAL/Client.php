@@ -69,6 +69,12 @@ use Jackalope\NotImplementedException;
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
     /**
+     * SQlite can only handle a maximum of 999 parameters inside an IN statement
+     * see https://github.com/jackalope/jackalope-doctrine-dbal/pull/149/files#diff-a3a0165ed79ca1ba3513ec5ecd59ec56R707
+     */
+    const SQLITE_MAXIMUM_IN_PARAM_COUNT = 999;
+
+    /**
      * The factory to instantiate objects
      * @var FactoryInterface
      */
@@ -531,7 +537,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
     {
         $this->assertLoggedIn();
-        
+
         if (null !== $srcWorkspace && !$this->workspaceExists($srcWorkspace)) {
             throw new NoSuchWorkspaceException("Source workspace '$srcWorkspace' does not exist.");
         }
@@ -729,7 +735,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
-                    $this->conn->executeUpdate($query, array(array_keys($toUpdate)), array(Connection::PARAM_INT_ARRAY));
+                    $params = array_keys($toUpdate);
+                    if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                            $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
+                        }
+                    } else {
+                        $this->conn->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                    }
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
@@ -766,7 +779,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
                 if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-                    foreach (array_chunk($params, 999) as $chunk) {
+                    foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                         $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                     }
                 } else {
@@ -787,7 +800,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
                 $missingTargets = array();
-                foreach (array_chunk($params, 999) as $chunk) {
+                foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                     $stmt = $this->conn->executeQuery($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                     $missingTargets = array_merge($missingTargets, $stmt->fetchAll(\PDO::FETCH_COLUMN));
                 }
@@ -811,7 +824,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE target_id IN (?)";
                     if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-                        foreach (array_chunk($params, 999) as $chunk) {
+                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                             $this->conn->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
                         }
                     } else {
@@ -1052,11 +1065,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
 
-        $node = $this->getNodeData($path, array_shift($rows));
-        foreach ($rows as $row) {
-            $pathDiff = ltrim(substr($row['path'], strlen($path)),'/');
+        $nestedNodes = $this->getNodesData($rows);
+        $node = array_shift($nestedNodes);
+        foreach ($nestedNodes as $nestedPath => $nested) {
+            // generate a path relative to $path from $nestedPath
+            // ie. $nestedPath.'/'.$pathDiff === $path
+            $pathDiff = ltrim(substr($nestedPath, strlen($path)),'/');
             $nodeNames = explode('/', $pathDiff);
-            $this->nestNode($node, $this->getNodeData($row['path'], $row), $nodeNames);
+            $this->nestNode($node, $nested, $nodeNames);
         }
 
         return $node;
@@ -1074,29 +1090,74 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->nestNode($parentNode->{$name}, $node, $nodeNames);
     }
 
-    private function getNodeData($path, $row)
+    /**
+     * Convert a node result row to the stdClass representing all raw data.
+     *
+     * @param array $row
+     *
+     * @return \stdClass raw node data
+     */
+    private function getNodeData($row)
     {
-        $this->nodeIdentifiers[$path] = $row['identifier'];
+        $data = $this->getNodesData(array($row));
 
-        $data = self::xmlToProps($row['props'], $this->valueConverter);
-        $data->{'jcr:primaryType'} = $row['type'];
+        return array_shift($data);
+    }
 
-        $query = 'SELECT path FROM phpcr_nodes WHERE parent = ? AND workspace_name = ? ORDER BY sort_order ASC';
-        $children = $this->conn->fetchAll($query, array($path, $this->workspaceName));
-        foreach ($children as $child) {
+    /**
+     * Build the raw data for a list of database result rows, fetching the
+     * additional information in one single query.
+     *
+     * @param array $rows
+     *
+     * @return \stdClass[]
+     */
+    private function getNodesData($rows)
+    {
+        $data = array();
+        $paths = array();
+
+        foreach ($rows as $row) {
+            $this->nodeIdentifiers[$row['path']] = $row['identifier'];
+            $data[$row['path']] = self::xmlToProps($row['props'], $this->valueConverter);
+            $data[$row['path']]->{'jcr:primaryType'} = $row['type'];
+            $paths[] = $row['path'];
+        }
+
+        $query = 'SELECT path, parent FROM phpcr_nodes WHERE parent IN (?) AND workspace_name = ? ORDER BY sort_order ASC';
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            $childrenRows = array();
+            foreach (array_chunk($paths, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                $childrenRows += $this->conn->fetchAll(
+                    $query,
+                    array($chunk, $this->workspaceName),
+                    array(Connection::PARAM_STR_ARRAY, null)
+                );
+            }
+        } else {
+            $childrenRows = $this->conn->fetchAll(
+                $query,
+                array($paths, $this->workspaceName),
+                array(Connection::PARAM_STR_ARRAY, null)
+            );
+        }
+
+        foreach ($childrenRows as $child) {
             $childName = explode('/', $child['path']);
             $childName = end($childName);
-            if (!isset($data->{$childName})) {
-                $data->{$childName} = new \stdClass();
+            if (!isset($data[$child['parent']]->{$childName})) {
+                $data[$child['parent']]->{$childName} = new \stdClass();
             }
         }
 
-        // If the node is referenceable, return jcr:uuid.
-        if (isset($data->{"jcr:mixinTypes"})) {
-            foreach ((array) $data->{"jcr:mixinTypes"} as $mixin) {
-                if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
-                    $data->{'jcr:uuid'} = $row['identifier'];
-                    break;
+        foreach ($data as $path => $node) {
+            // If the node is referenceable, return jcr:uuid.
+            if (isset($data[$path]->{"jcr:mixinTypes"})) {
+                foreach ((array) $data[$path]->{"jcr:mixinTypes"} as $mixin) {
+                    if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
+                        $data[$path]->{'jcr:uuid'} = $this->nodeIdentifiers[$path];
+                        break;
+                    }
                 }
             }
         }
@@ -1157,8 +1218,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
 
         $nodes = array();
-        foreach ($all as $path => $row) {
-            $nodes[$path] = $this->getNodeData($path, $row);
+        if ($all) {
+            $nodes = $this->getNodesData($all);
         }
 
         return $nodes;
@@ -1169,7 +1230,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
-        
+
         if ($this->conn->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
             $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
         } else {
@@ -1197,7 +1258,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $path = $row['path'];
-        $data = $this->getNodeData($path, $row);
+        $data = $this->getNodeData($row);
         $data->{':jcr:path'} = $path;
 
         return $data;
@@ -1213,17 +1274,37 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return array();
         }
 
-        $query = 'SELECT identifier AS arraykey, id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
+        $query = 'SELECT id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND identifier IN (?)';
-        $params = array($this->workspaceName, $identifiers);
-        $stmt = $this->conn->executeQuery($query, $params, array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY));
-        $all = $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP);
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            $all = array();
+            foreach (array_chunk($identifiers, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                $all += $this->conn->fetchAll(
+                    $query,
+                    array($this->workspaceName, $chunk),
+                    array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY)
+                );
+            }
+        } else {
+            $all = $this->conn->fetchAll(
+                $query,
+                array($this->workspaceName, $identifiers),
+                array(\PDO::PARAM_STR, Connection::PARAM_STR_ARRAY)
+            );
+        }
 
         $nodes = array();
-        foreach ($identifiers as $id) {
-            if (isset($all[$id])) {
-                $path = $all[$id]['path'];
-                $nodes[$path] = $this->getNodeData($path, $all[$id]);
+        if ($all) {
+            $nodesData = $this->getNodesData($all);
+            // ensure that the nodes are returned in the order if how the identifiers were passed in
+            $pathByUuid = array();
+            foreach ($nodesData as $path => $node) {
+                $pathByUuid[$node->{'jcr:uuid'}] = $path;
+            }
+            foreach ($identifiers as $identifier) {
+                if (isset($pathByUuid[$identifier])) {
+                    $nodes[$pathByUuid[$identifier]] = $nodesData[$pathByUuid[$identifier]];
+                }
             }
         }
 
