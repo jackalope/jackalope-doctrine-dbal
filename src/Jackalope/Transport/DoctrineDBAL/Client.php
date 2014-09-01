@@ -1068,26 +1068,30 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nestedNodes = $this->getNodesData($rows);
         $node = array_shift($nestedNodes);
         foreach ($nestedNodes as $nestedPath => $nested) {
-            // generate a path relative to $path from $nestedPath
-            // ie. $nestedPath.'/'.$pathDiff === $path
-            $pathDiff = ltrim(substr($nestedPath, strlen($path)),'/');
-            $nodeNames = explode('/', $pathDiff);
-            $this->nestNode($node, $nested, $nodeNames);
+            $relativePath = PathHelper::relativizePath($nestedPath, $path);
+            $this->nestNode($node, $nested, explode('/', $relativePath));
         }
 
         return $node;
     }
 
-    private function nestNode($parentNode, $node, array $nodeNames)
+    /**
+     * Attach a node at a subpath under the ancestor node.
+     *
+     * @param \stdClass $ancestor  The root node
+     * @param \stdClass $node      The node to add
+     * @param array     $nodeNames Breadcrumb of child nodes from parentNode to the node itself
+     */
+    private function nestNode($ancestor, $node, array $nodeNames)
     {
-        $name = array_shift($nodeNames);
+        while ($name = array_shift($nodeNames)) {
+            if (empty($nodeNames)) {
+                $ancestor->{$name} = $node;
 
-        if (empty($nodeNames)) {
-            $parentNode->{$name} = $node;
-            return;
+                return;
+            }
+            $ancestor = $ancestor->{$name};
         }
-
-        $this->nestNode($parentNode->{$name}, $node, $nodeNames);
     }
 
     /**

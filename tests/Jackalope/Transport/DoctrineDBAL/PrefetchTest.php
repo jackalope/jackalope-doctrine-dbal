@@ -46,7 +46,6 @@ class PrefetchTest extends TestCase
             $conn->exec($statement);
         }
 
-
         $transport = $this->getTransport();
 
         $repository = new \Jackalope\Repository(null, $transport);
@@ -78,7 +77,6 @@ class PrefetchTest extends TestCase
         $list = $transport->getNodes(array('/node-a', '/node-b'));
 
         $this->assertCount(6, $list);
-
 
         $keys = array_keys($list);
         sort($keys);
