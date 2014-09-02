@@ -2194,8 +2194,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $result[] = array('dcr:name' => 'jcr:path', 'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
                 }
 
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:path'       ,'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
-                $result[] = array('dcr:name' => $selectorPrefix . 'jcr:score',      'dcr:value' => 0                           , 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => 'jcr:path'       ,'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName);
+                $result[] = array('dcr:name' => 'jcr:score',      'dcr:value' => 0                           , 'dcr:selectorName' => $selectorName);
                 if (0 === count($qom->getColumns())) {
                     $result[] = array('dcr:name' => $selectorPrefix . 'jcr:primaryType','dcr:value' => $primaryType                , 'dcr:selectorName' => $selectorName);
                 }
