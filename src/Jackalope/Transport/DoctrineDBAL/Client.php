@@ -2313,10 +2313,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
             }
 
+            $reservedNames = array('jcr:path', 'jcr:score');
+
             foreach ($qom->getColumns() as $column) {
                 $selectorName = $column->getSelectorName();
                 $columnName = $column->getPropertyName();
                 $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+
+
+                if (in_array($column->getColumnName(), $reservedNames)) {
+                    throw new InvalidQueryException(sprintf(
+                        'Cannot reserved name "%s". Reserved names are "%s"',
+                        $column->getColumnName(), implode('", "', $reservedNames)
+                    ));
+                }
 
                 $dcrValue = 'jcr:uuid' === $columnName
                     ? $row[$columnPrefix . 'identifier']

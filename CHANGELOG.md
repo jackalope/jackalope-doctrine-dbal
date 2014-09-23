@@ -1,8 +1,10 @@
 Changelog
 =========
+
 1.2
 ---
 
+* Throw Exception when user tries to select either jcr:path or jcr:score
 * The jackalope:init:dbal command now only really executes when the --force
   parameter is given.
 * Fixed Property::getNode() can return the same node multiple times if that
