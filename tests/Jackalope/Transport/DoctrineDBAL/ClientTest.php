@@ -6,6 +6,7 @@ use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Test\TestCase;
 use PHPCR\PropertyType;
 use PHPCR\Util\NodeHelper;
+use PHPCR\Util\PathHelper;
 
 class ClientTest extends TestCase
 {
@@ -26,22 +27,16 @@ class ClientTest extends TestCase
 
     public function setUp()
     {
+        static $initialized = false;
         parent::setUp();
 
         $conn = $this->getConnection();
         $options = array('disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform);
         $schema = new RepositorySchema($options, $conn);
-        // do not use reset as we want to ignore exceptions on drop
-        foreach ($schema->toDropSql($conn->getDatabasePlatform()) as $statement) {
-            try {
-                $conn->exec($statement);
-            } catch (\Exception $e) {
-                // ignore
-            }
-        }
+        $tables = $schema->getTables();
 
-        foreach ($schema->toSql($conn->getDatabasePlatform()) as $statement) {
-            $conn->exec($statement);
+        foreach ($tables as $table) {
+            $conn->exec('DELETE FROM ' . $table->getName());
         }
 
         $this->transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory(), $conn);
@@ -305,19 +300,31 @@ class ClientTest extends TestCase
 
         $this->session->save();
 
-        $statement = $this->getConnection()->executeQuery('SELECT props FROM phpcr_nodes WHERE path = ?', array('/testLengthAttribute'));
-        $xml = $statement->fetchColumn();
+        $statement = $this->getConnection()->executeQuery('SELECT props, numerical_props FROM phpcr_nodes WHERE path = ?', array('/testLengthAttribute'));
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+        $props = $row['props'];
+        $decimalProps = $row['numerical_props'];
 
-        $this->assertNotEquals(false, $xml);
-
-        $doc = new \DOMDocument('1.0', 'utf-8');
-        $doc->loadXML($xml);
-
-        $xpath = new \DOMXPath($doc);
         foreach ($data as $propertyName => $propertyInfo) {
+            $propertyElement = null;
 
-            $propertyElement = $xpath->query(sprintf('sv:property[@sv:name="%s"]', $propertyName));
-            $this->assertEquals(1, $propertyElement->length);
+            foreach (array($props, $decimalProps) as $propXml) {
+                if (null == $propXml) {
+                    continue;
+                }
+
+                $doc = new \DOMDocument('1.0', 'utf-8');
+                $doc->loadXML($propXml);
+
+                $xpath = new \DOMXPath($doc);
+                $propertyElement = $xpath->query(sprintf('sv:property[@sv:name="%s"]', $propertyName));
+
+                if ($propertyElement->length > 0) {
+                    break;
+                }
+            }
+
+            $this->assertEquals(1, $propertyElement->length, 'Property ' . $propertyName . ' exists');
 
             $values = $xpath->query('sv:value', $propertyElement->item(0));
 
@@ -387,5 +394,182 @@ class ClientTest extends TestCase
         $this->session->save();
         $this->session->move('/topic', '/Topic');
         $this->session->save();
+    }
+
+    public function testStoreTypes()
+    {
+        $rootNode = $this->session->getRootNode();
+        $node = $rootNode->addNode('testStoreTypes');
+
+        $data = array(
+            array('string_1', 'string_1', PropertyType::STRING),
+            array('string_2', 'string_1', PropertyType::STRING),
+            array('long_1', '10', PropertyType::LONG),
+            array('long_2', '20', PropertyType::LONG),
+            array('decimal_1', '10.0', PropertyType::DECIMAL),
+            array('decimal_2', '20.0', PropertyType::DECIMAL),
+        );
+
+        foreach ($data as $propertyData) {
+            $node->setProperty($propertyData[0], $propertyData[1], $propertyData[2]);
+        }
+
+        $this->session->save();
+        $this->session->refresh(false);
+
+        foreach ($data as $propertyData) {
+            list($propName) = $propertyData;
+            $this->assertTrue($node->hasProperty($propName), 'Node has property "' . $propName .'"');
+        }
+    }
+
+    public function provideOrder()
+    {
+        return array(
+            array(
+                array(
+                    'one' => array(
+                        'value' => 'AAA',
+                    ),
+                    'two' => array(
+                        'value' => 'BBB',
+                    ),
+                    'three' => array(
+                        'value' => 'CCC',
+                    ),
+                ),
+                'value DESC',
+                array('three', 'two', 'one'),
+            ),
+
+            // longs
+            array(
+                array(
+                    'one' => array(
+                        'value' => 30,
+                    ),
+                    'two' => array(
+                        'value' => 20,
+                    ),
+                    'three' => array(
+                        'value' => 10,
+                    ),
+                ),
+                'value',
+                array('three', 'two', 'one'),
+            ),
+
+            // longs (ensure that values are not cast as strings)
+            array(
+                array(
+                    'one' => array(
+                        'value' => 10,
+                    ),
+                    'two' => array(
+                        'value' => 100,
+                    ),
+                    'three' => array(
+                        'value' => 20,
+                    ),
+                ),
+                'value',
+                array('one', 'three', 'two'),
+            ),
+
+            // decimals
+            array(
+                array(
+                    'one' => array(
+                        'value' => 10.01,
+                    ),
+                    'two' => array(
+                        'value' => 0.01,
+                    ),
+                    'three' => array(
+                        'value' => 5.05,
+                    ),
+                ),
+                'value',
+                array('two', 'three', 'one'),
+            ),
+
+            // mixed
+            array(
+                array(
+                    'one' => array(
+                        'title' => 'AAA',
+                        'value' => 10.01,
+                    ),
+                    'two' => array(
+                        'title' => 'AAA',
+                        'value' => 0.01,
+                    ),
+                    'three' => array(
+                        'title' => 'CCC',
+                        'value' => 5.05,
+                    ),
+                    'four' => array(
+                        'title' => 'BBB',
+                        'value' => 5.05,
+                    ),
+                ),
+                'title, value ASC',
+                array('two', 'one', 'four', 'three'),
+            ),
+        );
+    }
+
+    /**
+     * @dataProvider provideOrder
+     */
+    public function testOrder($nodes, $orderBy, $expectedOrder)
+    {
+        $rootNode = $this->session->getNode('/');
+
+        foreach ($nodes as $nodeName => $nodeProperties) {
+            $node = $rootNode->addNode($nodeName);
+            foreach ($nodeProperties as $name => $value) {
+                $node->setProperty($name, $value);
+            }
+        }
+
+        $this->session->save();
+
+        $qm = $this->session->getWorkspace()->getQueryManager();
+        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY ' . $orderBy, \PHPCR\Query\QueryInterface::JCR_SQL2);
+        $result = $query->execute();
+
+        $rows = $result->getRows();
+        $this->assertGreaterThan(0, count($rows));
+
+        foreach ($rows as $index => $row) {
+            $path = $row->getNode()->getPath();
+            $name = PathHelper::getNodeName($path);
+
+            $expectedName = $expectedOrder[$index];
+            $this->assertEquals($expectedName, $name);
+        }
+    }
+
+    public function testCopy()
+    {
+        $rootNode = $this->session->getNode('/');
+        $child1 = $rootNode->addNode('child1');
+        $child1->setProperty('string', 'Hello');
+        $child1->setProperty('number', 1234);
+
+        $this->session->save();
+
+        $this->session->getWorkspace()->copy('/child1', '/child2');
+
+        $stmt = $this->conn->query("SELECT * FROM phpcr_nodes WHERE path = '/child1' OR path = '/child2'");
+        $child1 = $stmt->fetch();
+        $child2 = $stmt->fetch();
+
+        $this->assertNotNull($child1);
+        $this->assertNotNull($child2);
+
+        $this->assertEquals($child1['props'], $child2['props']);
+        $this->assertEquals($child1['numerical_props'], $child2['numerical_props']);
     }
 }

@@ -743,7 +743,26 @@ class QOMWalker
             $direction = 'DESC';
         }
 
-        return $this->walkOperand($ordering->getOperand()) . " " . $direction;
+        $sql = $this->walkOperand($ordering->getOperand());
+
+        if ($ordering->getOperand() instanceof QOM\PropertyValueInterface) {
+            $operand = $ordering->getOperand();
+            $property = $ordering->getOperand()->getPropertyName();
+            if ($property !== 'jcr:path' && $property !== 'jcr:uuid') {
+                $alias = $this->getTableAlias($operand->getSelectorName() . '.' . $property);
+
+                $numericalSelector = $this->sqlXpathExtractValue($alias, $property, 'numerical_props');
+
+                $sql = sprintf('CAST(%s AS DECIMAL), %s',
+                    $numericalSelector,
+                    $sql
+                );
+            }
+        }
+
+        $sql .= ' ' .$direction;
+
+        return $sql;
     }
 
     /**
@@ -791,16 +810,16 @@ class QOMWalker
      *
      * @return string
      */
-    private function sqlXpathExtractValue($alias, $property)
+    private function sqlXpathExtractValue($alias, $property, $column = 'props')
     {
         if ($this->platform instanceof MySqlPlatform) {
-            return "EXTRACTVALUE($alias.props, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
+            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
         if ($this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
+            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
         if ($this->platform instanceof SqlitePlatform) {
-            return "EXTRACTVALUE($alias.props, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
+            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
@@ -866,27 +885,6 @@ class QOMWalker
     private function sqlXpathPostgreSQLNamespaces()
     {
         return "ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]";
-    }
-
-    /**
-     * Returns the SQL part to select the given property
-     *
-     * @param string $alias
-     * @param string $propertyName
-     *
-     * @return string
-     */
-    private function sqlProperty($alias, $propertyName)
-    {
-        if ('jcr:uuid' === $propertyName) {
-            return "$alias.identifier";
-        }
-
-        if ('jcr:path' === $propertyName) {
-            return "$alias.path";
-        }
-
-        return $this->sqlXpathExtractValue($alias, $propertyName);
     }
 
     /**

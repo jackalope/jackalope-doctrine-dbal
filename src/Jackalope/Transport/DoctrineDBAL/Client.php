@@ -207,6 +207,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function registerSqliteFunctions(PDOConnection $sqliteConnection)
     {
         $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
+            if (null === $string) {
+                return null;
+            }
+
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $dom->loadXML($string);
             $xpath = new \DOMXPath($dom);
@@ -571,10 +575,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
             $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
-            $dom = new \DOMDocument('1.0', 'UTF-8');
-            $dom->loadXML($row['props']);
+            $stringDom = new \DOMDocument('1.0', 'UTF-8');
+            $stringDom->loadXML($row['props']);
 
-            $propsData = array('dom' => $dom);
+            $numericalDom = null;
+
+            if ($row['numerical_props']) {
+                $numericalDom = new \DOMDocument('1.0', 'UTF-8');
+                $numericalDom->loadXML($row['numerical_props']);
+            }
+
+            $propsData = array(
+                'stringDom' => $stringDom,
+                'numericalDom' => $numericalDom
+            );
             // when copying a node, the copy is always a new node. set $isNewNode to true
             $newNodeId = $this->syncNode(null, $newPath, $row['type'], true, array(), $propsData);
 
@@ -646,25 +660,27 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $qb = $this->conn->createQueryBuilder();
 
-            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
+            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :numerical_props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
                 ->from('phpcr_nodes', 'n')
                 ->where('n.parent = :parent_a');
 
             $sql = $qb->getSql();
 
             try {
-                $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, depth, sort_order) " . $sql;
-                $this->conn->executeUpdate($insert, array(
-                    'identifier'    => $uuid,
-                    'type'          => $type,
-                    'path'          => $path,
-                    'local_name'    => $localName,
-                    'namespace'     => $namespace,
-                    'parent'        => PathHelper::getParentPath($path),
+                $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, numerical_props, depth, sort_order) " . $sql;
+
+                $this->conn->executeUpdate($insert, $data = array(
+                    'identifier'      => $uuid,
+                    'type'            => $type,
+                    'path'            => $path,
+                    'local_name'      => $localName,
+                    'namespace'       => $namespace,
+                    'parent'          => PathHelper::getParentPath($path),
                     'workspace_name'  => $this->workspaceName,
-                    'props'         => $propsData['dom']->saveXML(),
-                    'depth'         => PathHelper::getPathDepth($path),
-                    'parent_a'      => PathHelper::getParentPath($path),
+                    'props'           => $propsData['stringDom']->saveXML(),
+                    'numerical_props' => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
+                    'depth'           => PathHelper::getPathDepth($path),
+                    'parent_a'        => PathHelper::getParentPath($path),
                 ));
             } catch(\Exception $e) {
                 if ($e instanceof \PDOException || $e instanceof DBALException) {
@@ -684,7 +700,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             if (!$nodeId) {
                 throw new RepositoryException("nodeId for $path not found");
             }
-            $this->conn->update('phpcr_nodes', array('props' => $propsData['dom']->saveXML()), array('id' => $nodeId));
+
+            $this->conn->update('phpcr_nodes', array(
+                'props'            => $propsData['stringDom']->saveXML(),
+                'numerical_props'  => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
+                ),
+                array('id' => $nodeId)
+            );
         }
 
         $this->nodeIdentifiers[$path] = $uuid;
@@ -853,6 +875,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
 
             $values = array();
+
             $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
             foreach ($propertyNode->childNodes as $valueNode) {
                 switch ($type) {
@@ -912,7 +935,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param array   $properties
      * @param boolean $inlineBinaries
      *
-     * @return array ('dom' => $dom, 'binaryData' => streams, 'references' => array('type' => INT, 'values' => array(UUIDs)))
+     * @return array (
+     *     'stringDom' => $stringDom,
+     *     'numericalDom' => $numericalDom',
+     *     'binaryData' => streams, 
+     *     'references' => array('type' => INT, 'values' => array(UUIDs)))
      */
     private function propsToXML($properties, $inlineBinaries = false)
     {
@@ -925,20 +952,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'rep' => "internal",
         );
 
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $rootNode = $dom->createElement('sv:node');
-        foreach ($namespaces as $namespace => $uri) {
-            $rootNode->setAttribute('xmlns:' . $namespace, $uri);
-        }
-        $dom->appendChild($rootNode);
+        $doms = array(
+            'stringDom' => array(),
+            'numericalDom' => array(),
+        );
 
         $binaryData = $references = array();
+
         foreach ($properties as $property) {
-            /* @var $property Property */
-            $propertyNode = $dom->createElement('sv:property');
-            $propertyNode->setAttribute('sv:name', $property->getName());
-            $propertyNode->setAttribute('sv:type', PropertyType::nameFromValue($property->getType()));
-            $propertyNode->setAttribute('sv:multi-valued', $property->isMultiple() ? '1' : '0');
+
+            $targetDoms = array('stringDom');
 
             switch ($property->getType()) {
                 case PropertyType::WEAKREFERENCE:
@@ -955,12 +978,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     break;
                 case PropertyType::DECIMAL:
                     $values = $property->getDecimal();
+                    $targetDoms[] = 'numericalDom';
                     break;
                 case PropertyType::BOOLEAN:
                     $values = array_map('intval', (array) $property->getBoolean());
                     break;
                 case PropertyType::LONG:
                     $values = $property->getLong();
+                    $targetDoms[] = 'numericalDom';
                     break;
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
@@ -998,26 +1023,66 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     break;
                 case PropertyType::DOUBLE:
                     $values = $property->getDouble();
+                    $targetDoms[] = 'numericalDom';
                     break;
                 default:
                     throw new RepositoryException('unknown type '.$property->getType());
             }
 
-            $lengths = (array) $property->getLength();
-            foreach ((array) $values as $key => $value) {
-                $element = $propertyNode->appendChild($dom->createElement('sv:value'));
-                $element->appendChild($dom->createTextNode($value));
-                if (isset($lengths[$key])) {
-                    $lengthAttribute = $dom->createAttribute('length');
-                    $lengthAttribute->value = $lengths[$key];
-                    $element->appendChild($lengthAttribute);
-                }
+            foreach ($targetDoms as $targetDom) {
+                $doms[$targetDom][] = array(
+                    'name' => $property->getName(),
+                    'type' => PropertyType::nameFromValue($property->getType()),
+                    'multiple' => $property->isMultiple(),
+                    'lengths' => (array) $property->getLength(),
+                    'values' => $values,
+                );
             }
-
-            $rootNode->appendChild($propertyNode);
         }
 
-        return array('dom' => $dom, 'binaryData' => $binaryData, 'references' => $references);
+        $ret = array(
+            'stringDom' => null,
+            'numericalDom' => null,
+            'binaryData' => $binaryData,
+            'references' => $references
+        );
+
+        foreach ($doms as $targetDom => $properties) {
+
+            $dom = new \DOMDocument('1.0', 'UTF-8');
+            $rootNode = $dom->createElement('sv:node');
+            foreach ($namespaces as $namespace => $uri) {
+                $rootNode->setAttribute('xmlns:' . $namespace, $uri);
+            }
+            $dom->appendChild($rootNode);
+
+            foreach ($properties as $property) {
+
+                /* @var $property Property */
+                $propertyNode = $dom->createElement('sv:property');
+                $propertyNode->setAttribute('sv:name', $property['name']);
+                $propertyNode->setAttribute('sv:type', $property['type']);
+                $propertyNode->setAttribute('sv:multi-valued', $property['multiple'] ? '1' : '0');
+                $lengths = (array) $property['lengths'];
+                foreach ((array) $property['values'] as $key => $value) {
+                    $element = $propertyNode->appendChild($dom->createElement('sv:value'));
+                    $element->appendChild($dom->createTextNode($value));
+                    if (isset($lengths[$key])) {
+                        $lengthAttribute = $dom->createAttribute('length');
+                        $lengthAttribute->value = $lengths[$key];
+                        $element->appendChild($lengthAttribute);
+                    }
+                }
+
+                $rootNode->appendChild($propertyNode);
+            }
+
+            if (count($properties)) {
+                $ret[$targetDom] = $dom;
+            }
+        }
+
+        return $ret;
     }
 
     /**
