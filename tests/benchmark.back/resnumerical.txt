@@ -1,0 +1,32 @@
+SELECT \* FROM [nt:unstructured];
+2143 rows in set (1.84274 sec)
+2143 rows in set (1.94709 sec)
+2143 rows in set (1.86058 sec)
+SELECT \* FROM [nt:unstructured] ORDER BY [i18n:de-title];
+2143 rows in set (2.04875 sec)
+2143 rows in set (2.04055 sec)
+2143 rows in set (2.00308 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE i18n:de-title IS NOT NULL ORDER BY [i18n:de-title];
+330 rows in set (1.63383 sec)
+330 rows in set (1.63438 sec)
+330 rows in set (1.63745 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [sulu:order], [i18n:de-title] DESC;
+57 rows in set (0.57677 sec)
+57 rows in set (0.60930 sec)
+57 rows in set (0.58204 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service');
+57 rows in set (0.48024 sec)
+57 rows in set (0.47330 sec)
+57 rows in set (0.48214 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') ORDER BY [i18n:de-title];
+57 rows in set (0.52143 sec)
+57 rows in set (0.52957 sec)
+57 rows in set (0.52393 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [i18n:de-title];
+57 rows in set (0.54349 sec)
+57 rows in set (0.55270 sec)
+57 rows in set (0.54978 sec)
+SELECT \* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [sulu:order], [i18n:de-title] DESC;
+57 rows in set (0.56815 sec)
+57 rows in set (0.58603 sec)
+57 rows in set (0.55674 sec)
