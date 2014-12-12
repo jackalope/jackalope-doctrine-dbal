@@ -62,8 +62,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
                     'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
                     'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
-                    'Reading\\NodeReadMethodsTest::testGetNodesTypeFilter', //TODO implement node type filtering
-                    'Reading\\NodeReadMethodsTest::testGetNodesTypeFilterList', //TODO implement node type filtering
 
                     //TODO: implement getQuery method in Jackalope QueryManager
                     'Query\\QueryManagerTest::testGetQuery',
