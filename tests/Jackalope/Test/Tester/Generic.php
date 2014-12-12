@@ -47,16 +47,33 @@ class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements Fix
 
     public function import($fixtureName, $workspace = null)
     {
-        if ($workspace) {
-            throw new \Exception('TODO: find a solution to import fixtures for other workspace');
-        }
-        // @TODO: this should not be BOOL/FALSE => wrong type. should be string or null.
-        if ($fixtureName === false) {
-            $fixtureName = null;
-        }
-
         $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . $fixtureName . '.xml';
         $this->setDataSet(new \PHPUnit_Extensions_Database_DataSet_XmlDataSet($fixture));
+
+        if ($workspace) {
+            $dataSet = $this->getDataSet();
+
+            // TODO: ugly hack, since we only really ever load a 2nd fixture in combination with '10_Writing/copy.xml'
+            $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . '10_Writing/copy.xml';
+            $this->setDataSet(new \PHPUnit_Extensions_Database_DataSet_XmlDataSet($fixture));
+
+            $loader = \ImplementationLoader::getInstance();
+            $workspaceName = $loader->getOtherWorkspaceName();
+
+            $this->dataSet->getTable('phpcr_workspaces')->addRow(array('name' => $workspaceName));
+
+            foreach (array('phpcr_nodes', 'phpcr_binarydata') as $tableName) {
+                $table = $dataSet->getTable($tableName);
+                $targetTable = $this->dataSet->getTable($tableName);
+
+                for ($i = 0; $i < $table->getRowCount(); $i++) {
+                    $row = $table->getRow($i);
+                    $row['workspace_name'] = $workspaceName;
+                    $targetTable->addRow($row);
+                }
+            }
+        }
+
         $this->onSetUp();
     }
 
