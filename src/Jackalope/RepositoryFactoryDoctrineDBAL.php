@@ -2,6 +2,7 @@
 
 namespace Jackalope;
 
+use PHPCR\ConfigurationException;
 use PHPCR\RepositoryFactoryInterface;
 
 /**
@@ -62,17 +63,15 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
     public function getRepository(array $parameters = null)
     {
         if (null === $parameters) {
-            return null;
+            throw new ConfigurationException('Jackalope-doctrine-dbal needs parameters');
         }
 
-        // check if we have all required keys
-        $present = array_intersect_key(self::$required, $parameters);
-        if (count(array_diff_key(self::$required, $present))) {
-            return null;
+        if (count(array_diff_key(self::$required, $parameters))) {
+            throw new ConfigurationException('A required parameter is missing: ' . implode(', ', array_keys(array_diff_key(self::$required, $parameters))));
         }
-        $defined = array_intersect_key(array_merge(self::$required, self::$optional), $parameters);
-        if (count(array_diff_key($defined, $parameters))) {
-            return null;
+
+        if (count(array_diff_key($parameters, self::$required, self::$optional))) {
+            throw new ConfigurationException('Additional unknown parameters found: ' . implode(', ', array_keys(array_diff_key($parameters, self::$required, self::$optional))));
         }
 
         if (isset($parameters['jackalope.factory'])) {
