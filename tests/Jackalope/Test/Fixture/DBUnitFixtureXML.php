@@ -306,7 +306,8 @@ class DBUnitFixtureXML extends XMLDocument
                 } else {
                     $targetId = $this->expectedNodes[$value] = self::$idCounter++;
                 }
-                $this->references[$type][$value][] = array(
+                // do not repeat references
+                $this->references[$type][$value][$id . $propertyName . $targetId] = array(
                     'source_id'             => $id,
                     'source_property_name'  => $propertyName,
                     'target_id'             => $targetId,
