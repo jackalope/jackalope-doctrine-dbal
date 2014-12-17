@@ -19,7 +19,7 @@ before_script:
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
 
-script: phpunit -c $DB.phpunit.xml
+script: php vendor/bin/phpunit -c $DB.phpunit.xml
 
 matrix:
   allow_failures:
