@@ -34,7 +34,7 @@ before_script:
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
 
-script: phpunit -c $DB.phpunit.xml
+script: vendor/bin/phpunit -c $DB.phpunit.xml
 
 notifications:
   irc: "irc.freenode.org#jackalope"
