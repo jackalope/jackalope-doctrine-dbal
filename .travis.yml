@@ -9,11 +9,21 @@ php:
 
 env:
   - DB=mysql PACKAGE_VERSION=high
-  - DB=mysql PACKAGE_VERSION=low
   - DB=pgsql PACKAGE_VERSION=high
-  - DB=pgsql PACKAGE_VERSION=low
   - DB=sqlite PACKAGE_VERSION=high
-  - DB=sqlite PACKAGE_VERSION=low
+
+
+matrix:
+  allow_failures:
+    - php: hhvm
+    # hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
+  include:
+    - php: 5.3.3
+      env: DB=mysql PACKAGE_VERSION=low
+    - php: 5.3.3
+      env: DB=pgsql PACKAGE_VERSION=low
+    - php: 5.3.3
+      env: DB=sqlite PACKAGE_VERSION=low
 
 before_script:
   - composer selfupdate
@@ -25,11 +35,6 @@ before_script:
   - php tests/generate_phpunit_config.php $DB
 
 script: phpunit -c $DB.phpunit.xml
-
-matrix:
-  allow_failures:
-    - php: hhvm
-# hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
 
 notifications:
   irc: "irc.freenode.org#jackalope"
