@@ -10,14 +10,18 @@ php:
   - hhvm
 
 env:
-  - DB=mysql
-  - DB=pgsql
-  - DB=sqlite
+  - DB=mysql PACKAGE_VERSION=high
+  - DB=mysql PACKAGE_VERSION=low
+  - DB=pgsql PACKAGE_VERSION=high
+  - DB=pgsql PACKAGE_VERSION=low
+  - DB=sqlite PACKAGE_VERSION=high
+  - DB=sqlite PACKAGE_VERSION=low
 
 before_script:
+  - composer selfupdate
   - rm -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini
-  - composer self-update
-  - composer update --prefer-source --no-interaction
+  - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-source --no-interaction; fi
+  - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-source --no-interaction; fi
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
