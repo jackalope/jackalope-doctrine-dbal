@@ -1,8 +1,0 @@
-SELECT \\* FROM [nt:unstructured];
-SELECT \\* FROM [nt:unstructured] ORDER BY [i18n:de-title];
-SELECT \\* FROM [nt:unstructured] AS a WHERE i18n:de-title IS NOT NULL ORDER BY [i18n:de-title];
-SELECT \\* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [sulu:order], [i18n:de-title] DESC;
-SELECT \\* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service');
-SELECT \\* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') ORDER BY [i18n:de-title];
-SELECT \\* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [i18n:de-title];
-SELECT \\* FROM [nt:unstructured] AS a WHERE ISDESCENDANTNODE(a, '/cmf/stanton/contents/service') AND i18n:de-title IS NOT NULL ORDER BY [sulu:order], [i18n:de-title] DESC;

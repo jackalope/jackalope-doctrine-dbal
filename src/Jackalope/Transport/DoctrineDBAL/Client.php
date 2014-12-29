@@ -571,15 +571,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT * FROM phpcr_nodes WHERE path LIKE ? AND workspace_name = ?';
         $stmt = $this->conn->executeQuery($query, array($srcAbsPath . '%', $srcWorkspace));
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-        foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+        $uuidMap = array();
+        $resultSetUuids = array();
+
+        // first iterate and build up an array of all the UUIDs in the result set
+        foreach ($rows as $row) {
+            $resultSetUuids[$row['identifier']] = $row['path'];
+        }
+
+        $referenceElsToRemap = array();
+        foreach ($rows as $row) {
             $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
             $stringDom = new \DOMDocument('1.0', 'UTF-8');
             $stringDom->loadXML($row['props']);
-
             $numericalDom = null;
-
             if ($row['numerical_props']) {
                 $numericalDom = new \DOMDocument('1.0', 'UTF-8');
                 $numericalDom->loadXML($row['numerical_props']);
@@ -589,8 +597,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 'stringDom' => $stringDom,
                 'numericalDom' => $numericalDom
             );
+
+            $xpath = new \DOMXpath($stringDom);
+            $referenceEls = $xpath->query('.//sv:property[@sv:type="reference"]');
+
+            foreach ($referenceEls as $referenceEl) {
+                if (isset($resultSetUuids[$referenceEl->nodeValue])) {
+                    $referenceElsToRemap[] = array($referenceEl, $newPath, $row['type'], $propsData);
+                }
+            }
+
+            $originalUuid = $row['identifier'];
+
             // when copying a node, the copy is always a new node. set $isNewNode to true
             $newNodeId = $this->syncNode(null, $newPath, $row['type'], true, array(), $propsData);
+
+            $newUuid = $this->nodeIdentifiers[$newPath];
+            $uuidMap[$originalUuid] = $newUuid;
 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
@@ -600,6 +623,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             } catch (DBALException $e) {
                 throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
             }
+        }
+
+        foreach ($referenceElsToRemap as $data) {
+            list($referenceEl, $newPath, $type, $propsData) = $data;
+            $referenceEl->nodeValue = $uuidMap[$referenceEl->nodeValue];
+
+            $this->syncNode($this->nodeIdentifiers[$newPath], $newPath, $type, false, array(), $propsData);
         }
     }
 
