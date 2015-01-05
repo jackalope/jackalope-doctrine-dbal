@@ -840,7 +840,7 @@ class QOMWalker
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
         }
         if ($this->platform instanceof PostgreSqlPlatform) {
-            return sprintf("(xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
+            return sprintf("CAST((xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
         if ($this->platform instanceof SqlitePlatform) {
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
