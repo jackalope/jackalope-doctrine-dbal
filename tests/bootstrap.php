@@ -40,9 +40,11 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
 ));
 
 // recreate database schema
-$options = array('disable_fks' => $dbConn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform);
-$repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($options, $dbConn);
-$repositorySchema->reset();
+if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {
+    $options = array('disable_fks' => $dbConn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform);
+    $repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($options, $dbConn);
+    $repositorySchema->reset();
+}
 
 // some constants
 define('SPEC_VERSION_DESC',             'jcr.specification.version');
