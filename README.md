@@ -123,7 +123,7 @@ sample code to get a PHPCR session with the doctrine-dbal backend:
 $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
 $host      = 'localhost';
 $user      = 'jackalope';
-$password  = '';
+$pass      = '';
 $database  = 'jackalope'; // $path = 'jackalope.db'; // for SQLite
 $workspace = 'default';
 
