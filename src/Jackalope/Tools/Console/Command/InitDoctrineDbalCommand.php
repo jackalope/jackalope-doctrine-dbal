@@ -10,6 +10,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Doctrine\DBAL\Connection;
 
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 
 /**
  * Init doctrine dbal.
@@ -76,11 +77,18 @@ EOT
 
         try {
             if ($input->getOption('drop')) {
-                foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
-                    if (true === $input->getOption('dump-sql')) {
-                        $output->writeln($sql);
-                    } else {
-                        $connection->exec($sql);
+                try {
+                    foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
+                        if (true === $input->getOption('dump-sql')) {
+                            $output->writeln($sql);
+                        } else {
+
+                            $connection->exec($sql);
+                        }
+                    }
+                } catch (TableNotFoundException $e) {
+                    if (false === $input->getOption('force')) {
+                        throw $e;
                     }
                 }
             }
