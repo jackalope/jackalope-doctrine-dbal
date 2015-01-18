@@ -3,6 +3,8 @@ Changelog
 1.2
 ---
 
+* The jackalope:init:dbal command now only really executes when the --force
+  parameter is given.
 * Fixed Property::getNode() can return the same node multiple times if that
   node was added to the property multiple times. This has the side effect that
   the array returned by this method is not indexed by uuid anymore. That index
