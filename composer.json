@@ -19,7 +19,7 @@
         "php": ">=5.3.3",
         "doctrine/dbal": "~2.4",
         "phpcr/phpcr": "~2.1.2",
-        "phpcr/phpcr-utils": "~1.2",
+        "phpcr/phpcr-utils": "~1.2,>=1.2.4",
         "jackalope/jackalope": "~1.2.0"
     },
     "provide": {
