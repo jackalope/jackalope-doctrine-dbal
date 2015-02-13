@@ -803,26 +803,39 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
             }
 
+            $updates = array();
             foreach ($toUpdate as $nodeId => $references) {
                 foreach ($references['properties'] as $name => $data) {
                     foreach ($data['values'] as $value) {
                         try {
-                            $params = array(
-                                'source_id' => $nodeId,
-                                'source_property_name' => $name,
-                                'target_id' => $this->pathExists(self::getNodePathForIdentifier($value)),
-                            );
+                            $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
 
-                            $this->getConnection()->insert($this->referenceTables[$data['type']], $params);
+                            $key = $targetId . '-' . $nodeId . '-' . $name;
+                            // it is valid to have multiple references to the same node in a multivalue
+                            // but it is not desired to store duplicates in the database
+                            $updates[$key] = array(
+                                'type' => $data['type'],
+                                'data' => array(
+                                    'source_id' => $nodeId,
+                                    'source_property_name' => $name,
+                                    'target_id' => $targetId,
+                                ),
+                            );
                         } catch (ItemNotFoundException $e) {
                             if (PropertyType::REFERENCE === $data['type']) {
-                                throw new ReferentialIntegrityException(
-                                    "Trying to store reference to non-existant node with path '$value' in node '{$references['path']}' property '$name'."
-                                );
+                                throw new ReferentialIntegrityException(sprintf(
+                                    'Trying to store reference to non-existant node with path "%s" in node "%s" "%s"',
+                                    $value, $references['path'], $name
+                                ));
                             }
                         }
+
                     }
                 }
+            }
+
+            foreach ($updates as $update) {
+                $this->conn->insert($this->referenceTables[$update['type']], $update['data']);
             }
         }
 
@@ -1001,7 +1014,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 case PropertyType::REFERENCE:
                     $references[$property->getName()] = array(
                         'type' => $property->getType(),
-                        'values' => $property->isMultiple() ? array_unique($property->getString()) : array($property->getString()),
+                        'values' => $property->isMultiple() ? $property->getString() : array($property->getString()),
                     );
                 case PropertyType::NAME:
                 case PropertyType::URI:
