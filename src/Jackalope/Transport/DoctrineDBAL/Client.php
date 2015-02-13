@@ -507,6 +507,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         );
     }
 
+    private function getNamespacePrefixes()
+    {
+        return array_keys($this->getNamespaces());
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -545,7 +550,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
         $srcWorkspace = $srcWorkspace ?: $this->workspaceName;
 
-        PathHelper::assertValidAbsolutePath($dstAbsPath, true);
+        PathHelper::assertValidAbsolutePath($dstAbsPath, true, true, $this->getNamespacePrefixes());
 
         $srcNodeId = $this->pathExists($srcAbsPath, $srcWorkspace);
         if (!$srcNodeId) {
@@ -966,7 +971,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @return array (
      *     'stringDom' => $stringDom,
      *     'numericalDom' => $numericalDom',
-     *     'binaryData' => streams, 
+     *     'binaryData' => streams,
      *     'references' => array('type' => INT, 'values' => array(UUIDs)))
      */
     private function propsToXML($properties, $inlineBinaries = false)
@@ -1130,7 +1135,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function getNode($path)
     {
         $this->assertLoggedIn();
-        PathHelper::assertValidAbsolutePath($path);
+        PathHelper::assertValidAbsolutePath($path, false, true, $this->getNamespacePrefixes());
 
         $values[':path'] = $path;
         $values[':pathd'] = rtrim($path,'/') . '/%';
@@ -1274,7 +1279,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($paths as $path) {
-            PathHelper::assertValidAbsolutePath($path);
+            PathHelper::assertValidAbsolutePath($path, false, true, $this->getNamespacePrefixes());
         }
 
         $params[':workspace'] = $this->workspaceName;
@@ -1618,7 +1623,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function moveNode($srcAbsPath, $dstAbsPath)
     {
         $this->assertLoggedIn();
-        PathHelper::assertValidAbsolutePath($dstAbsPath, true);
+        PathHelper::assertValidAbsolutePath($srcAbsPath, false, true, $this->getNamespacePrefixes());
+        PathHelper::assertValidAbsolutePath($dstAbsPath, true, true, $this->getNamespacePrefixes());
 
         $srcNodeId = $this->pathExists($srcAbsPath);
         if (!$srcNodeId) {
@@ -1964,13 +1970,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if (!$property->isMultiple()) {
                     $values = array($values);
                 }
+                $ns = $this->getNamespaces();
                 foreach ($values as $value) {
                     $pos = strpos($value, ':');
                     if (false !== $pos) {
                         $prefix = substr($value, 0, $pos);
 
-                        $this->getNamespaces();
-                        if (!isset($this->namespaces[$prefix])) {
+                        if (!isset($ns[$prefix])) {
                             throw new ValueFormatException("Invalid PHPCR NAME at '" . $property->getPath() . "': The namespace prefix " . $prefix . " does not exist.");
                         }
                     }

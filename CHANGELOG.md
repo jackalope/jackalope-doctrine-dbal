@@ -4,6 +4,7 @@ Changelog
 1.2
 ---
 
+* Validate namespaces in node paths and throws NamespaceException on unknown prefixes.
 * Throw Exception when user tries to select either jcr:path or jcr:score
 * The jackalope:init:dbal command now only really executes when the --force
   parameter is given.
