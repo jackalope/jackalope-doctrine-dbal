@@ -627,10 +627,22 @@ class QOMWalker
         $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
 
-        return
-            $this->sqlXpathExtractNumValue($alias, $property) . " " .
-            $operator . " " .
-            $literalOperand->getLiteralValue();
+
+        if ($this->platform instanceof MySqlPlatform && '=' === $operator) {
+            return sprintf(
+                '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name="%s"]/sv:value\'), " ", ","))',
+                $literalOperand->getLiteralValue(),
+                $alias,
+                $property
+            );
+        }
+
+        return sprintf(
+            '%s %s %s',
+            $this->sqlXpathExtractNumValue($alias, $property),
+            $operator,
+            $literalOperand->getLiteralValue()
+        );
     }
 
     /**
@@ -831,7 +843,8 @@ class QOMWalker
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
         }
 
-        return $this->sqlXpathExtractValue($alias, $property);
+
+        return 'CAST(' . $this->sqlXpathExtractValue($alias, $property) . ' AS DECIMAL)';
     }
 
     private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)
