@@ -1640,7 +1640,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                             break;
                         case 'jcr:createdBy':
                         case 'jcr:lastModifiedBy':
-                            $value = $this->credentials->getUserID();
+                            $value = (string) $this->credentials->getUserID();
                             break;
                         case 'jcr:created':
                         case 'jcr:lastModified':
