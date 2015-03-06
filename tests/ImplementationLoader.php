@@ -46,7 +46,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'SameNameSiblings', //TODO: Not implemented, no test currently written for it
                     'PermissionsAndCapabilities', //TODO: Transport does not support permissions
                     'Observation', //TODO: Transport does not support observation
-                    'Versioning', //TODO: Transport does not support versioning
                     'Locking', //TODO: Transport does not support locking
         );
 
