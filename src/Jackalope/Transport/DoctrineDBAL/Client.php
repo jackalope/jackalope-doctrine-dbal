@@ -2600,7 +2600,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function initConnection()
     {
-        if (true === $this->connectionInitialized) {
+        if (true === $this->conn->isConnected() && true === $this->connectionInitialized) {
             return;
         }
 
