@@ -4,10 +4,8 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\LoginException;
 use PHPCR\NodeType\NodeDefinitionInterface;
-use PHPCR\NodeType\NodeTypeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
-use PHPCR\PropertyInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -22,7 +20,6 @@ use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
 use PHPCR\SimpleCredentials;
-use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
@@ -41,7 +38,6 @@ use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Node;
 use Jackalope\Property;
 use Jackalope\Query\Query;
-use Jackalope\Transport\AddNodeOperation;
 use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\QueryInterface as QueryTransport;
@@ -52,7 +48,6 @@ use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\StandardNodeTypes;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\NodeType\NodeTypeManager;
-use Jackalope\NodeType\NodeType;
 use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
@@ -140,9 +135,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected $namespaces;
 
     /**
-     * @var string|null
+     * @var array The namespaces at initial state, in case of rollback.
      */
-    private $sequenceWorkspaceName;
+    private $originalNamespaces = array();
 
     /**
      * @var string|null
@@ -173,11 +168,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $referencesToDelete = array();
 
     /**
-     * @var array
-     */
-    private $additionalNodeAddOperations = array();
-
-    /**
      * @var boolean
      */
     private $connectionInitialized = false;
@@ -197,17 +187,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->valueConverter = $this->factory->get('PHPCR\Util\ValueConverter');
         $this->conn = $conn;
         $this->namespaces = new \ArrayObject();
-
-        if ($conn->getDatabasePlatform() instanceof PostgreSqlPlatform) {
-            $this->sequenceWorkspaceName = 'phpcr_workspaces_id_seq';
-            $this->sequenceNodeName = 'phpcr_nodes_id_seq';
-            $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
-        }
-
-        // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
-        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-            $this->registerSqliteFunctions($this->conn->getWrappedConnection());
-        }
     }
 
     /**
@@ -539,9 +518,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Return the namespaces in as a referenceable ArrayObject.
+     * Return the namespaces of the current session as a referenceable ArrayObject.
      *
-     * @return ArrayObject
+     * @return \ArrayObject
      */
     private function getNamespacesObject()
     {
@@ -561,6 +540,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($data as $row) {
                 $this->namespaces[$row['prefix']] = $row['uri'];
             }
+
+            $this->originalNamespaces = $this->namespaces;
         }
 
         return $this->namespaces;
@@ -1806,7 +1787,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             return $this->nodeProcessor;
         }
 
-        $this->nodeProcessor = new NodeProcessor($this->credentials, $this->getNamespacesObject(), $this->getAutoLastModified());
+        $this->nodeProcessor = new NodeProcessor(
+            $this->credentials->getUserID(),
+            $this->getNamespacesObject(),
+            $this->getAutoLastModified()
+        );
 
         return $this->nodeProcessor;
     }
@@ -1818,21 +1803,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        /** @var $operation AddNodeOperation */
+        $additionalAddOperations = array();
+
         foreach ($operations as $operation) {
             if ($operation->node->isDeleted()) {
                 $properties = $operation->node->getPropertiesForStoreDeletedNode();
             } else {
-                $this->getNodeProcessor()->process($operation->node);
+                $additionalAddOperations = array_merge(
+                    $additionalAddOperations,
+                    $this->getNodeProcessor()->process($operation->node)
+                );
                 $properties = $operation->node->getProperties();
             }
             $this->storeNode($operation->srcPath, $properties);
         }
 
-        $additionalNodeAddOperations = $this->additionalNodeAddOperations;
-        if (!empty($additionalNodeAddOperations)) {
-            $this->additionalNodeAddOperations = array();
-            $this->storeNodes($additionalNodeAddOperations);
+        if (!empty($additionalAddOperations)) {
+            $this->storeNodes($additionalAddOperations);
         }
     }
 
@@ -2348,6 +2335,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->inTransaction = false;
 
             $this->getConnection()->commit();
+            // now that the transaction is committed, update the cache of the stored namespaces.
+            $this->originalNamespaces = (array) $this->namespaces;
         } catch (\Exception $e) {
             throw new RepositoryException('Commit transaction failed: ' . $e->getMessage());
         }
@@ -2366,11 +2355,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->inTransaction = false;
-            $this->namespaces->exchangeArray(array());
+
+            // reset namespaces
+            $this->namespaces->exchangeArray($this->originalNamespaces);
 
             $this->getConnection()->rollback();
         } catch (\Exception $e) {
-            throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage());
+            throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage(), 0, $e);
         }
     }
 
@@ -2420,6 +2411,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function updateProperties(Node $node)
     {
         $this->assertLoggedIn();
+        // we can ignore the operations returned, there will be no additions because of property updates
         $this->getNodeProcessor()->process($node);
 
         $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
