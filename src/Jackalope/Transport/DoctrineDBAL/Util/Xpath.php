@@ -47,9 +47,9 @@ class Xpath
         $escapeSingleQuote = $doubleEscapeSingleQuote ? '"\'%s"' : '"%s"';
         $escapeDoubleQuote = $doubleEscapeSingleQuote ? "''%s''" : "'%s'";
 
-        if ((strpos($query, '\'') !== false) ||
-            (strpos($query, '"') !== false))
-        {
+        if ((strpos($query, '\'') !== false)
+            || (strpos($query, '"') !== false)
+        ) {
             $quotechars = array('\'','"');
             $parts = array();
             $current = '';
