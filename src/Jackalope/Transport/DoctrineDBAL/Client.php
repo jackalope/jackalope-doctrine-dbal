@@ -4,10 +4,8 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use PHPCR\LoginException;
 use PHPCR\NodeType\NodeDefinitionInterface;
-use PHPCR\NodeType\NodeTypeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
-use PHPCR\PropertyInterface;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface;
 use PHPCR\CredentialsInterface;
@@ -22,7 +20,6 @@ use PHPCR\ItemExistsException;
 use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
 use PHPCR\SimpleCredentials;
-use PHPCR\ValueFormatException;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
@@ -41,7 +38,6 @@ use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Jackalope\Node;
 use Jackalope\Property;
 use Jackalope\Query\Query;
-use Jackalope\Transport\AddNodeOperation;
 use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\QueryInterface as QueryTransport;
@@ -52,10 +48,10 @@ use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\StandardNodeTypes;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\NodeType\NodeTypeManager;
-use Jackalope\NodeType\NodeType;
 use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
+use Jackalope\NodeType\NodeProcessor;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -134,14 +130,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $checkLoginOnServer = true;
 
     /**
-     * @var array
+     * @var \ArrayObject
      */
-    protected $namespaces = array();
+    protected $namespaces;
 
     /**
-     * @var string|null
+     * @var array The namespaces at initial state, in case of rollback.
      */
-    private $sequenceWorkspaceName;
+    private $originalNamespaces = array();
 
     /**
      * @var string|null
@@ -172,14 +168,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $referencesToDelete = array();
 
     /**
-     * @var array
-     */
-    private $additionalNodeAddOperations = array();
-
-    /**
      * @var boolean
      */
     private $connectionInitialized = false;
+
+    /**
+     * @var NodeProcessor
+     */
+    private $nodeProcessor;
 
     /**
      * @param FactoryInterface $factory
@@ -190,6 +186,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->factory = $factory;
         $this->valueConverter = $this->factory->get('PHPCR\Util\ValueConverter');
         $this->conn = $conn;
+        $this->namespaces = new \ArrayObject();
     }
 
     /**
@@ -517,22 +514,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNamespaces()
     {
-        if (empty($this->namespaces)) {
+        return (array) $this->getNamespacesObject();
+    }
+
+    /**
+     * Return the namespaces of the current session as a referenceable ArrayObject.
+     *
+     * @return \ArrayObject
+     */
+    private function getNamespacesObject()
+    {
+        if ($this->namespaces->count() === 0) {
             $query = 'SELECT * FROM phpcr_namespaces';
             $data = $this->getConnection()->fetchAll($query);
 
-            $this->namespaces = array(
+            $this->namespaces->exchangeArray(array(
                 NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
                 NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
                 NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
                 NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
                 NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
                 NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
-            );
+            ));
 
             foreach ($data as $row) {
                 $this->namespaces[$row['prefix']] = $row['uri'];
             }
+
+            $this->originalNamespaces = $this->namespaces;
         }
 
         return $this->namespaces;
@@ -979,7 +988,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Seperate properties array into an xml and binary data.
      *
      * @param array   $properties
-     * @param boolean $inlineBinaries
      *
      * @return array (
      *     'stringDom' => $stringDom,
@@ -987,7 +995,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *     'binaryData' => streams,
      *     'references' => array('type' => INT, 'values' => array(UUIDs)))
      */
-    private function propsToXML($properties, $inlineBinaries = false)
+    private function propsToXML($properties)
     {
         $namespaces = array(
             'mix' => "http://www.jcp.org/jcr/mix/1.0",
@@ -1265,7 +1273,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        foreach ($data as $path => $node) {
+        foreach (array_keys($data) as $path) {
             // If the node is referenceable, return jcr:uuid.
             if (isset($data[$path]->{"jcr:mixinTypes"})) {
                 foreach ((array) $data[$path]->{"jcr:mixinTypes"} as $mixin) {
@@ -1514,7 +1522,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function cleanIdentifierCache($root)
     {
         unset($this->nodeIdentifiers[$root]);
-        foreach($this->nodeIdentifiers as $path => $uuid) {
+        foreach(array_keys($this->nodeIdentifiers) as $path) {
             if (strpos($path, "$root/") === 0) {
                 unset($this->nodeIdentifiers[$path]);
             }
@@ -1767,136 +1775,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return true;
     }
 
-    private function validateNode(Node $node)
-    {
-        // This is very slow i believe :-(
-        $nodeDef = $node->getPrimaryNodeType();
-        $nodeTypes = $node->getMixinNodeTypes();
-        array_unshift($nodeTypes, $nodeDef);
-
-        foreach ($nodeTypes as $nodeType) {
-            /* @var $nodeType NodeTypeDefinitionInterface */
-            $this->validateNodeWithType($node, $nodeType);
-        }
-    }
-
     /**
-     * TODO: we should move that into the common Jackalope BaseTransport or as new method of NodeType
-     * it will be helpful for other implementations.
+     * Return the node processor for processing nodes
+     * according to their node types.
      *
-     * Validate this node with the nodetype and generate not yet existing
-     * autogenerated properties as necessary.
-     *
-     * @param Node     $node
-     * @param NodeType $def
+     * @return NodeProcessor
      */
-    private function validateNodeWithType(Node $node, NodeType $def)
+    private function getNodeProcessor()
     {
-        foreach ($def->getDeclaredChildNodeDefinitions() as $childDef) {
-            /* @var $childDef NodeDefinitionInterface */
-            if (!$node->hasNode($childDef->getName())) {
-                if ('*' === $childDef->getName()) {
-                    continue;
-                }
-
-                if ($childDef->isMandatory() && !$childDef->isAutoCreated()) {
-                    throw new RepositoryException(
-                        "Child " . $childDef->getName() . " is mandatory, but is not present while ".
-                            "saving " . $def->getName() . " at " . $node->getPath()
-                    );
-                }
-
-                if ($childDef->isAutoCreated()) {
-                    $requiredPrimaryTypeNames = $childDef->getRequiredPrimaryTypeNames();
-                    $primaryType = count($requiredPrimaryTypeNames) ? current($requiredPrimaryTypeNames) : null;
-                    $newNode = $node->addNode($childDef->getName(), $primaryType);
-                    $absPath = $node->getPath() . '/' . $childDef->getName();
-                    $operation = new AddNodeOperation($absPath, $newNode);
-                    $this->additionalNodeAddOperations[] = $operation;
-                }
-            }
+        if ($this->nodeProcessor) {
+            return $this->nodeProcessor;
         }
 
-        foreach ($def->getDeclaredPropertyDefinitions() as $propertyDef) {
-            /* @var $propertyDef PropertyDefinitionInterface */
-            if ('*' == $propertyDef->getName()) {
-                continue;
-            }
+        $this->nodeProcessor = new NodeProcessor(
+            $this->credentials->getUserID(),
+            $this->getNamespacesObject(),
+            $this->getAutoLastModified()
+        );
 
-            if (!$node->hasProperty($propertyDef->getName())) {
-                if ($propertyDef->isMandatory() && !$propertyDef->isAutoCreated()) {
-                    throw new RepositoryException(
-                        "Property " . $propertyDef->getName() . " is mandatory, but is not present while ".
-                            "saving " . $def->getName() . " at " . $node->getPath()
-                    );
-                }
-                if ($propertyDef->isAutoCreated()) {
-                    switch ($propertyDef->getName()) {
-                        case 'jcr:uuid':
-                            $value = $this->generateUuid();
-                            break;
-                        case 'jcr:createdBy':
-                        case 'jcr:lastModifiedBy':
-                            $value = (string) $this->credentials->getUserID();
-                            break;
-                        case 'jcr:created':
-                        case 'jcr:lastModified':
-                            $value = new \DateTime();
-                            break;
-                        case 'jcr:etag':
-                            // TODO: http://www.day.com/specs/jcr/2.0/3_Repository_Model.html#3.7.12.1%20mix:etag
-                            $value = 'TODO: generate from binary properties of this node';
-                            break;
-
-                        default:
-                            $defaultValues = $propertyDef->getDefaultValues();
-                            if ($propertyDef->isMultiple()) {
-                                $value = $defaultValues;
-                            } elseif (isset($defaultValues[0])) {
-                                $value = $defaultValues[0];
-                            } else {
-                                // When implementing versionable or activity, we need to handle more properties explicitly
-                                throw new RepositoryException('No default value for autocreated property '.
-                                    $propertyDef->getName(). ' at '.$node->getPath());
-                            }
-                    }
-
-                    $node->setProperty(
-                        $propertyDef->getName(),
-                        $value,
-                        $propertyDef->getRequiredType()
-                    );
-                }
-            } elseif ($propertyDef->isAutoCreated()) {
-                $prop = $node->getProperty($propertyDef->getName());
-                if (!$prop->isModified() && !$prop->isNew()) {
-                    switch($propertyDef->getName()) {
-                        case 'jcr:lastModified':
-                            if ($this->getAutoLastModified()) {
-                                $prop->setValue(new \DateTime());
-                            }
-                            break;
-                        case 'jcr:lastModifiedBy':
-                            if ($this->getAutoLastModified()) {
-                                $prop->setValue($this->credentials->getUserID());
-                            }
-                            break;
-                        case 'jcr:etag':
-                            // TODO: update etag if needed
-                            break;
-                    }
-
-                }
-            }
-        }
-
-        foreach ($def->getDeclaredSupertypes() as $superType) {
-            $this->validateNodeWithType($node, $superType);
-        }
-
-        foreach ($node->getProperties() as $property) {
-            $this->assertValidProperty($property);
-        }
+        return $this->nodeProcessor;
     }
 
     /**
@@ -1906,21 +1803,23 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        /** @var $operation AddNodeOperation */
+        $additionalAddOperations = array();
+
         foreach ($operations as $operation) {
             if ($operation->node->isDeleted()) {
                 $properties = $operation->node->getPropertiesForStoreDeletedNode();
             } else {
-                $this->validateNode($operation->node);
+                $additionalAddOperations = array_merge(
+                    $additionalAddOperations,
+                    $this->getNodeProcessor()->process($operation->node)
+                );
                 $properties = $operation->node->getProperties();
             }
             $this->storeNode($operation->srcPath, $properties);
         }
 
-        $additionalNodeAddOperations = $this->additionalNodeAddOperations;
-        if (!empty($additionalNodeAddOperations)) {
-            $this->additionalNodeAddOperations = array();
-            $this->storeNodes($additionalNodeAddOperations);
+        if (!empty($additionalAddOperations)) {
+            $this->storeNodes($additionalAddOperations);
         }
     }
 
@@ -1964,69 +1863,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         // we always generate a uuid, even for non-referenceable nodes that have no automatic uuid
         return $this->generateUuid();
-    }
-
-
-    /**
-     * Validation if all the data is correct before writing it into the database.
-     *
-     * @param PropertyInterface $property
-     *
-     * @throws ValueFormatException
-     */
-    private function assertValidProperty($property)
-    {
-        $type = $property->getType();
-        switch ($type) {
-            case PropertyType::NAME:
-                $values = $property->getValue();
-                if (!$property->isMultiple()) {
-                    $values = array($values);
-                }
-                $ns = $this->getNamespaces();
-                foreach ($values as $value) {
-                    $pos = strpos($value, ':');
-                    if (false !== $pos) {
-                        $prefix = substr($value, 0, $pos);
-
-                        if (!isset($ns[$prefix])) {
-                            throw new ValueFormatException("Invalid PHPCR NAME at '" . $property->getPath() . "': The namespace prefix " . $prefix . " does not exist.");
-                        }
-                    }
-                }
-                break;
-            case PropertyType::PATH:
-                $values = $property->getValue();
-                if (!$property->isMultiple()) {
-                    $values = array($values);
-                }
-                foreach ($values as $value) {
-                    if (!preg_match('(((/|..)?[-a-zA-Z0-9:_]+)+)', $value)) {
-                        throw new ValueFormatException("Invalid PATH '$value' at '" . $property->getPath() ."': Segments are separated by / and allowed chars are -a-zA-Z0-9:_");
-                    }
-                }
-                break;
-            case PropertyType::URI:
-                $values = $property->getValue();
-                if (!$property->isMultiple()) {
-                    $values = array($values);
-                }
-                foreach ($values as $value) {
-                    if (!preg_match(self::VALIDATE_URI_RFC3986, $value)) {
-                        throw new ValueFormatException("Invalid URI '$value' at '" . $property->getPath() ."': Has to follow RFC 3986.");
-                    }
-                }
-                break;
-            case PropertyType::DECIMAL:
-            case PropertyType::STRING:
-                $values = (array) $property->getValue();
-                foreach ($values as $value) {
-                    if (!$this->isStringValid($value)) {
-                        throw new ValueFormatException('Invalid character found in property "'.$property->getName().'". Are you passing a valid string?');
-                    }
-                }
-                break;
-        }
     }
 
     /**
@@ -2499,6 +2335,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->inTransaction = false;
 
             $this->getConnection()->commit();
+            // now that the transaction is committed, update the cache of the stored namespaces.
+            $this->originalNamespaces = (array) $this->namespaces;
         } catch (\Exception $e) {
             throw new RepositoryException('Commit transaction failed: ' . $e->getMessage());
         }
@@ -2517,11 +2355,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $this->inTransaction = false;
-            $this->namespaces = array();
+
+            // reset namespaces
+            $this->namespaces->exchangeArray($this->originalNamespaces);
 
             $this->getConnection()->rollback();
         } catch (\Exception $e) {
-            throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage());
+            throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage(), 0, $e);
         }
     }
 
@@ -2565,30 +2405,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Checks for occurrence of invalid UTF characters, that can not occur in valid XML document.
-     * If occurrence is found, returns false, otherwise true.
-     * Invalid characters were taken from this list: http://en.wikipedia.org/wiki/Valid_characters_in_XML#XML_1.0
-     *
-     * Uses regexp mentioned here: http://stackoverflow.com/a/961504
-     *
-     * @param $string string value
-     * @return bool true if string is OK, false otherwise.
-     */
-    protected function isStringValid($string)
-    {
-        $regex = '/[^\x{9}\x{a}\x{d}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]+/u';
-
-        return (preg_match($regex, $string, $matches) === 0);
-    }
-
-    /**
      *
      * @param Node $node the node to update
      */
     public function updateProperties(Node $node)
     {
         $this->assertLoggedIn();
-        $this->validateNode($node);
+        // we can ignore the operations returned, there will be no additions because of property updates
+        $this->getNodeProcessor()->process($node);
 
         $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
 
