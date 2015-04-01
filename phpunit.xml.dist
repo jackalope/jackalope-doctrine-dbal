@@ -19,11 +19,11 @@
 
         <var name="data_caches" value="meta,nodes" />
         <!-- Doctrine DBAL database configuration -->
-        <var name="phpcr.doctrine.dbal.driver" value="pdo_mysql" />
+        <var name="phpcr.doctrine.dbal.driver" value="pdo_sqlite" />
         <var name="phpcr.doctrine.dbal.path" value="phpcr_tests.db" />
         <var name="phpcr.doctrine.dbal.host" value="localhost"/>
         <var name="phpcr.doctrine.dbal.username" value="jackalope"/>
-        <var name="phpcr.doctrine.dbal.password" value="1234test"/>
+        <var name="phpcr.doctrine.dbal.password" value=""/>
         <var name="phpcr.doctrine.dbal.dbname" value="phpcr_tests"/>
     </php>
 
