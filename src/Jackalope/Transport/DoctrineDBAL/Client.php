@@ -593,7 +593,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $resultSetUuids[$row['identifier']] = $row['path'];
         }
 
+        // array of references to remap within the copied tree
         $referenceElsToRemap = array();
+
+        // array references that will need updating in the database
+        $referencesToUpdate = array();
+
         foreach ($rows as $row) {
             $newPath = str_replace($srcAbsPath, $dstAbsPath, $row['path']);
 
@@ -607,13 +612,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $propsData = array(
                 'stringDom' => $stringDom,
-                'numericalDom' => $numericalDom
+                'numericalDom' => $numericalDom,
+                'references' => array(),
             );
 
             $xpath = new \DOMXpath($stringDom);
-            $referenceEls = $xpath->query('.//sv:property[@sv:type="reference"]');
+            $referenceEls = $xpath->query('.//sv:property[@sv:type="reference" or @sv:type="Reference" or @sv:type="weakreference" or @sv:type="WeakReference"]');
 
+            $references = array();
             foreach ($referenceEls as $referenceEl) {
+                $propName = $referenceEl->getAttribute('sv:name');
+                $values = array();
+                foreach ($xpath->query('./sv:value', $referenceEl) as $valueEl) {
+                    $values[] = $valueEl->nodeValue;
+                }
+
+                $references[$propName] = array(
+                    'type' => PropertyType::valueFromName($referenceEl->getAttribute('sv:type')),
+                    'values' => $values,
+                );
+
                 if (isset($resultSetUuids[$referenceEl->nodeValue])) {
                     $referenceElsToRemap[] = array($referenceEl, $newPath, $row['type'], $propsData);
                 }
@@ -623,6 +641,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             // when copying a node, the copy is always a new node. set $isNewNode to true
             $newNodeId = $this->syncNode(null, $newPath, $row['type'], true, array(), $propsData);
+
+            if ($references) {
+                $referencesToUpdate[$newNodeId] = array(
+                    'path' => $row['path'],
+                    'properties' => $references,
+                );
+            }
 
             $newUuid = $this->nodeIdentifiers[$newPath];
             $uuidMap[$originalUuid] = $newUuid;
@@ -643,6 +668,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $this->syncNode($this->nodeIdentifiers[$newPath], $newPath, $type, false, array(), $propsData);
         }
+
+        $this->syncReferences($referencesToUpdate);
     }
 
     /**
@@ -790,16 +817,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function syncReferences()
+    private function syncReferences($referencesToUpdate)
     {
-        if ($this->referencesToUpdate) {
+        if ($referencesToUpdate) {
             // do not update references that are going to be deleted anyways
-            $toUpdate = array_diff_assoc($this->referencesToUpdate, $this->referencesToDelete);
+            $toUpdate = array_diff_assoc($referencesToUpdate, $this->referencesToDelete);
 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
                     $params = array_keys($toUpdate);
+
                     if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
                         foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                             $this->getConnection()->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
@@ -838,7 +866,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                                 ));
                             }
                         }
-
                     }
                 }
             }
@@ -2390,7 +2417,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function finishSave()
     {
-        $this->syncReferences();
+        $this->syncReferences($this->referencesToUpdate);
         $this->referencesToUpdate = $this->referencesToDelete = array();
         $this->getConnection()->commit();
     }
