@@ -79,17 +79,19 @@ class CachedClient extends Client
     }
 
     /**
-     * {@inheritDoc}
+     * Return the namespaces of the current session as a referenceable ArrayObject.
+     *
+     * @return \ArrayObject
      */
-    public function getNamespaces()
+    protected function getNamespacesObject()
     {
-        if (empty($this->namespaces)) {
+        if ($this->namespaces->count() === 0) {
             $cacheKey = 'namespaces';
             $result = $this->caches['meta']->fetch($cacheKey);
             if ($result) {
                 $this->namespaces = $result;
             } else {
-                $this->namespaces = parent::getNamespaces();
+                $this->namespaces = parent::getNamespacesObject();
 
                 $this->caches['meta']->save($cacheKey, $this->namespaces);
             }
