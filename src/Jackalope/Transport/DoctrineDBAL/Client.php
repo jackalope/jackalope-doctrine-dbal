@@ -522,7 +522,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @return \ArrayObject
      */
-    private function getNamespacesObject()
+    protected function getNamespacesObject()
     {
         if ($this->namespaces->count() === 0) {
             $query = 'SELECT * FROM phpcr_namespaces';
