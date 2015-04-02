@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Jackalope\Transport\LabelExistsVersionException;
 use Jackalope\Version\GenericVersioningInterface;
 use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
@@ -2633,6 +2634,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+<<<<<<< 34946d715902b6bf1374bedb1dafe3d18d472739
      * {@inheritDoc}
      */
     public function checkinItem($path)
@@ -2676,4 +2678,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->versionHandler = $versionHandler;
     }
+
+    /**
+     * Adds the label <code>label</code> to the specified version.
+     *
+     * @param string $versionName the absolute path to the version
+     * @param string $label
+     * @param boolean $moveLabel
+     *
+     * @throws LabelExistsVersionException if, the label is set to another version and
+     * the parameter moveLabel is set to false.
+     *
+     * @throws RepositoryException in case of an other error.
+     */
+    public function addVersionLabel($versionName, $label, $moveLabel)
+    {
+        // TODO: Implement addVersionLabel() method.
+    }
+
+    /**
+     * Removes a label from the specified version.
+     *
+     * @param string $versionPath the absolute path to the version.
+     * @param string $label the label, that has to be removed.
+     */
+    public function removeVersionLabel($versionPath, $label)
+    {
+        // TODO: Implement removeVersionLabel() method.
+    }
 }
+
+
