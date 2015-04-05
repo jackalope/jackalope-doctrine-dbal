@@ -2,59 +2,13 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Jackalope\Test\TestCase;
+use Jackalope\Test\FunctionalTestCase;
 use PHPCR\PropertyType;
 use PHPCR\Util\NodeHelper;
 use PHPCR\Util\PathHelper;
 
-class ClientTest extends TestCase
+class ClientTest extends FunctionalTestCase
 {
-    /**
-     * @var Client
-     */
-    private $transport;
-
-    /**
-     * @var \Jackalope\Repository
-     */
-    private $repository;
-
-    /**
-     * @var \Jackalope\Session
-     */
-    private $session;
-
-    public function setUp()
-    {
-        static $initialized = false;
-        parent::setUp();
-
-        $conn = $this->getConnection();
-        $options = array('disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform);
-        $schema = new RepositorySchema($options, $conn);
-        $tables = $schema->getTables();
-
-        foreach ($tables as $table) {
-            $conn->exec('DELETE FROM ' . $table->getName());
-        }
-
-        $this->transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory(), $conn);
-        $this->transport->createWorkspace('default');
-
-        $this->repository = new \Jackalope\Repository(null, $this->transport);
-
-        try {
-            $this->transport->createWorkspace($GLOBALS['phpcr.workspace']);
-        } catch (\PHPCR\RepositoryException $e) {
-            if ($e->getMessage() != "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
-                // if the message is not that the workspace already exists, something went really wrong
-                throw $e;
-            }
-        }
-        $this->session = $this->repository->login(new \PHPCR\SimpleCredentials("user", "passwd"), $GLOBALS['phpcr.workspace']);
-    }
-
     public function testQueryNodes()
     {
         $root = $this->session->getNode('/');
