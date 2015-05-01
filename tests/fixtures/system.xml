@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sv:node jcr="http://www.jcp.org/jcr/1.0" xmlns:sv="http://www.jcp.org/jcr/sv/1.0" xmlns:rep="internal" sv:name="jcr:system">
+    <sv:property sv:name="jcr:primaryType" sv:type="Name">
+        <sv:value>nt:unstructured</sv:value>
+    </sv:property>
+    <sv:node sv:name="jcr:versionStorage">
+        <sv:property sv:name="jcr:primaryType" sv:type="Name">
+            <sv:value>nt:unstructured</sv:value>
+        </sv:property>
+    </sv:node>
+</sv:node>

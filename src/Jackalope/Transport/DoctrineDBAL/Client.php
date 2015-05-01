@@ -2,7 +2,8 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Jackalope\Transport\VersioningInterface;
+use Jackalope\Version\GenericVersioningInterface;
+use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
 use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
@@ -65,7 +66,7 @@ use PHPCR\Version\VersionException;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
-class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface, VersioningInterface
+class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface, GenericVersioningInterface
 {
     /**
      * SQlite can only handle a maximum of 999 parameters inside an IN statement
@@ -179,6 +180,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @var NodeProcessor
      */
     private $nodeProcessor;
+
+    /**
+     * @var VersionHandler
+     */
+    private $versionHandler;
 
     /**
      * @param FactoryInterface $factory
@@ -1827,6 +1833,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Returns a handler for the versioning mechanism
+     *
+     * @return VersionHandler
+     */
+    private function getVersionHandler()
+    {
+        return $this->versionHandler;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function storeNodes(array $operations)
@@ -2485,7 +2501,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function checkinItem($path)
     {
-        // TODO: Implement checkinItem() method.
+        return $this->getVersionHandler()->checkinItem($path);
     }
 
     /**
@@ -2527,5 +2543,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function removeVersion($versionPath, $versionName)
     {
         // TODO: Implement removeVersion() method.
+    }
+
+    /**
+     * Sets the generic version handler delivered by jackalope
+     * @param VersionHandler $versionHandler
+     */
+    public function setVersionHandler(VersionHandler $versionHandler)
+    {
+        $this->versionHandler = $versionHandler;
     }
 }

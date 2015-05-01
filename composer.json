@@ -20,7 +20,7 @@
         "doctrine/dbal": "~2.5,>=2.5.0",
         "phpcr/phpcr": "~2.1.2",
         "phpcr/phpcr-utils": "~1.2,>=1.2.4",
-        "jackalope/jackalope": "~1.2.0"
+        "jackalope/jackalope": "dev-versioning as 1.3.0"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.1.0"
@@ -39,5 +39,11 @@
         "branch-alias": {
             "dev-master": "1.2-dev"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/danrot/jackalope.git"
+        }
+    ]
 }
