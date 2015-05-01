@@ -146,7 +146,7 @@ class QOMWalker
             $orderingSql = " " . $this->walkOrderings($orderings);
         }
 
-        $sql = "SELECT " . $this->getColumns();
+        $sql = "SELECT " . $this->getColumns($qom);
         $sql .= $sourceSql;
         $sql .= $constraintSql;
         $sql .= $orderingSql;
@@ -167,12 +167,10 @@ class QOMWalker
     /**
      * @return string
      */
-    public function getColumns()
+    public function getColumns(QueryObjectModel $qom)
     {
-        $sqlColumns = array();
-        foreach ($this->schema->getTable('phpcr_nodes')->getColumns() as $column) {
-            $sqlColumns[] = $column->getName();
-        }
+        // TODO we should actually build Xpath statements for each column we actually need in the result and not fetch all 'props'
+        $sqlColumns = array('path', 'identifier', 'props');
 
         if (count($this->alias)) {
             $aliasSql = array();
