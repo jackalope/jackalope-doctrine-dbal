@@ -41,6 +41,12 @@ class DBUnitFixtureXML extends XMLDocument
     protected $expectedNodes;
 
     /**
+     * Track if root nodes exists for workspace names
+     * @var array
+     */
+    private $rootNodes;
+
+    /**
      * @param string $file    - file path
      * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      */
@@ -101,8 +107,11 @@ class DBUnitFixtureXML extends XMLDocument
     public function addNodes($workspaceName, \DOMNodeList $nodes)
     {
         $node = $nodes->item(0);
-        if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
-            $this->addRootNode('tests');
+        if (!isset($this->rootNodes[$workspaceName])) {
+            if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
+                $this->addRootNode('tests');
+            }
+            $this->rootNodes[$workspaceName] = true;
         }
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
