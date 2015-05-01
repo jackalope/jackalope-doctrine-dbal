@@ -1908,7 +1908,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->nodeProcessor = new NodeProcessor(
             $this->credentials->getUserID(),
             $this->getNamespacesObject(),
-            $this->getAutoLastModified()
+            $this->getAutoLastModified(),
+            $this->versionHandler
         );
 
         return $this->nodeProcessor;
@@ -2607,8 +2608,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function updateProperties(Node $node)
     {
         $this->assertLoggedIn();
-        // we can ignore the operations returned, there will be no additions because of property updates
-        $this->getNodeProcessor()->process($node);
+
+        $additionalAddOperations = $this->getNodeProcessor()->process($node);
+
+        if (!empty($additionalAddOperations)) {
+            $this->storeNodes($additionalAddOperations);
+        }
 
         $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
 
