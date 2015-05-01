@@ -2,7 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Jackalope\Transport\LabelExistsVersionException;
 use Jackalope\Version\GenericVersioningInterface;
 use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
@@ -52,6 +51,7 @@ use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
 use Jackalope\NodeType\NodeProcessor;
+use PHPCR\Version\LabelExistsVersionException;
 use PHPCR\Version\VersionException;
 
 /**
@@ -1917,6 +1917,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Returns a handler for the versioning mechanism
+     *
+     * @return VersionHandler
+     */
+    private function getVersionHandler()
+    {
+        return $this->versionHandler;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function storeNodes(array $operations)
@@ -2634,7 +2644,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-<<<<<<< 34946d715902b6bf1374bedb1dafe3d18d472739
      * {@inheritDoc}
      */
     public function checkinItem($path)

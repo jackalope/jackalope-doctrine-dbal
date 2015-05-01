@@ -114,11 +114,6 @@ class DBUnitFixtureXML extends XMLDocument
             $this->rootNodes[$workspaceName] = true;
         }
 
-        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'system.xml');
-        foreach ($srcDom->load()->getNodes() as $node) {
-            $this->addNode($workspaceName, $node);
-        }
-
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
