@@ -2249,6 +2249,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return array(
             QueryInterface::JCR_SQL2,
             QueryInterface::JCR_JQOM,
+            QueryInterface::SQL,
         );
     }
 
