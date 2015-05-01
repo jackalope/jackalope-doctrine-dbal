@@ -31,6 +31,10 @@ class InitDoctrineDbalCommand extends Command
             ->setDescription('Prepare the database for Jackalope Doctrine-Dbal.')
             ->setDefinition(array(
                 new InputOption(
+                    'force', null, InputOption::VALUE_NONE,
+                    'Set this parameter to execute this action, starting with version 1.2 of Jackalope Doctrine DBAL.'
+                ),
+                new InputOption(
                     'dump-sql', null, InputOption::VALUE_NONE,
                     'Instead of try to apply generated SQLs to the database, output them.'
                 ),
