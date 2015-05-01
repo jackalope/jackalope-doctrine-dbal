@@ -136,10 +136,23 @@ class CachedClient extends Client
 
         $cacheKey = "nodes: $path, ".$this->workspaceName;
         if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+            if ('ItemNotFoundException' === $result) {
+                throw new ItemNotFoundException(sprintf('Item "%s" not found in workspace "%s"', $path, $this->workspaceName));
+            }
+
             return $result;
         }
 
-        $node = parent::getNode($path);
+        try {
+            $node = parent::getNode($path);
+        } catch (ItemNotFoundException $e) {
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->save($cacheKey, 'ItemNotFoundException');
+            }
+
+            throw $e;
+        }
+
         if (isset($this->caches['nodes'])) {
             $this->caches['nodes']->save($cacheKey, $node);
         }
