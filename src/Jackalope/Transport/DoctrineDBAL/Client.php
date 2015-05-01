@@ -941,7 +941,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    public static function xmlToProps($xml, ValueConverter $valueConverter, $filter = null)
+    /**
+     * Convert the node XML to stdClass node representation containing all properties
+     *
+     * @param string $xml
+     *
+     * @return \stdClass
+     */
+    protected function xmlToProps($xml)
     {
         $data = new \stdClass();
 
@@ -949,67 +956,105 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $dom->loadXML($xml);
 
         foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-            $name = $propertyNode->getAttribute('sv:name');
-
-            // only return the properties that pass through the filter callback
-            if (null !== $filter && is_callable($filter) && false === $filter($name)) {
-                continue;
-            }
-
-            $values = array();
-
-            $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
-            foreach ($propertyNode->childNodes as $valueNode) {
-                switch ($type) {
-                    case PropertyType::NAME:
-                    case PropertyType::URI:
-                    case PropertyType::WEAKREFERENCE:
-                    case PropertyType::REFERENCE:
-                    case PropertyType::PATH:
-                    case PropertyType::DECIMAL:
-                    case PropertyType::STRING:
-                        $values[] = $valueNode->nodeValue;
-                        break;
-                    case PropertyType::BOOLEAN:
-                        $values[] = (bool) $valueNode->nodeValue;
-                        break;
-                    case PropertyType::LONG:
-                        $values[] = (int) $valueNode->nodeValue;
-                        break;
-                    case PropertyType::BINARY:
-                        $values[] = (int) $valueNode->nodeValue;
-                        break;
-                    case PropertyType::DATE:
-                        $date = $valueNode->nodeValue;
-                        if ($date) {
-                            $date = new \DateTime($date);
-                            $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
-                            // Jackalope expects a string, might make sense to refactor to allow \DateTime instances too
-                            $date = $valueConverter->convertType($date, PropertyType::STRING);
-                        }
-                        $values[] = $date;
-                        break;
-                    case PropertyType::DOUBLE:
-                        $values[] = (double) $valueNode->nodeValue;
-                        break;
-                    default:
-                        throw new \InvalidArgumentException("Type with constant $type not found.");
-                }
-            }
-
-            switch ($type) {
-                case PropertyType::BINARY:
-                    $data->{':' . $name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
-                    break;
-                default:
-                    $data->{$name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
-                    $data->{':' . $name} = $type;
-                    break;
-            }
+            $this->mapPropertyFromElement($propertyNode, $data);
         }
 
         return $data;
     }
+
+    /**
+     * Convert the node XML to stdClass node representation containing only the given properties
+     *
+     * @param string $xml
+     * @param array $propertyNames
+     *
+     * @return \stdClass
+     */
+    protected function xmlToColumns($xml, $propertyNames)
+    {
+        $data = new \stdClass;
+        $dom = new \DOMDocument('1.0');
+        $dom->loadXml($xml);
+        $dom->formatOutput=true;
+        $xpath = new \DOMXPath($dom);
+        $columns = array();
+        $propertyEls = array();
+
+        foreach ($propertyNames as $propertyName) {
+            $els = $xpath->query(sprintf('.//sv:property[@sv:name="%s"]', $propertyName));
+            if ($els->length === 0) {
+                continue;
+            }
+
+            $propertyEl = $els->item(0);
+            $this->mapPropertyFromElement($propertyEl, $data);
+        }
+
+        return $data;
+    }
+
+    /**
+     * Map a property from the given property XML node to the given \stdClass node representation
+     *
+     * @param \DOMElement $propertyNode
+     * @param \stdClass $data
+     */
+    protected function mapPropertyFromElement(\DOMElement $propertyNode, \stdClass $data) 
+    {
+        $name = $propertyNode->getAttribute('sv:name');
+
+        $values = array();
+
+        $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
+        foreach ($propertyNode->childNodes as $valueNode) {
+            switch ($type) {
+                case PropertyType::NAME:
+                case PropertyType::URI:
+                case PropertyType::WEAKREFERENCE:
+                case PropertyType::REFERENCE:
+                case PropertyType::PATH:
+                case PropertyType::DECIMAL:
+                case PropertyType::STRING:
+                    $values[] = $valueNode->nodeValue;
+                    break;
+                case PropertyType::BOOLEAN:
+                    $values[] = (bool) $valueNode->nodeValue;
+                    break;
+                case PropertyType::LONG:
+                    $values[] = (int) $valueNode->nodeValue;
+                    break;
+                case PropertyType::BINARY:
+                    $values[] = (int) $valueNode->nodeValue;
+                    break;
+                case PropertyType::DATE:
+                    $date = $valueNode->nodeValue;
+                    if ($date) {
+                        $date = new \DateTime($date);
+                        $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+                        // Jackalope expects a string, might make sense to refactor to allow \DateTime instances too
+                        $date = $this->valueConverter->convertType($date, PropertyType::STRING);
+                    }
+                    $values[] = $date;
+                    break;
+                case PropertyType::DOUBLE:
+                    $values[] = (double) $valueNode->nodeValue;
+                    break;
+                default:
+                    throw new \InvalidArgumentException("Type with constant $type not found.");
+            }
+        }
+
+        switch ($type) {
+            case PropertyType::BINARY:
+                $data->{':' . $name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
+                break;
+            default:
+                $data->{$name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
+                $data->{':' . $name} = $type;
+                break;
+        }
+    }
+    
 
     /**
      * Seperate properties array into an xml and binary data.
@@ -1269,7 +1314,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         foreach ($rows as $row) {
             $this->nodeIdentifiers[$row['path']] = $row['identifier'];
-            $data[$row['path']] = self::xmlToProps($row['props'], $this->valueConverter);
+            $data[$row['path']] = $this->xmlToProps($row['props']);
             $data[$row['path']]->{'jcr:primaryType'} = $row['type'];
             $paths[] = $row['path'];
         }
@@ -2176,9 +2221,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
 
                 if (isset($row[$columnPrefix . 'props'])) {
-                    $properties[$selectorName] = (array) static::xmlToProps(
+                    $propertyNames = array();
+                    $columns = $qom->getColumns();
+
+                    // Always populate jcr:created and jcr:createdBy if a wildcard selector is used.
+                    // This emulates the behavior of Jackrabbit
+                    if (0 === count($columns)) {
+                        $propertyNames = array('jcr:created', 'jcr:createdBy');
+                    }
+
+                    foreach ($columns as $column) {
+                        if (!$column->getSelectorName() || $column->getSelectorName() == $selectorName) {
+                            $propertyNames[] = $column->getPropertyName();
+                        }
+                    }
+
+                    $properties[$selectorName] = (array) $this->xmlToColumns(
                         $row[$columnPrefix . 'props'],
-                        $this->valueConverter
+                        $propertyNames
                     );
                 } else {
                     $properties[$selectorName] = array();
