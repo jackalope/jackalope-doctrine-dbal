@@ -561,16 +561,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         PathHelper::assertValidAbsolutePath($dstAbsPath, true, true, $this->getNamespacePrefixes());
 
-        $srcNodeId = $this->pathExists($srcAbsPath, $srcWorkspace);
+        $srcNodeId = $this->getSystemIdForNodePath($srcAbsPath, $srcWorkspace);
         if (!$srcNodeId) {
             throw new PathNotFoundException("Source path '$srcAbsPath' not found");
         }
 
-        if ($this->pathExists($dstAbsPath)) {
+        if ($this->getSystemIdForNodePath($dstAbsPath)) {
             throw new ItemExistsException("Cannot copy to destination path '$dstAbsPath' that already exists.");
         }
 
-        if (!$this->pathExists(PathHelper::getParentPath($dstAbsPath))) {
+        if (!$this->getSystemIdForNodePath(PathHelper::getParentPath($dstAbsPath))) {
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
@@ -765,7 +765,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $nodeId = $this->getConnection()->lastInsertId($this->sequenceNodeName);
         } else {
-            $nodeId = $this->pathExists($path);
+            $nodeId = $this->getSystemIdForNodePath($path);
             if (!$nodeId) {
                 throw new RepositoryException("nodeId for $path not found");
             }
@@ -844,28 +844,29 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($toUpdate as $nodeId => $references) {
                 foreach ($references['properties'] as $name => $data) {
                     foreach ($data['values'] as $value) {
-                        try {
-                            $targetId = $this->pathExists(self::getNodePathForIdentifier($value));
-
-                            $key = $targetId . '-' . $nodeId . '-' . $name;
-                            // it is valid to have multiple references to the same node in a multivalue
-                            // but it is not desired to store duplicates in the database
-                            $updates[$key] = array(
-                                'type' => $data['type'],
-                                'data' => array(
-                                    'source_id' => $nodeId,
-                                    'source_property_name' => $name,
-                                    'target_id' => $targetId,
-                                ),
-                            );
-                        } catch (ItemNotFoundException $e) {
+                        $targetId = $this->getSystemIdForNodeUuid($value);
+                        if (false === $targetId) {
                             if (PropertyType::REFERENCE === $data['type']) {
                                 throw new ReferentialIntegrityException(sprintf(
                                     'Trying to store reference to non-existant node with path "%s" in node "%s" "%s"',
                                     $value, $references['path'], $name
                                 ));
                             }
+
+                            continue;
                         }
+
+                        $key = $targetId . '-' . $nodeId . '-' . $name;
+                        // it is valid to have multiple references to the same node in a multivalue
+                        // but it is not desired to store duplicates in the database
+                        $updates[$key] = array(
+                            'type' => $data['type'],
+                            'data' => array(
+                                'source_id' => $nodeId,
+                                'source_property_name' => $name,
+                                'target_id' => $targetId,
+                            ),
+                        );
                     }
                 }
             }
@@ -1375,7 +1376,29 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $nodes;
     }
 
+
+    /**
+     * Determine if a path exists already.
+     *
+     * @param string $path          Path of the node
+     * @param string $workspaceName To overwrite the current workspace
+     *
+     * @return bool
+     */
     private function pathExists($path, $workspaceName = null)
+    {
+        return (boolean) $this->getSystemIdForNodePath($path, $workspaceName);
+    }
+
+    /**
+     * Get the database primary key for node at path.
+     *
+     * @param string $path          Path of the node
+     * @param string $workspaceName To overwrite the current workspace
+     *
+     * @return bool|string The database id
+     */
+    private function getSystemIdForNodePath($path, $workspaceName = null)
     {
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
@@ -1388,6 +1411,29 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         if ($nodeId = $this->getConnection()->fetchColumn($query, array($path, $workspaceName))) {
+            return $nodeId;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the database primary key for node at path.
+     *
+     * @param string $uuid          Uuid of the node
+     * @param string $workspaceName To overwrite the current workspace
+     *
+     * @return bool|string The database id
+     */
+    private function getSystemIdForNodeUuid($uuid, $workspaceName = null)
+    {
+        if (null === $workspaceName) {
+            $workspaceName = $this->workspaceName;
+        }
+
+        $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
+
+        if ($nodeId = $this->getConnection()->fetchColumn($query, array($uuid, $workspaceName))) {
             return $nodeId;
         }
 
@@ -1520,8 +1566,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new ConstraintViolationException('You can not delete the root node of a repository');
         }
 
-        $nodeId = $this->pathExists($path);
-        if (!$nodeId) {
+        if (!$this->pathExists($path)) {
             throw new ItemNotFoundException("No node found at ".$path);
         }
 
@@ -1590,7 +1635,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $nodePath = PathHelper::getParentPath($path);
-        $nodeId = $this->pathExists($nodePath);
+        $nodeId = $this->getSystemIdForNodePath($nodePath);
         if (!$nodeId) {
             // no we really don't know that path
             throw new ItemNotFoundException("No item found at ".$path);
@@ -1674,16 +1719,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         PathHelper::assertValidAbsolutePath($srcAbsPath, false, true, $this->getNamespacePrefixes());
         PathHelper::assertValidAbsolutePath($dstAbsPath, true, true, $this->getNamespacePrefixes());
 
-        $srcNodeId = $this->pathExists($srcAbsPath);
-        if (!$srcNodeId) {
+        if (!$this->pathExists($srcAbsPath)) {
             throw new PathNotFoundException("Source path '$srcAbsPath' not found");
         }
 
-        if ($this->pathExists($dstAbsPath)) {
+        if ($this->getSystemIdForNodePath($dstAbsPath)) {
             throw new ItemExistsException("Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists.");
         }
 
-        if (!$this->pathExists(PathHelper::getParentPath($dstAbsPath))) {
+        if (!$this->getSystemIdForNodePath(PathHelper::getParentPath($dstAbsPath))) {
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
@@ -2090,7 +2134,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $nodePath = PathHelper::getParentPath($path);
-        $nodeId = $this->pathExists($nodePath);
+        $nodeId = $this->getSystemIdForNodePath($nodePath);
         $propertyName = PathHelper::getNodeName($path);
 
         $data = $this->getConnection()->fetchAll(
@@ -2312,7 +2356,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function getNodeReferences($path, $name = null, $weakReference = false)
     {
-        $targetId = $this->pathExists($path);
+        $targetId = $this->getSystemIdForNodePath($path);
         $params = array($targetId);
 
         $table = $weakReference ? $this->referenceTables[PropertyType::WEAKREFERENCE] : $this->referenceTables[PropertyType::REFERENCE];
