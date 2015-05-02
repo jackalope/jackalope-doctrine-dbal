@@ -21,7 +21,7 @@ use PHPCR\SessionInterface;
 use Jackalope\Transport\Logging\LoggerInterface;
 
 /**
- * Logging enabled wrapper for the Jackalope Jackrabbit client.
+ * Logging enabled wrapper for the Jackalope Doctrine DBAL client.
  *
  * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
  * @license http://opensource.org/licenses/MIT MIT License
@@ -41,7 +41,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      * Constructor.
      *
      * @param FactoryInterface $factory
-     * @param Client           $transport A jackalope jackrabbit client instance
+     * @param Client           $transport A jackalope doctrine dbal client instance
      * @param LoggerInterface  $logger    A logger instance
      */
     public function __construct(FactoryInterface $factory, Client $transport, LoggerInterface $logger)
@@ -139,7 +139,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      */
     public function commitTransaction()
     {
-        return $this->transport->commitTransaction();
+        $this->transport->commitTransaction();
     }
 
     /**
@@ -147,7 +147,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      */
     public function rollbackTransaction()
     {
-        return $this->transport->rollbackTransaction();
+        $this->transport->rollbackTransaction();
     }
 
     /**

@@ -79,6 +79,21 @@ class CachedClient extends Client
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function getNodeTypes($nodeTypes = array())
+    {
+        $cacheKey = 'nodetypes: '.serialize($nodeTypes);
+        $nodeTypes = $this->caches['meta']->fetch($cacheKey);
+        if (!$nodeTypes) {
+            $nodeTypes = parent::getNodeTypes($nodeTypes);
+            $this->caches['meta']->save($cacheKey, $nodeTypes);
+        }
+
+        return $nodeTypes;
+    }
+
+    /**
      * Return the namespaces of the current session as a referenceable ArrayObject.
      *
      * @return \ArrayObject
@@ -382,25 +397,6 @@ class CachedClient extends Client
         }
 
         return $path;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function fetchUserNodeTypes()
-    {
-        $cacheKey = 'node_types';
-        if (!$this->inTransaction && $result = $this->caches['meta']->fetch($cacheKey)) {
-            return $result;
-        }
-
-        $result = parent::fetchUserNodeTypes();
-
-        if (!$this->inTransaction) {
-            $this->caches['meta']->save($cacheKey, $result);
-        }
-
-        return $result;
     }
 
     /**
