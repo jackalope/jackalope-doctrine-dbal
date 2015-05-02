@@ -548,6 +548,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Executes an UPDATE on DBAL while ensuring that we never try to send more than 999 parameters to SQLite
+     *
+     * @param $query
+     * @param array $params
+     * @throws DBALException
+     */
+    private function executeChunkedUpdate($query, array $params)
+    {
+        $types = array(Connection::PARAM_INT_ARRAY);
+        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+            foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
+                $this->conn->executeUpdate($query, array($chunk), $types);
+            }
+        } else {
+            $this->conn->executeUpdate($query, array($params), $types);
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
@@ -826,15 +845,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
-                    $params = array_keys($toUpdate);
-
-                    if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
-                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                            $this->getConnection()->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
-                        }
-                    } else {
-                        $this->getConnection()->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
-                    }
+                    $this->executeChunkedUpdate($query, array_keys($toUpdate));
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
@@ -883,13 +894,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             // remove all PropertyType::REFERENCE with a source_id on a deleted node
             try {
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
-                if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
-                    foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                        $this->getConnection()->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
-                    }
-                } else {
-                    $this->getConnection()->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
-                }
+                $this->executeChunkedUpdate($query, $params);
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
             }
@@ -928,13 +933,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE target_id IN (?)";
-                    if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
-                        foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                            $this->getConnection()->executeUpdate($query, array($chunk), array(Connection::PARAM_INT_ARRAY));
-                        }
-                    } else {
-                        $this->getConnection()->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
-                    }
+                    $this->executeChunkedUpdate($query, $params);
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
