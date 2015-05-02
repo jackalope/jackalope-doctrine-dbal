@@ -1424,19 +1424,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @return bool|string The database id
      */
-    private function getSystemIdForNodeUuid($uuid, $workspaceName = null)
+    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
     {
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
 
         $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
+        $nodeId = $this->getConnection()->fetchColumn($query, array($uuid, $workspaceName));
 
-        if ($nodeId = $this->getConnection()->fetchColumn($query, array($uuid, $workspaceName))) {
-            return $nodeId;
-        }
-
-        return false;
+        return $nodeId ?: false;
     }
 
     /**

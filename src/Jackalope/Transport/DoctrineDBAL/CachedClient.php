@@ -184,6 +184,32 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
+    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
+    {
+        if (null === $workspaceName) {
+            $workspaceName = $this->workspaceName;
+        }
+
+        $cacheKey = "id: $uuid, ".$workspaceName;
+        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+            if ('false' === $result) {
+                return false;
+            }
+
+            return $result;
+        }
+
+        $nodeId = parent::getSystemIdForNodeUuid($uuid, $workspaceName);
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->save($cacheKey, $nodeId ? $nodeId : 'false');
+        }
+
+        return $nodeId;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function getNodeByIdentifier($uuid)
     {
         $path = $this->getNodePathForIdentifier($uuid);
@@ -334,10 +360,22 @@ class CachedClient extends Client
 
         $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
         if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+            if ('ItemNotFoundException' === $result) {
+                throw new ItemNotFoundException("no item found with uuid ".$uuid);
+            }
+
             return $result;
         }
 
-        $path = parent::getNodePathForIdentifier($uuid);
+        try {
+            $path = parent::getNodePathForIdentifier($uuid);
+        } catch (ItemNotFoundException $e) {
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->save($cacheKey, 'ItemNotFoundException');
+            }
+
+            throw $e;
+        }
 
         if (isset($this->caches['nodes'])) {
             $this->caches['nodes']->save($cacheKey, $path);
