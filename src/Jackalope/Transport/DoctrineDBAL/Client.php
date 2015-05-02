@@ -392,7 +392,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         if ($this->loggedIn) {
             $this->loggedIn = false;
-            $this->getConnection()->close();
+            $this->conn->close();
             $this->conn = null;
         }
     }
@@ -557,12 +557,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function executeChunkedUpdate($query, array $params)
     {
         $types = array(Connection::PARAM_INT_ARRAY);
-        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+        if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
             foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                $this->conn->executeUpdate($query, array($chunk), $types);
+                $this->getConnection()->executeUpdate($query, array($chunk), $types);
             }
         } else {
-            $this->conn->executeUpdate($query, array($params), $types);
+            $this->getConnection()->executeUpdate($query, array($params), $types);
         }
     }
 
@@ -883,7 +883,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
 
             foreach ($updates as $update) {
-                $this->conn->insert($this->referenceTables[$update['type']], $update['data']);
+                $this->getConnection()->insert($this->referenceTables[$update['type']], $update['data']);
             }
         }
 
@@ -2233,7 +2233,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $qom = $query;
         }
 
-        $qomWalker = new QOMWalker($this->nodeTypeManager, $this->conn, $this->getNamespaces());
+        $qomWalker = new QOMWalker($this->nodeTypeManager, $this->getConnection(), $this->getNamespaces());
         list($selectors, $selectorAliases, $sql) = $qomWalker->walkQOMQuery($qom);
 
         $primarySource = reset($selectors);
