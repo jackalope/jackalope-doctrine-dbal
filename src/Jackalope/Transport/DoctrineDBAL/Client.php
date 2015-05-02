@@ -530,11 +530,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @param $query
      * @param array $params
-     * @param array $types
      * @throws DBALException
      */
-    private function executeUpdate($query, array $params = array(), array $types = array())
+    private function executeChunkedUpdate($query, array $params)
     {
+        $types = array(Connection::PARAM_INT_ARRAY);
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
             foreach (array_chunk($params, 999) as $chunk) {
                 $this->conn->executeUpdate($query, array($chunk), $types);
@@ -748,7 +748,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
-                    $this->executeUpdate($query, array(array_keys($toUpdate)), array(Connection::PARAM_INT_ARRAY));
+                    $this->executeChunkedUpdate($query, array_keys($toUpdate));
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
@@ -784,7 +784,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             // remove all PropertyType::REFERENCE with a source_id on a deleted node
             try {
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
-                $this->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                $this->executeChunkedUpdate($query, $params);
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
             }
@@ -823,7 +823,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE target_id IN (?)";
-                    $this->executeUpdate($query, array($params), array(Connection::PARAM_INT_ARRAY));
+                    $this->executeChunkedUpdate($query, $params);
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
