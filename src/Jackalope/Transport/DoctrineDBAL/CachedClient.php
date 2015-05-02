@@ -10,6 +10,7 @@ use Doctrine\DBAL\Connection;
 use Jackalope\NotImplementedException;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
+use Jackalope\Query\Query;
 
 use PHPCR\ItemNotFoundException;
 
@@ -37,6 +38,19 @@ class CachedClient extends Client
     }
 
     /**
+     * @param array|null $caches which caches to invalidate, null means all except meta
+     */
+    private function clearDataCaches(array $caches = null)
+    {
+        $caches = $caches ?: array('nodes', 'query');
+        foreach ($caches as $cache) {
+            if (isset($this->caches[$cache])) {
+                $this->caches[$cache]->deleteAll();
+            }
+        }
+    }
+
+    /**
      * {@inheritDoc}
      *
      */
@@ -58,9 +72,7 @@ class CachedClient extends Client
 
         $this->caches['meta']->delete('workspaces');
         $this->caches['meta']->delete("workspace: $name");
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
+        $this->clearDataCaches();
     }
 
     /**
@@ -72,6 +84,25 @@ class CachedClient extends Client
         $result = $this->caches['meta']->fetch($cacheKey);
         if (!$result && parent::workspaceExists($workspaceName)) {
             $result = 1;
+            $this->caches['meta']->save($cacheKey, $result);
+        }
+
+        return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function fetchUserNodeTypes()
+    {
+        $cacheKey = 'node_types';
+        if (!$this->inTransaction && $result = $this->caches['meta']->fetch($cacheKey)) {
+            return $result;
+        }
+
+        $result = parent::fetchUserNodeTypes();
+
+        if (!$this->inTransaction) {
             $this->caches['meta']->save($cacheKey, $result);
         }
 
@@ -122,9 +153,7 @@ class CachedClient extends Client
     {
         parent::copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace);
 
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
+        $this->clearDataCaches();
     }
 
     /**
@@ -147,10 +176,14 @@ class CachedClient extends Client
      */
     public function getNode($path)
     {
+        if (empty($this->caches['nodes'])) {
+            return parent::getNode($path);
+        }
+
         $this->assertLoggedIn();
 
         $cacheKey = "nodes: $path, ".$this->workspaceName;
-        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException(sprintf('Item "%s" not found in workspace "%s"', $path, $this->workspaceName));
             }
@@ -168,9 +201,7 @@ class CachedClient extends Client
             throw $e;
         }
 
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save($cacheKey, $node);
-        }
+        $this->caches['nodes']->save($cacheKey, $node);
 
         return $node;
     }
@@ -201,12 +232,16 @@ class CachedClient extends Client
      */
     protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
     {
+        if (empty($this->caches['nodes'])) {
+            return parent::getSystemIdForNodeUuid($uuid, $workspaceName);
+        }
+
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
 
         $cacheKey = "id: $uuid, ".$workspaceName;
-        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('false' === $result) {
                 return false;
             }
@@ -215,9 +250,8 @@ class CachedClient extends Client
         }
 
         $nodeId = parent::getSystemIdForNodeUuid($uuid, $workspaceName);
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save($cacheKey, $nodeId ? $nodeId : 'false');
-        }
+
+        $this->caches['nodes']->save($cacheKey, $nodeId ? $nodeId : 'false');
 
         return $nodeId;
     }
@@ -259,8 +293,8 @@ class CachedClient extends Client
     {
         $result = parent::deleteNodes($operations);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
@@ -273,8 +307,8 @@ class CachedClient extends Client
     {
         $result = parent::deleteProperties($operation);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
@@ -287,8 +321,8 @@ class CachedClient extends Client
     {
         $result = parent::deleteNodeImmediately($absPath);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
@@ -301,8 +335,8 @@ class CachedClient extends Client
     {
         $result = parent::deletePropertyImmediately($absPath);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
@@ -315,8 +349,8 @@ class CachedClient extends Client
     {
         $result = parent::moveNodes($operations);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
@@ -329,23 +363,11 @@ class CachedClient extends Client
     {
         $result = parent::moveNodeImmediately($srcAbsPath, $dstAbsPath);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
+        if ($result) {
+            $this->clearDataCaches();
         }
 
         return $result;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function reorderNodes($absPath, $reorders)
-    {
-        parent::reorderNodes($absPath, $reorders);
-
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
     }
 
     /**
@@ -353,13 +375,9 @@ class CachedClient extends Client
      */
     public function storeNodes(array $operations)
     {
-        $result = parent::storeNodes($operations);
+        parent::storeNodes($operations);
 
-        if ($result && isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
-
-        return $result;
+        $this->clearDataCaches();
     }
 
     /**
@@ -367,14 +385,14 @@ class CachedClient extends Client
      */
     public function getNodePathForIdentifier($uuid, $workspace = null)
     {
-        if (null !== $workspace) {
-            throw new NotImplementedException('Specifying the workspace is not yet supported.');
+        if (empty($this->caches['nodes']) || null !== $workspace) {
+            return parent::getNodePathForIdentifier($uuid);
         }
 
         $this->assertLoggedIn();
 
         $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
-        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException("no item found with uuid ".$uuid);
             }
@@ -392,9 +410,7 @@ class CachedClient extends Client
             throw $e;
         }
 
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save($cacheKey, $path);
-        }
+        $this->caches['nodes']->save($cacheKey, $path);
 
         return $path;
     }
@@ -417,10 +433,7 @@ class CachedClient extends Client
     public function registerNamespace($prefix, $uri)
     {
         parent::registerNamespace($prefix, $uri);
-
-        if (!empty($this->namespaces)) {
-            $this->caches['meta']->save('namespaces', $this->namespaces);
-        }
+        $this->caches['meta']->save('namespaces', $this->namespaces);
     }
 
     /**
@@ -429,10 +442,7 @@ class CachedClient extends Client
     public function unregisterNamespace($prefix)
     {
         parent::unregisterNamespace($prefix);
-
-        if (!empty($this->namespaces)) {
-            $this->caches['meta']->save('namespaces', $this->namespaces);
-        }
+        $this->caches['meta']->save('namespaces', $this->namespaces);
     }
 
     /**
@@ -440,16 +450,18 @@ class CachedClient extends Client
      */
     public function getReferences($path, $name = null)
     {
-        $cacheKey = "nodes references: $path, $name, ".$this->workspaceName;
-        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+        if (empty($this->caches['nodes'])) {
+            return parent::getReferences($path, $name);
+        }
+
+        $cacheKey = "nodes references: $path, $name, " . $this->workspaceName;
+        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             return $result;
         }
 
         $references = parent::getReferences($path, $name);
 
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save($cacheKey, $references);
-        }
+        $this->caches['nodes']->save($cacheKey, $references);
 
         return $references;
     }
@@ -459,16 +471,18 @@ class CachedClient extends Client
      */
     public function getWeakReferences($path, $name = null)
     {
-        $cacheKey = "nodes weak references: $path, $name, ".$this->workspaceName;
-        if (isset($this->caches['nodes']) && $result = $this->caches['nodes']->fetch($cacheKey)) {
+        if (empty($this->caches['nodes'])) {
+            return parent::getWeakReferences($path, $name);
+        }
+
+        $cacheKey = "nodes weak references: $path, $name, " . $this->workspaceName;
+        if ($result = $this->caches['nodes']->fetch($cacheKey)) {
             return $result;
         }
 
         $references = parent::getWeakReferences($path, $name);
 
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->save($cacheKey, $references);
-        }
+        $this->caches['nodes']->save($cacheKey, $references);
 
         return $references;
     }
@@ -476,14 +490,34 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
+    public function query(Query $query)
+    {
+        if (empty($this->caches['query'])) {
+            return parent::query($query);
+        }
+
+        $this->assertLoggedIn();
+
+        $cacheKey = "query: {$query->getStatement()}, {$query->getLimit()}, {$query->getOffset()}, {$query->getLanguage()}, ".$this->workspaceName;
+        if ($result = $this->caches['query']->fetch($cacheKey)) {
+            return $result;
+        }
+
+        $result = parent::query($query);
+
+        $this->caches['query']->save($cacheKey, $result);
+
+        return $result;
+    }
+
+        /**
+     * {@inheritDoc}
+     */
     public function commitTransaction()
     {
         parent::commitTransaction();
 
-        $this->caches['meta']->deleteAll();
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
+        $this->clearDataCaches(array_keys($this->caches));
     }
 
     /**
@@ -493,9 +527,6 @@ class CachedClient extends Client
     {
         parent::rollbackTransaction();
 
-        $this->caches['meta']->deleteAll();
-        if (isset($this->caches['nodes'])) {
-            $this->caches['nodes']->deleteAll();
-        }
+        $this->clearDataCaches(array_keys($this->caches));
     }
 }
