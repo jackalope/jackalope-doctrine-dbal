@@ -79,6 +79,21 @@ class CachedClient extends Client
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function getNodeTypes($nodeTypes = array())
+    {
+        $cacheKey = 'nodetypes: '.serialize($nodeTypes);
+        $nodeTypes = $this->caches['meta']->fetch($cacheKey);
+        if (!$nodeTypes) {
+            $nodeTypes = parent::getNodeTypes($nodeTypes);
+            $this->caches['meta']->save($cacheKey, $nodeTypes);
+        }
+
+        return $nodeTypes;
+    }
+
+    /**
      * Return the namespaces of the current session as a referenceable ArrayObject.
      *
      * @return \ArrayObject
@@ -179,6 +194,32 @@ class CachedClient extends Client
         }
 
         return $nodes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
+    {
+        if (null === $workspaceName) {
+            $workspaceName = $this->workspaceName;
+        }
+
+        $cacheKey = "id: $uuid, ".$workspaceName;
+        if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+            if ('false' === $result) {
+                return false;
+            }
+
+            return $result;
+        }
+
+        $nodeId = parent::getSystemIdForNodeUuid($uuid, $workspaceName);
+        if (isset($this->caches['nodes'])) {
+            $this->caches['nodes']->save($cacheKey, $nodeId ? $nodeId : 'false');
+        }
+
+        return $nodeId;
     }
 
     /**
@@ -334,35 +375,28 @@ class CachedClient extends Client
 
         $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
         if (isset($this->caches['nodes']) && (false !== ($result = $this->caches['nodes']->fetch($cacheKey)))) {
+            if ('ItemNotFoundException' === $result) {
+                throw new ItemNotFoundException("no item found with uuid ".$uuid);
+            }
+
             return $result;
         }
 
-        $path = parent::getNodePathForIdentifier($uuid);
+        try {
+            $path = parent::getNodePathForIdentifier($uuid);
+        } catch (ItemNotFoundException $e) {
+            if (isset($this->caches['nodes'])) {
+                $this->caches['nodes']->save($cacheKey, 'ItemNotFoundException');
+            }
+
+            throw $e;
+        }
 
         if (isset($this->caches['nodes'])) {
             $this->caches['nodes']->save($cacheKey, $path);
         }
 
         return $path;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    protected function fetchUserNodeTypes()
-    {
-        $cacheKey = 'node_types';
-        if (!$this->inTransaction && $result = $this->caches['meta']->fetch($cacheKey)) {
-            return $result;
-        }
-
-        $result = parent::fetchUserNodeTypes();
-
-        if (!$this->inTransaction) {
-            $this->caches['meta']->save($cacheKey, $result);
-        }
-
-        return $result;
     }
 
     /**
