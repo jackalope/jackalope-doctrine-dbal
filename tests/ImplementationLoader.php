@@ -53,6 +53,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\XPath', // Query language 'xpath' not implemented.
                     'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
+
+                    // TODO fully implement versioning
+                    'Versioning\\VersionHistoryTest',
+                    'Versioning\\VersionManagerTest',
+                    'Versioning\\VersionTest',
         );
 
         $this->unsupportedTests = array(
@@ -81,7 +86,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
-                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
         );
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {

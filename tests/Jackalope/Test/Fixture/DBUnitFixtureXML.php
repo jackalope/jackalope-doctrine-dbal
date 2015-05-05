@@ -113,6 +113,12 @@ class DBUnitFixtureXML extends XMLDocument
             }
             $this->rootNodes[$workspaceName] = true;
         }
+
+        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'system.xml');
+        foreach ($srcDom->load()->getNodes() as $node) {
+            $this->addNode($workspaceName, $node);
+        }
+
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
@@ -197,6 +203,12 @@ class DBUnitFixtureXML extends XMLDocument
             $namespace  = '';
         }
 
+        if (isset($properties['jcr:mixinTypes'])
+            && in_array('mix:versionable', $properties['jcr:mixinTypes']['value'])
+        ) {
+            $this->addVersioningProperties($dom, $phpcrNode, $workspaceName, $id);
+        }
+
         $this->addRow('phpcr_nodes', array(
             'id'            => $id,
             'path'          => $childPath,
@@ -270,7 +282,7 @@ class DBUnitFixtureXML extends XMLDocument
             $isMultiValue = true;
         }
 
-        return array($name, array('type' =>  $type, 'value' => $values, 'multiValued' => $isMultiValue));
+        return array($name, array('type' => $type, 'value' => $values, 'multiValued' => $isMultiValue));
     }
 
     public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, \DOMDocument $dom)
@@ -423,4 +435,77 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
+    private function addVersioningProperties(\DOMDocument $dom, \DOMElement $node, $workspaceName, $id)
+    {
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:isCheckedOut',
+                array('type' => 'boolean', 'value' => array('true'), 'multiValued' => false),
+                $id,
+                $dom
+            )
+        );
+
+        $versionNodeUuid = UUIDHelper::generateUUID();
+        $versionParentPath = '/jcr:system/jcr:versionStorage';
+        $versionPath = $versionParentPath . '/' . $versionNodeUuid;
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => self::$idCounter++,
+                'path' => $versionPath,
+                'parent' => $versionParentPath,
+                'local_name' => $versionNodeUuid,
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $versionNodeUuid,
+                'type' => 'nt:unstructured',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0"/>',
+                'depth' => PathHelper::getPathDepth($versionPath),
+                'sort_order' => $id - 2,
+            )
+        );
+
+        $rootVersionPath = $versionPath . '/jcr:rootVersion';
+        $rootVersionUuid = UUIDHelper::generateUUID();
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => self::$idCounter++,
+                'path' => $rootVersionPath,
+                'parent' => $versionPath,
+                'local_name' => 'jcr:rootVersion',
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $rootVersionUuid,
+                'type' => 'nt:version',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0"/>',
+                'depth' => PathHelper::getPathDepth($rootVersionPath),
+                'sort_order' => $id - 2,
+            )
+        );
+
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:versionHistory',
+                array('type' => 'reference', 'value' => array($versionNodeUuid), 'multiValued' => false),
+                $id,
+                $dom
+            )
+        );
+
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:predecessors',
+                array('type' => 'reference', 'value' => array(), 'multiValued' => true),
+                $id,
+                $dom
+            )
+        );
+    }
 }
