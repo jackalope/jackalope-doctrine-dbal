@@ -47,6 +47,10 @@
         {
             "type": "vcs",
             "url": "https://github.com/danrot/jackalope.git"
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/danrot/phpcr-utils.git"
         }
     ]
 }
