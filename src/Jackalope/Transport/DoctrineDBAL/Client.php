@@ -2521,7 +2521,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function checkoutItem($path)
     {
-        // TODO: Implement checkoutItem() method.
+        return $this->getVersionHandler()->checkoutItem($path);
     }
 
     /**
