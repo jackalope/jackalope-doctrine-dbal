@@ -7,9 +7,6 @@
  */
 function generate_fixtures($srcDir, $destDir)
 {
-    $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML(__DIR__ . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'system.xml');
-    $systemNodes = $srcDom->load()->getNodes();
-
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir)) as $srcFile) {
         if (method_exists($srcFile, 'getExtension')) {
             $extension = $srcFile->getExtension();
@@ -33,7 +30,6 @@ function generate_fixtures($srcDir, $destDir)
         $destDom->addWorkspace('tests');
         $destDom->addNamespaces($srcDom->getNamespaces());
         $destDom->addNodes('tests', $nodes);
-        $destDom->addNodes('tests', $systemNodes);
         // delay this to the end to not add entries for weak refs to not existing nodes
         $destDom->addReferences();
         $destDom->save();
