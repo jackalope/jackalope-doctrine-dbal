@@ -41,8 +41,11 @@ before_script:
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
+  - cp $DB.phpunit.xml phpunit.xml
 
-script: php vendor/bin/phpunit -c $DB.phpunit.xml
+script: 
+    - php vendor/bin/phpunit
+    - php vendor/bin/phpbench run vendor/phpcr/phpcr-benchmarks/benchmarks/Query
 
 notifications:
   irc: "irc.freenode.org#jackalope"
