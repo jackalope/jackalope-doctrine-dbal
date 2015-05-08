@@ -45,7 +45,7 @@ before_script:
 
 script: 
     - php vendor/bin/phpunit
-    - php vendor/bin/phpbench run vendor/phpcr/phpcr-benchmarks/benchmarks/Query --report='{"name": "console_table", "memory": true}'
+    - ! 'php vendor/bin/phpbench run vendor/phpcr/phpcr-benchmarks/benchmarks --report=''{"name": "console_table", "memory": true}'''
 
 notifications:
   irc: "irc.freenode.org#jackalope"
