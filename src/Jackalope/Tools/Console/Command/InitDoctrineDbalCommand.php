@@ -8,6 +8,8 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
@@ -69,16 +71,30 @@ EOT
         $schema = new RepositorySchema;
         try {
             if ($input->getOption('drop')) {
-                foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
-                    if (true === $input->getOption('dump-sql')) {
-                        $output->writeln($sql);
-                    } else {
-                        try {
-                            $connection->exec($sql);
-                        } catch (\Exception $e) {
-                            $output->writeln($e->getMessage());
+                try {
+                    foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
+                        if (true === $input->getOption('dump-sql')) {
+                            $output->writeln($sql);
+                        } else {
+                            try {
+                                $connection->exec($sql);
+                            } catch (\Exception $e) {
+                                $output->writeln($e->getMessage());
+                            }
                         }
                     }
+                } catch (DBALException $e) {
+                    if (
+                        (class_exists('Doctrine\DBAL\Exception\TableNotFoundException') && $e instanceof TableNotFoundException)
+                        || (false !== strpos($e->getMessage(), 'no such table'))
+                    ) {
+                        if (false === $input->getOption('force')) {
+                            throw $e;
+                        }
+                    }
+
+                    // no table not found exception: rethrow
+                    throw $e;
                 }
             }
 
