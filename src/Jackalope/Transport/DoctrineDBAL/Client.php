@@ -2493,16 +2493,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Check-in item at path.
-     *
-     * @see VersionManager::checkin
-     *
-     * @param string $path absolute path to the node
-     *
-     * @return string path to the new version
-     *
-     * @throws UnsupportedRepositoryOperationException
-     * @throws RepositoryException
+     * {@inheritDoc}
      */
     public function checkinItem($path)
     {
@@ -2510,14 +2501,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Check-out item at path.
-     *
-     * @see VersionManager::checkout
-     *
-     * @param string $path absolute path to the node
-     *
-     * @throws UnsupportedRepositoryOperationException
-     * @throws RepositoryException
+     * {@inheritDoc}
      */
     public function checkoutItem($path)
     {
@@ -2525,29 +2509,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Restore the item at versionPath to the location path
-     *
-     * TODO: This is incomplete. Needs batch processing to avoid chicken-and-egg problems
-     *
-     * @see VersionManager::restoreItem
+     * {@inheritDoc}
      */
     public function restoreItem($removeExisting, $versionPath, $path)
     {
-        // TODO: Implement restoreItem() method.
+        throw new NotImplementedException();
     }
 
     /**
-     * Remove a version given the path to the version node and the name of the version.
-     *
-     * @param string $versionPath absolute path to the version node
-     * @param string $versionName The name of the version
-     *
-     * @throws ReferentialIntegrityException
-     * @throws VersionException
+     * {@inheritDoc}
      */
     public function removeVersion($versionPath, $versionName)
     {
-        // TODO: Implement removeVersion() method.
+        throw new NotImplementedException();
     }
 
     /**
