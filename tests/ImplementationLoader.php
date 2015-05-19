@@ -55,7 +55,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
 
                     // TODO fully implement versioning
-                    'Versioning\\VersionHistoryTest',
                     'Versioning\\VersionManagerTest',
                     'Versioning\\VersionTest',
         );
