@@ -216,7 +216,7 @@ class DBUnitFixtureXML extends XMLDocument
         if (isset($properties['jcr:mixinTypes'])
             && in_array('mix:versionable', $properties['jcr:mixinTypes']['value'])
         ) {
-            $this->addVersioningProperties($dom, $phpcrNode, $workspaceName, $id);
+            $this->addVersioningProperties($dom, $phpcrNode, $workspaceName, $id, $uuid);
         }
 
         $this->addRow(
@@ -471,7 +471,7 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    private function addVersioningProperties(\DOMDocument $dom, \DOMElement $node, $workspaceName, $id)
+    private function addVersioningProperties(\DOMDocument $dom, \DOMElement $node, $workspaceName, $id, $uuid)
     {
         $node->appendChild(
             $this->createPropertyNode(
@@ -502,6 +502,9 @@ class DBUnitFixtureXML extends XMLDocument
                     . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0">'
                     . '<sv:property sv:name="jcr:uuid" sv:type="String" sv:multi-valued="0">'
                     . '<sv:value length="36">' . $versionNodeUuid . '</sv:value>'
+                    . '</sv:property>'
+                    . '<sv:property sv:name="jcr:versionableUuid" sv:type="String" sv:multi-valued="0">'
+                    . '<sv:value length="36">' . $uuid . '</sv:value>'
                     . '</sv:property>'
                     . '</sv:node>',
                 'depth' => PathHelper::getPathDepth($versionPath),
@@ -547,6 +550,7 @@ class DBUnitFixtureXML extends XMLDocument
                     . '<sv:property sv:name="jcr:uuid" sv:type="String" sv:multi-valued="0">'
                     . '<sv:value length="36">' . $rootVersionUuid . '</sv:value>'
                     . '</sv:property>'
+                    . '<sv:property sv:name="jcr:predecessors" sv:type="String" sv:multi-valued="1"/>'
                     . '</sv:node>',
                 'depth' => PathHelper::getPathDepth($rootVersionPath),
                 'sort_order' => $id - 2,
