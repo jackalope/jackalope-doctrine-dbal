@@ -86,6 +86,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
+
+                    // TODO: implement remove version
+                    'Versioning\\VersionHistoryTest::testDeleteVersion',
+                    'Versioning\\VersionHistoryTest::testDeleteLatestVersion',
+                    'Versioning\\VersionHistoryTest::testDeleteUnexistingVersion',
         );
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {
