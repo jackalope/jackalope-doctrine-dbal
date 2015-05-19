@@ -1,6 +1,5 @@
 <?php
 
-
 $dom = null;
 foreach (array('phpunit.xml', 'phpunit.xml.dist') as $phpunitConfig) {
     if (file_exists($phpunitConfig)) {
@@ -21,3 +20,13 @@ foreach ($xpath->query('//php/var') as $globalEl) {
 }
 
 require_once(__DIR__ . '/tests/bootstrap.php');
+
+$config = new PhpBench\Configuration();
+$config->setPath(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/benchmarks');
+$config->addReport(array(
+    'name' => 'console_table',
+    'memory' => true,
+    'revolutions' => true,
+));
+
+return $config;
