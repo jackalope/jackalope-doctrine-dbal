@@ -25,8 +25,6 @@ $config = new PhpBench\Configuration();
 $config->setPath(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/benchmarks');
 $config->addReport(array(
     'name' => 'console_table',
-    'memory' => true,
-    'revolutions' => true,
 ));
 
 return $config;
