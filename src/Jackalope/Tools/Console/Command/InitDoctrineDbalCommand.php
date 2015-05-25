@@ -8,9 +8,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
-use Doctrine\DBAL\Exception\TableNotFoundException;
 
 /**
  * Init doctrine dbal.
@@ -89,6 +90,13 @@ EOT
                 } catch (TableNotFoundException $e) {
                     if (false === $input->getOption('force')) {
                         throw $e;
+                    }
+                // remove this once we require Doctrine DBAL 2.5+
+                } catch (DBALException $e) {
+                    if (false === $input->getOption('force')) {
+                        throw $e;
+                    } else {
+                        $output->writeln($e->getMessage());
                     }
                 }
             }
