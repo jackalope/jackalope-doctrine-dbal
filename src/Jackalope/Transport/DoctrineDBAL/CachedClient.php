@@ -112,6 +112,36 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
+    public function hasNodeType($nodeTypeName)
+    {
+        $cacheKey = 'hasnodetypes: '.serialize($nodeTypeName);
+        $result = $this->caches['meta']->fetch($cacheKey);
+        if (!$result) {
+            $result = parent::hasNodeType($nodeTypeName);
+            $this->caches['meta']->save($cacheKey, $result);
+        }
+
+        return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getSubTypes($nodeTypeName)
+    {
+        $cacheKey = 'nodesubtypes: '.serialize($nodeTypeName);
+        $result = $this->caches['meta']->fetch($cacheKey);
+        if (!$result) {
+            $result = parent::getSubTypes($nodeTypeName);
+            $this->caches['meta']->save($cacheKey, $result);
+        }
+
+        return $result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function getNodeTypes($nodeTypes = array())
     {
         $cacheKey = 'node_types: '.serialize($nodeTypes);
