@@ -83,14 +83,14 @@ class CachedClient extends Client
      */
     public function getNodeTypes($nodeTypes = array())
     {
-        $cacheKey = 'nodetypes: '.serialize($nodeTypes);
-        $nodeTypes = $this->caches['meta']->fetch($cacheKey);
-        if (!$nodeTypes) {
-            $nodeTypes = parent::getNodeTypes($nodeTypes);
-            $this->caches['meta']->save($cacheKey, $nodeTypes);
+        $cacheKey = 'node_types: '.serialize($nodeTypes);
+        $result = $this->caches['meta']->fetch($cacheKey);
+        if (!$result) {
+            $result = parent::getNodeTypes($nodeTypes);
+            $this->caches['meta']->save($cacheKey, $result);
         }
 
-        return $nodeTypes;
+        return $result;
     }
 
     /**
