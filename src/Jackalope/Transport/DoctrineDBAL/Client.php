@@ -1980,15 +1980,42 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
+    public function hasNodeType($nodeType)
+    {
+        if (StandardNodeTypes::hasNodeType($nodeType)) {
+            return true;
+        }
+
+        $query = "SELECT 1 FROM phpcr_type_nodes WHERE name = ?";
+        $superTypes = $this->getConnection()->fetchColumn($query, array($nodeType));
+        return (bool) $superTypes;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getSubTypes($nodeType)
+    {
+        if (StandardNodeTypes::hasNodeType($nodeType)) {
+            return StandardNodeTypes::getSubTypes($nodeType);
+        }
+
+        $query = "SELECT supertypes FROM phpcr_type_nodes WHERE name = ?";
+        $superTypes = $this->getConnection()->fetchColumn($query, array($nodeType));
+        return array_filter(explode(' ', $superTypes));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function getNodeTypes($nodeTypes = array())
     {
-        $standardTypes = StandardNodeTypes::getNodeTypeData();
+        $standardTypes = StandardNodeTypes::getNodeTypeData($nodeTypes);
 
-        $userTypes = $this->fetchUserNodeTypes();
+        $userTypes = array_diff($nodeTypes, array_keys($standardTypes));
 
-        if ($nodeTypes) {
-            $nodeTypes = array_flip($nodeTypes);
-            return array_values(array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($userTypes, $nodeTypes));
+        if (!empty($userTypes)) {
+            $userTypes = $this->fetchUserNodeTypes($userTypes);
         }
 
         return array_values($standardTypes + $userTypes);
@@ -2001,7 +2028,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @return array
      */
-    protected function fetchUserNodeTypes()
+    protected function fetchUserNodeTypes($nodeTypes)
     {
         $result = array();
         $query = "SELECT * FROM phpcr_type_nodes";
