@@ -2,6 +2,8 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Jackalope\Version\GenericVersioningInterface;
+use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
 use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
@@ -24,6 +26,7 @@ use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
 
+use PHPCR\UnsupportedRepositoryOperationException;
 use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\ValueConverter;
 use PHPCR\Util\UUIDHelper;
@@ -52,6 +55,7 @@ use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
 use Jackalope\NodeType\NodeProcessor;
+use PHPCR\Version\VersionException;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -62,7 +66,7 @@ use Jackalope\NodeType\NodeProcessor;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
-class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
+class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface, GenericVersioningInterface
 {
     /**
      * SQlite can only handle a maximum of 999 parameters inside an IN statement
@@ -176,6 +180,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @var NodeProcessor
      */
     private $nodeProcessor;
+
+    /**
+     * @var VersionHandler
+     */
+    private $versionHandler;
 
     /**
      * @param FactoryInterface $factory
@@ -1902,10 +1911,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->nodeProcessor = new NodeProcessor(
             $this->credentials->getUserID(),
             $this->getNamespacesObject(),
-            $this->getAutoLastModified()
+            $this->getAutoLastModified(),
+            $this->versionHandler
         );
 
         return $this->nodeProcessor;
+    }
+
+    /**
+     * Returns a handler for the versioning mechanism
+     *
+     * @return VersionHandler
+     */
+    private function getVersionHandler()
+    {
+        return $this->versionHandler;
     }
 
     /**
@@ -2539,8 +2559,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function updateProperties(Node $node)
     {
         $this->assertLoggedIn();
-        // we can ignore the operations returned, there will be no additions because of property updates
-        $this->getNodeProcessor()->process($node);
+
+        $additionalAddOperations = $this->getNodeProcessor()->process($node);
+
+        if (!empty($additionalAddOperations)) {
+            $this->storeNodes($additionalAddOperations);
+        }
 
         $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
 
@@ -2567,5 +2591,46 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->connectionInitialized = true;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function checkinItem($path)
+    {
+        return $this->getVersionHandler()->checkinItem($path);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function checkoutItem($path)
+    {
+        return $this->getVersionHandler()->checkoutItem($path);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function restoreItem($removeExisting, $versionPath, $path)
+    {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function removeVersion($versionPath, $versionName)
+    {
+        throw new NotImplementedException();
+    }
+
+    /**
+     * Sets the generic version handler delivered by jackalope
+     * @param VersionHandler $versionHandler
+     */
+    public function setVersionHandler(VersionHandler $versionHandler)
+    {
+        $this->versionHandler = $versionHandler;
     }
 }

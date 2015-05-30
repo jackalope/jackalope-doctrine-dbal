@@ -46,7 +46,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'SameNameSiblings', //TODO: Not implemented, no test currently written for it
                     'PermissionsAndCapabilities', //TODO: Transport does not support permissions
                     'Observation', //TODO: Transport does not support observation
-                    'Versioning', //TODO: Transport does not support versioning
                     'Locking', //TODO: Transport does not support locking
         );
 
@@ -54,6 +53,9 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\XPath', // Query language 'xpath' not implemented.
                     'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
                     'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
+
+                    // TODO fully implement versioning
+                    'Versioning\\VersionManagerTest',
         );
 
         $this->unsupportedTests = array(
@@ -82,7 +84,12 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     // TODO: implement creating workspace with source
                     'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
-                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
+                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
+
+                    // TODO: implement remove version
+                    'Versioning\\VersionHistoryTest::testDeleteVersion',
+                    'Versioning\\VersionHistoryTest::testDeleteLatestVersion',
+                    'Versioning\\VersionHistoryTest::testDeleteUnexistingVersion',
         );
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {

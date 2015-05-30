@@ -41,17 +41,23 @@ class DBUnitFixtureXML extends XMLDocument
     protected $expectedNodes;
 
     /**
-     * @param string $file    - file path
-     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * Track if root nodes exists for workspace names
+     * @var array
+     */
+    private $rootNodes;
+
+    /**
+     * @param string $file - file path
+     * @param int $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      */
     public function __construct($file, $options = null)
     {
         parent::__construct($file, $options);
 
-        $this->tables           = array();
-        $this->ids              = array();
-        $this->references       = array();
-        $this->expectedNodes    = array();
+        $this->tables = array();
+        $this->ids = array();
+        $this->references = array();
+        $this->expectedNodes = array();
     }
 
     public function addDataset()
@@ -59,13 +65,16 @@ class DBUnitFixtureXML extends XMLDocument
         $this->appendChild($this->createElement('dataset'));
 
         // purge binary in case no binary properties are in fixture
-        $this->ensureTableExists('phpcr_binarydata', array(
-            'node_id',
-            'property_name',
-            'workspace_name',
-            'idx',
-            'data',
-        ));
+        $this->ensureTableExists(
+            'phpcr_binarydata',
+            array(
+                'node_id',
+                'property_name',
+                'workspace_name',
+                'idx',
+                'data',
+            )
+        );
 
         return $this;
     }
@@ -93,7 +102,7 @@ class DBUnitFixtureXML extends XMLDocument
      *
      * If the root node is not called jcr:root, autogenerate a root node.
      *
-     * @param string       $workspaceName
+     * @param string $workspaceName
      * @param \DOMNodeList $nodes
      *
      * @return DBUnitFixtureXML
@@ -101,9 +110,20 @@ class DBUnitFixtureXML extends XMLDocument
     public function addNodes($workspaceName, \DOMNodeList $nodes)
     {
         $node = $nodes->item(0);
-        if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
-            $this->addRootNode('tests');
+        if (!isset($this->rootNodes[$workspaceName])) {
+            if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
+                $this->addRootNode('tests');
+            }
+            $this->rootNodes[$workspaceName] = true;
         }
+
+        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML(
+            __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'system.xml'
+        );
+        foreach ($srcDom->load()->getNodes() as $node) {
+            $this->addNode($workspaceName, $node);
+        }
+
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
@@ -116,40 +136,43 @@ class DBUnitFixtureXML extends XMLDocument
         $uuid = UUIDHelper::generateUUID();
         $this->ids[$uuid] = self::$idCounter++;
 
-        return $this->addRow('phpcr_nodes', array(
-            'id'            => $this->ids[$uuid],
-            'path'          => '/',
-            'parent'        => '',
-            'local_name'    => '',
-            'namespace'     => '',
-            'workspace_name'=> $workspaceName,
-            'identifier'    => $uuid,
-            'type'          => 'nt:unstructured',
-            'props'         => '<?xml version="1.0" encoding="UTF-8"?>'
-                            . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
-                            . 'xmlns:lx="http://flux-cms.org/2.0"'
-                            . 'xmlns:test="http://liip.to/jackalope"'
-                            . 'xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
-                            . 'xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
-                            . 'xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
-                            . 'xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
-                            . 'xmlns:fn="http://www.w3.org/2005/xpath-functions"'
-                            . 'xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
-                            . 'xmlns:xs="http://www.w3.org/2001/XMLSchema"'
-                            . 'xmlns:new_prefix="http://a_new_namespace"'
-                            . 'xmlns:jcr="http://www.jcp.org/jcr/1.0"'
-                            . 'xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
-                            . 'xmlns:rep="internal" />',
-            'depth'         => 0,
-            'sort_order'    => 0,
-        ));
+        return $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => $this->ids[$uuid],
+                'path' => '/',
+                'parent' => '',
+                'local_name' => '',
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $uuid,
+                'type' => 'nt:unstructured',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
+                    . 'xmlns:lx="http://flux-cms.org/2.0"'
+                    . 'xmlns:test="http://liip.to/jackalope"'
+                    . 'xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
+                    . 'xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
+                    . 'xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
+                    . 'xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
+                    . 'xmlns:fn="http://www.w3.org/2005/xpath-functions"'
+                    . 'xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
+                    . 'xmlns:xs="http://www.w3.org/2001/XMLSchema"'
+                    . 'xmlns:new_prefix="http://a_new_namespace"'
+                    . 'xmlns:jcr="http://www.jcp.org/jcr/1.0"'
+                    . 'xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
+                    . 'xmlns:rep="internal" />',
+                'depth' => 0,
+                'sort_order' => 0,
+            )
+        );
     }
 
     public function addNode($workspaceName, \DOMElement $node)
     {
         $properties = $this->getAttributes($node);
         $uuid = isset($properties['jcr:uuid']['value'][0])
-            ? (string) $properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
+            ? (string)$properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
         $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])
             ? $this->expectedNodes[$uuid] : self::$idCounter++;
 
@@ -169,38 +192,49 @@ class DBUnitFixtureXML extends XMLDocument
                 throw new \InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
             }
 
-            $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode));
+            $phpcrNode->appendChild(
+                $this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode)
+            );
         }
 
         list ($parentPath, $childPath) = $this->getPath($node);
 
-        $namespace  = '';
-        $name       = $node->getAttributeNS($this->namespaces['sv'], 'name');
+        $namespace = '';
+        $name = $node->getAttributeNS($this->namespaces['sv'], 'name');
         if (count($parts = explode(':', $name, 2)) == 2) {
             list($namespace, $name) = $parts;
         }
 
         if ($namespace == 'jcr' && $name == 'root') {
-            $id         = 1;
-            $childPath  = '/';
+            $id = 1;
+            $childPath = '/';
             $parentPath = '';
-            $name       = '';
-            $namespace  = '';
+            $name = '';
+            $namespace = '';
         }
 
-        $this->addRow('phpcr_nodes', array(
-            'id'            => $id,
-            'path'          => $childPath,
-            'parent'        => $parentPath,
-            'local_name'    => $name,
-            'namespace'     => $namespace,
-            'workspace_name'=> $workspaceName,
-            'identifier'    => $uuid,
-            'type'          => $properties['jcr:primaryType']['value'][0],
-            'props'         => $dom->saveXML(),
-            'depth'         => PathHelper::getPathDepth($childPath),
-            'sort_order'    => $id - 2,
-        ));
+        if (isset($properties['jcr:mixinTypes'])
+            && in_array('mix:versionable', $properties['jcr:mixinTypes']['value'])
+        ) {
+            $this->addVersioningProperties($dom, $phpcrNode, $workspaceName, $id, $uuid);
+        }
+
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => $id,
+                'path' => $childPath,
+                'parent' => $parentPath,
+                'local_name' => $name,
+                'namespace' => $namespace,
+                'workspace_name' => $workspaceName,
+                'identifier' => $uuid,
+                'type' => $properties['jcr:primaryType']['value'][0],
+                'props' => $dom->saveXML(),
+                'depth' => PathHelper::getPathDepth($childPath),
+                'sort_order' => $id - 2,
+            )
+        );
 
         return $this;
     }
@@ -208,7 +242,7 @@ class DBUnitFixtureXML extends XMLDocument
     public function addReferences()
     {
         foreach ($this->references as $type => $references) {
-            $table = 'phpcr_nodes_'.$type.'s';
+            $table = 'phpcr_nodes_' . $type . 's';
 
             // make sure we have the references even if there is not a single entry in it to have it truncated
             $this->ensureTableExists($table, array('source_id', 'source_property_name', 'target_id'));
@@ -256,12 +290,15 @@ class DBUnitFixtureXML extends XMLDocument
         $isMultiValue = false;
         if ($name == 'jcr:mixinTypes'
             || count($values) > 1
-            || ($node->hasAttributeNS($this->namespaces['sv'], 'multiple') && $node->getAttributeNS($this->namespaces['sv'], 'multiple') == 'true')
+            || ($node->hasAttributeNS($this->namespaces['sv'], 'multiple') && $node->getAttributeNS(
+                    $this->namespaces['sv'],
+                    'multiple'
+                ) == 'true')
         ) {
             $isMultiValue = true;
         }
 
-        return array($name, array('type' =>  $type, 'value' => $values, 'multiValued' => $isMultiValue));
+        return array($name, array('type' => $type, 'value' => $values, 'multiValued' => $isMultiValue));
     }
 
     public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, \DOMDocument $dom)
@@ -273,14 +310,31 @@ class DBUnitFixtureXML extends XMLDocument
 
         $binaryDataIdx = 0;
         foreach ($propertyData['value'] as $value) {
-            $propertyNode->appendChild($this->createValueNodeByType($workspaceName, $propertyData['type'], $value, $id, $propertyName, $binaryDataIdx++, $dom));
+            $propertyNode->appendChild(
+                $this->createValueNodeByType(
+                    $workspaceName,
+                    $propertyData['type'],
+                    $value,
+                    $id,
+                    $propertyName,
+                    $binaryDataIdx++,
+                    $dom
+                )
+            );
         }
 
         return $propertyNode;
     }
 
-    public function createValueNodeByType($workspaceName, $type, $value, $id, $propertyName, $binaryDataIdx, \DOMDocument $dom)
-    {
+    public function createValueNodeByType(
+        $workspaceName,
+        $type,
+        $value,
+        $id,
+        $propertyName,
+        $binaryDataIdx,
+        \DOMDocument $dom
+    ) {
         $length = is_scalar($value) ? strlen($value) : null;
         switch ($type) {
             case 'binary':
@@ -308,9 +362,9 @@ class DBUnitFixtureXML extends XMLDocument
                 }
                 // do not repeat references
                 $this->references[$type][$value][$id . $propertyName . $targetId] = array(
-                    'source_id'             => $id,
-                    'source_property_name'  => $propertyName,
-                    'target_id'             => $targetId,
+                    'source_id' => $id,
+                    'source_property_name' => $propertyName,
+                    'target_id' => $targetId,
                 );
                 break;
         }
@@ -339,7 +393,7 @@ class DBUnitFixtureXML extends XMLDocument
 
     public function getPath(\DOMElement $node)
     {
-        $childPath  = '';
+        $childPath = '';
 
         $parent = $node;
         do {
@@ -358,10 +412,10 @@ class DBUnitFixtureXML extends XMLDocument
     }
 
     /**
-     * @param int    $id
+     * @param int $id
      * @param string $propertyName
      * @param string $workspaceName
-     * @param int    $idx
+     * @param int $idx
      * @param string $data
      *
      * @return int - length of base64 decoded string
@@ -370,13 +424,16 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $data = base64_decode($data);
 
-        $this->addRow('phpcr_binarydata', array(
-            'node_id'       => $id,
-            'property_name' => $propertyName,
-            'workspace_name'  => $workspaceName,
-            'idx'           => $idx,
-            'data'          => $data,
-        ));
+        $this->addRow(
+            'phpcr_binarydata',
+            array(
+                'node_id' => $id,
+                'property_name' => $propertyName,
+                'workspace_name' => $workspaceName,
+                'idx' => $idx,
+                'data' => $data,
+            )
+        );
 
         return strlen($data);
     }
@@ -414,4 +471,135 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
+    private function addVersioningProperties(\DOMDocument $dom, \DOMElement $node, $workspaceName, $id, $uuid)
+    {
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:isCheckedOut',
+                array('type' => 'boolean', 'value' => array('true'), 'multiValued' => false),
+                $id,
+                $dom
+            )
+        );
+
+        // version node in version storage
+        $versionNodeUuid = UUIDHelper::generateUUID();
+        $versionParentPath = '/jcr:system/jcr:versionStorage';
+        $versionPath = $versionParentPath . '/' . $versionNodeUuid;
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => self::$idCounter++,
+                'path' => $versionPath,
+                'parent' => $versionParentPath,
+                'local_name' => $versionNodeUuid,
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $versionNodeUuid,
+                'type' => 'nt:unstructured',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0">'
+                    . '<sv:property sv:name="jcr:uuid" sv:type="String" sv:multi-valued="0">'
+                    . '<sv:value length="36">' . $versionNodeUuid . '</sv:value>'
+                    . '</sv:property>'
+                    . '<sv:property sv:name="jcr:versionableUuid" sv:type="String" sv:multi-valued="0">'
+                    . '<sv:value length="36">' . $uuid . '</sv:value>'
+                    . '</sv:property>'
+                    . '</sv:node>',
+                'depth' => PathHelper::getPathDepth($versionPath),
+                'sort_order' => $id - 2,
+            )
+        );
+
+        $this->addRow(
+            'phpcr_nodes_references',
+            array(
+                'source_id' => $id,
+                'source_property_name' => 'jcr:versionHistory',
+                'target_id' => self::$idCounter - 1
+            )
+        );
+
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:versionHistory',
+                array('type' => 'reference', 'value' => array($versionNodeUuid), 'multiValued' => false),
+                $id,
+                $dom
+            )
+        );
+
+        // root version
+        $rootVersionPath = $versionPath . '/jcr:rootVersion';
+        $rootVersionUuid = UUIDHelper::generateUUID();
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => self::$idCounter++,
+                'path' => $rootVersionPath,
+                'parent' => $versionPath,
+                'local_name' => 'jcr:rootVersion',
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $rootVersionUuid,
+                'type' => 'nt:version',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0">'
+                    . '<sv:property sv:name="jcr:uuid" sv:type="String" sv:multi-valued="0">'
+                    . '<sv:value length="36">' . $rootVersionUuid . '</sv:value>'
+                    . '</sv:property>'
+                    . '<sv:property sv:name="jcr:predecessors" sv:type="String" sv:multi-valued="1"/>'
+                    . '</sv:node>',
+                'depth' => PathHelper::getPathDepth($rootVersionPath),
+                'sort_order' => $id - 2,
+            )
+        );
+
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:baseVersion',
+                array('type' => 'reference', 'value' => array($rootVersionUuid), 'multiValued' => false),
+                $id,
+                $dom
+            )
+        );
+
+        $node->appendChild(
+            $this->createPropertyNode(
+                $workspaceName,
+                'jcr:predecessors',
+                array('type' => 'reference', 'value' => array(), 'multiValued' => true),
+                $id,
+                $dom
+            )
+        );
+
+        // frozen node for root version
+        $rootVersionFrozenNodePath = $rootVersionPath . '/jcr:frozenNode';
+        $rootVersionFrozenNodeUuid = UUIDHelper::generateUUID();
+        $this->addRow(
+            'phpcr_nodes',
+            array(
+                'id' => self::$idCounter++,
+                'path' => $rootVersionFrozenNodePath,
+                'parent' => $rootVersionPath,
+                'local_name' => 'jcr:rootVersion',
+                'namespace' => '',
+                'workspace_name' => $workspaceName,
+                'identifier' => $rootVersionFrozenNodeUuid,
+                'type' => 'nt:version',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>'
+                    . '<sv:node xmlns:sv="http://www.jcp.org/jcr/sv/1.0">'
+                    . '<sv:property sv:name="jcr:uuid" sv:type="String" sv:multi-valued="0">'
+                    . '<sv:value length="36">' . $rootVersionFrozenNodeUuid . '</sv:value>'
+                    . '</sv:property>'
+                    . '</sv:node>',
+                'depth' => PathHelper::getPathDepth($rootVersionFrozenNodePath),
+                'sort_order' => $id - 2,
+            )
+        );
+    }
 }
