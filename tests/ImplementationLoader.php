@@ -56,7 +56,6 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
                     // TODO fully implement versioning
                     'Versioning\\VersionManagerTest',
-                    'Versioning\\VersionTest',
         );
 
         $this->unsupportedTests = array(
