@@ -1834,16 +1834,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Returns a handler for the versioning mechanism
-     *
-     * @return VersionHandler
-     */
-    private function getVersionHandler()
-    {
-        return $this->versionHandler;
-    }
-
-    /**
      * {@inheritDoc}
      */
     public function storeNodes(array $operations)
@@ -2497,7 +2487,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function checkinItem($path)
     {
-        return $this->getVersionHandler()->checkinItem($path);
+        return $this->versionHandler->checkinItem($path);
     }
 
     /**
@@ -2505,7 +2495,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function checkoutItem($path)
     {
-        return $this->getVersionHandler()->checkoutItem($path);
+        return $this->versionHandler->checkoutItem($path);
     }
 
     /**
@@ -2530,6 +2520,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function setVersionHandler(VersionHandler $versionHandler)
     {
+        if ($this->versionHandler) {
+            throw new \InvalidArgumentException('Version handler is already set');
+        }
+
         $this->versionHandler = $versionHandler;
     }
 }
