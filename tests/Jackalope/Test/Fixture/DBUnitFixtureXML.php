@@ -551,6 +551,7 @@ class DBUnitFixtureXML extends XMLDocument
                     . '<sv:value length="36">' . $rootVersionUuid . '</sv:value>'
                     . '</sv:property>'
                     . '<sv:property sv:name="jcr:predecessors" sv:type="String" sv:multi-valued="1"/>'
+                    . '<sv:property sv:name="jcr:successors" sv:type="String" sv:multi-valued="1"/>'
                     . '</sv:node>',
                 'depth' => PathHelper::getPathDepth($rootVersionPath),
                 'sort_order' => $id - 2,
