@@ -90,6 +90,7 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Versioning\\VersionManagerTest::testRestoreByPathAndName',
                     'Versioning\\VersionManagerTest::testRestoreByVersionObject',
                     'Versioning\\VersionManagerTest::testRestoreRootVersion',
+                    'Versioning\\VersionManagerTest::testWriteNotCheckedOutVersion',
         );
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {
