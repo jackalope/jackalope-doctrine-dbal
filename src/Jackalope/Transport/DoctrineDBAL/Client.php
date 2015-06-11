@@ -30,6 +30,8 @@ use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\ValueConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
+use PHPCR\Version\LabelExistsVersionException;
+use PHPCR\Version\VersionException;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
@@ -51,8 +53,6 @@ use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
 use Jackalope\NodeType\NodeProcessor;
-use PHPCR\Version\LabelExistsVersionException;
-use PHPCR\Version\VersionException;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -2664,7 +2664,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function restoreItem($removeExisting, $versionPath, $path)
     {
-        throw new NotImplementedException();
+        return $this->versionHandler->restoreItem($removeExisting, $versionPath, $path);
     }
 
     /**
