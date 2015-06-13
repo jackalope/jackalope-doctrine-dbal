@@ -24,7 +24,12 @@ require_once(__DIR__ . '/tests/bootstrap.php');
 $config = new PhpBench\Configuration();
 $config->setPath(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/benchmarks');
 $config->addReport(array(
+    'title' => 'Query Benchmarks',
     'name' => 'console_table',
+    'groups' => array('query'),
+    'aggregate' => 'run',
+    'cols' => array('params', 'mean_time', 'mean_memory_diff', 'mean_rps', 'deviation_min'),
+    'sort' => 'time',
 ));
 
 return $config;
