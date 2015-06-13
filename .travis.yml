@@ -45,7 +45,7 @@ before_script:
 
 script: 
     - php vendor/bin/phpunit
-    - php vendor/bin/phpbench run --process-isolation=iteration
+    - if [[ "$TRAVIS_PHP_VERSION" != "5.3" ]]; then php vendor/bin/phpbench run --process-isolation=iteration; fi
 
 notifications:
   irc: "irc.freenode.org#jackalope"
