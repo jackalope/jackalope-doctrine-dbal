@@ -45,7 +45,7 @@ before_script:
 
 script: 
     - php vendor/bin/phpunit
-    - php vendor/bin/phpbench run --processisolation=iteration
+    - php vendor/bin/phpbench run --process-isolation=iteration
 
 notifications:
   irc: "irc.freenode.org#jackalope"
