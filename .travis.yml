@@ -38,6 +38,7 @@ before_script:
   - rm -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini
   - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-dist --no-interaction; fi
   - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-dist --no-interaction; fi
+  - if [[ "$TRAVIS_PHP_VERSION" == "5.3" ]]; then composer remove phpbench/phpbench --no-update; fi
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
