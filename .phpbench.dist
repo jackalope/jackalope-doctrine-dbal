@@ -1,35 +1,6 @@
 <?php
 
-$dom = null;
-foreach (array('phpunit.xml', 'phpunit.xml.dist') as $phpunitConfig) {
-    if (file_exists($phpunitConfig)) {
-        $dom = new \DOMDocument(1.0);
-        $dom->load($phpunitConfig);
-        break;
-    }
-}
-if (null === $dom) {
-    throw new \RuntimeException(
-        'Could not find phpunit config (required for running benchmark suite)'
-    );
-}
+// do not initialize the database everytime
+putenv('JACKALOPE_NO_TEST_DB_INIT=1');
 
-$xpath = new \DOMXpath($dom);
-foreach ($xpath->query('//php/var') as $globalEl) {
-    $GLOBALS[$globalEl->getAttribute('name')] = $globalEl->getAttribute('value');
-}
-
-require_once(__DIR__ . '/tests/bootstrap.php');
-
-$config = new PhpBench\Configuration();
-$config->setPath(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/benchmarks');
-$config->addReport(array(
-    'title' => 'Query Benchmarks',
-    'name' => 'console_table',
-    'groups' => array('query'),
-    'aggregate' => 'run',
-    'cols' => array('params', 'mean_time', 'mean_memory_diff', 'mean_rps', 'deviation_min'),
-    'sort' => 'time',
-));
-
-return $config;
+return require_once(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/config/phpbench');
