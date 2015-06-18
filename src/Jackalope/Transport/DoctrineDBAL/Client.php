@@ -130,7 +130,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $checkLoginOnServer = true;
 
     /**
-     * @var \ArrayObject
+     * @var null|array
      */
     protected $namespaces;
 
@@ -186,7 +186,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->factory = $factory;
         $this->valueConverter = $this->factory->get('PHPCR\Util\ValueConverter');
         $this->conn = $conn;
-        $this->namespaces = new \ArrayObject();
     }
 
     /**
@@ -514,32 +513,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNamespaces()
     {
-        return (array) $this->getNamespacesObject();
-    }
+        if (!isset($this->namespaces)) {
+            $query = 'SELECT prefix, uri FROM phpcr_namespaces';
+            $result = $this->getConnection()->query($query);
+            $namespaces = $result->fetchAll(\PDO::FETCH_KEY_PAIR);
 
-    /**
-     * Return the namespaces of the current session as a referenceable ArrayObject.
-     *
-     * @return \ArrayObject
-     */
-    protected function getNamespacesObject()
-    {
-        if ($this->namespaces->count() === 0) {
-            $query = 'SELECT * FROM phpcr_namespaces';
-            $data = $this->getConnection()->fetchAll($query);
-
-            $this->namespaces->exchangeArray(array(
+            $this->namespaces = array(
                 NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
                 NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
                 NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
                 NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
                 NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
                 NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
-            ));
+            );
 
-            foreach ($data as $row) {
-                $this->namespaces[$row['prefix']] = $row['uri'];
-            }
+            $this->namespaces+= $namespaces;
 
             $this->originalNamespaces = $this->namespaces;
         }
@@ -1901,7 +1889,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->nodeProcessor = new NodeProcessor(
             $this->credentials->getUserID(),
-            $this->getNamespacesObject(),
+            $this->getNamespaces(),
             $this->getAutoLastModified()
         );
 
@@ -2464,7 +2452,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $this->getConnection()->commit();
             // now that the transaction is committed, update the cache of the stored namespaces.
-            $this->originalNamespaces = (array) $this->namespaces;
+            $this->originalNamespaces = $this->namespaces;
         } catch (\Exception $e) {
             throw new RepositoryException('Commit transaction failed: ' . $e->getMessage());
         }
@@ -2485,7 +2473,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->inTransaction = false;
 
             // reset namespaces
-            $this->namespaces->exchangeArray($this->originalNamespaces);
+            $this->namespaces = $this->originalNamespaces;
 
             $this->getConnection()->rollback();
         } catch (\Exception $e) {
