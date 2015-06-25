@@ -130,14 +130,30 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $checkLoginOnServer = true;
 
     /**
-     * @var \ArrayObject
+     * Using an ArrayObject here so that we can pass this into the NodeProcessor by reference more elegantly
+     *
+     * @var null|\ArrayObject
      */
     protected $namespaces;
 
     /**
-     * @var array The namespaces at initial state, in case of rollback.
+     * @var null|array The namespaces at initial state when making changes to the namespaces, in case of rollback.
      */
-    private $originalNamespaces = array();
+    private $originalNamespaces;
+
+    /**
+     * The core namespaces defined in JCR
+     *
+     * @var array
+     */
+    private $coreNamespaces = array(
+        NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
+        NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
+        NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
+        NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
+        NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
+        NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
+    );
 
     /**
      * @var string|null
@@ -186,7 +202,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->factory = $factory;
         $this->valueConverter = $this->factory->get('PHPCR\Util\ValueConverter');
         $this->conn = $conn;
-        $this->namespaces = new \ArrayObject();
     }
 
     /**
@@ -504,6 +519,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         );
     }
 
+    /**
+     * Get the registered namespace prefixes
+     *
+     * @return array
+     */
     private function getNamespacePrefixes()
     {
         return array_keys($this->getNamespaces());
@@ -524,27 +544,30 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function getNamespacesObject()
     {
-        if ($this->namespaces->count() === 0) {
-            $query = 'SELECT * FROM phpcr_namespaces';
-            $data = $this->getConnection()->fetchAll($query);
+        if (null === $this->namespaces) {
+            $query = 'SELECT prefix, uri FROM phpcr_namespaces';
+            $result = $this->getConnection()->query($query);
+            $namespaces = (array) $result->fetchAll(\PDO::FETCH_KEY_PAIR);
+            $namespaces += $this->coreNamespaces;
 
-            $this->namespaces->exchangeArray(array(
-                NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
-                NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
-                NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
-                NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
-                NamespaceRegistryInterface::PREFIX_XML => NamespaceRegistryInterface::NAMESPACE_XML,
-                NamespaceRegistryInterface::PREFIX_SV => NamespaceRegistryInterface::NAMESPACE_SV,
-            ));
-
-            foreach ($data as $row) {
-                $this->namespaces[$row['prefix']] = $row['uri'];
-            }
-
-            $this->originalNamespaces = $this->namespaces;
+            $this->setNamespaces($namespaces);
         }
 
         return $this->namespaces;
+    }
+
+    /**
+     * Set the namespaces property to an \ArrayObject instance
+     *
+     * @param array $namespaces
+     */
+    protected function setNamespaces(array $namespaces)
+    {
+        if ($this->namespaces instanceof \ArrayObject) {
+            $this->namespaces->exchangeArray($namespaces);
+        } else {
+            $this->namespaces = new \ArrayObject($namespaces);
+        }
     }
 
     /**
@@ -2354,13 +2377,43 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * We need to create an in memory backup when we are inside a transaction
+     * so that we can efficiently restore the original state in the namespaces
+     * property in case of a rollback.
+     *
+     * This method also ensures that namespaces are loaded to begin with.
+     */
+    private function ensureNamespacesBackup()
+    {
+        if (!$this->namespaces instanceof \ArrayObject) {
+            $this->getNamespacesObject();
+        }
+
+        if (!$this->inTransaction) {
+            return;
+        }
+
+        if (null === $this->originalNamespaces) {
+            $this->originalNamespaces = $this->namespaces->getArrayCopy();
+        }
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function registerNamespace($prefix, $uri)
     {
-        if (isset($this->namespaces[$prefix]) && $this->namespaces[$prefix] === $uri) {
-            return;
+        if (isset($this->namespaces[$prefix])) {
+            if ($this->namespaces[$prefix] === $uri) {
+                return;
+            }
+
+            if (isset($this->coreNamespaces[$prefix])) {
+                throw new NamespaceException("Cannot overwrite JCR core namespace prefix '$prefix' to a new uri '$uri'.");
+            }
         }
+
+        $this->ensureNamespacesBackup();
 
         $this->getConnection()->delete('phpcr_namespaces', array('prefix' => $prefix));
         $this->getConnection()->delete('phpcr_namespaces', array('uri' => $uri));
@@ -2380,6 +2433,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function unregisterNamespace($prefix)
     {
+        if (isset($this->coreNamespaces[$prefix])) {
+            throw new NamespaceException("Cannot unregister JCR core namespace prefix '$prefix'.");
+        }
+
+        $this->ensureNamespacesBackup();
+
         $this->getConnection()->delete('phpcr_namespaces', array('prefix' => $prefix));
 
         if (!empty($this->namespaces)) {
@@ -2463,8 +2522,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->inTransaction = false;
 
             $this->getConnection()->commit();
-            // now that the transaction is committed, update the cache of the stored namespaces.
-            $this->originalNamespaces = (array) $this->namespaces;
+
+            if ($this->originalNamespaces) {
+                // now that the transaction is committed, reset the cache of the stored namespaces.
+                $this->originalNamespaces = null;
+            }
         } catch (\Exception $e) {
             throw new RepositoryException('Commit transaction failed: ' . $e->getMessage());
         }
@@ -2484,10 +2546,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->inTransaction = false;
 
-            // reset namespaces
-            $this->namespaces->exchangeArray($this->originalNamespaces);
-
             $this->getConnection()->rollback();
+
+            if ($this->originalNamespaces) {
+                // reset namespaces
+                $this->setNamespaces($this->originalNamespaces);
+                $this->originalNamespaces = null;
+            }
         } catch (\Exception $e) {
             throw new RepositoryException('Rollback transaction failed: ' . $e->getMessage(), 0, $e);
         }

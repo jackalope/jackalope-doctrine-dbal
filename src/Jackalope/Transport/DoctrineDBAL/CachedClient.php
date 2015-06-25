@@ -84,35 +84,35 @@ class CachedClient extends Client
     public function getNodeTypes($nodeTypes = array())
     {
         $cacheKey = 'nodetypes: '.serialize($nodeTypes);
-        $nodeTypes = $this->caches['meta']->fetch($cacheKey);
-        if (!$nodeTypes) {
-            $nodeTypes = parent::getNodeTypes($nodeTypes);
-            $this->caches['meta']->save($cacheKey, $nodeTypes);
+        $result = $this->caches['meta']->fetch($cacheKey);
+        if (!$result) {
+            $result = parent::getNodeTypes($nodeTypes);
+            $this->caches['meta']->save($cacheKey, $result);
         }
 
-        return $nodeTypes;
+        return $result;
     }
 
     /**
-     * Return the namespaces of the current session as a referenceable ArrayObject.
-     *
-     * @return \ArrayObject
+     * {@inheritDoc}
      */
-    protected function getNamespacesObject()
+    public function getNamespaces()
     {
-        if ($this->namespaces->count() === 0) {
-            $cacheKey = 'namespaces';
-            $result = $this->caches['meta']->fetch($cacheKey);
-            if ($result) {
-                $this->namespaces = $result;
-            } else {
-                $this->namespaces = parent::getNamespacesObject();
-
-                $this->caches['meta']->save($cacheKey, $this->namespaces);
-            }
+        if ($this->namespaces instanceof \ArrayObject) {
+            return parent::getNamespaces();
         }
 
-        return $this->namespaces;
+        $cacheKey = 'namespaces';
+        $result = $this->caches['meta']->fetch($cacheKey);
+        if ($result) {
+            $this->setNamespaces($result);
+        } else {
+            $result = parent::getNamespaces();
+
+            $this->caches['meta']->save($cacheKey, $result);
+        }
+
+        return $result;
     }
 
     /**
