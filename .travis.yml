@@ -14,6 +14,7 @@ env:
   - DB=pgsql PACKAGE_VERSION=high
   - DB=sqlite PACKAGE_VERSION=high
 
+sudo: false
 
 matrix:
   allow_failures:
