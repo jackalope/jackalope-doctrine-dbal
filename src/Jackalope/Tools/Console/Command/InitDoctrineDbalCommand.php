@@ -6,11 +6,9 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Exception\TableNotFoundException;
-
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
 /**
@@ -64,7 +62,6 @@ EOT
     {
         $connection = $this->getHelper('jackalope-doctrine-dbal')->getConnection();
         if (!$connection instanceof Connection) {
-
             $output->write(PHP_EOL.'<error>The provided connection is not an instance of the Doctrine DBAL connection.</error>'.PHP_EOL);
             throw new \InvalidArgumentException('The provided connection is not an instance of the Doctrine DBAL connection.');
         }
@@ -83,7 +80,6 @@ EOT
                         if (true === $input->getOption('dump-sql')) {
                             $output->writeln($sql);
                         } else {
-
                             $connection->exec($sql);
                         }
                     }

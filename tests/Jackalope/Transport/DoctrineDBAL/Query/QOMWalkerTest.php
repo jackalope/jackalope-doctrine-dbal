@@ -7,7 +7,6 @@ use Jackalope\Query\QOM\Length;
 use Jackalope\Query\QOM\PropertyValue;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Factory;
-
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 
 class QOMWalkerTest extends TestCase
@@ -45,7 +44,7 @@ class QOMWalkerTest extends TestCase
 
     public function testDefaultQuery()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery($this->factory->selector('nt:unstructured', 'nt:unstructured'), null, array(), array());
         list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
@@ -55,7 +54,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithPathComparisonConstraint()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -70,7 +69,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithPropertyComparisonConstraint()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -87,7 +86,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithPropertyComparisonConstraintNumericLiteral()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('a', 'nt:unstructured'),
@@ -102,7 +101,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithAndConstraint()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -120,7 +119,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithOrConstraint()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -138,7 +137,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithNotConstraint()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -173,7 +172,7 @@ class QOMWalkerTest extends TestCase
      */
     public function testQueryWithOperator($const, $op)
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -188,7 +187,7 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithPathOrder()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -209,7 +208,7 @@ class QOMWalkerTest extends TestCase
     {
         $driver = $this->conn->getDriver()->getName();
 
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -223,12 +222,12 @@ class QOMWalkerTest extends TestCase
 
         switch ($driver) {
             case 'pdo_pgsql':
-                $ordering = 
-                    "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, " . 
+                $ordering =
+                    "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, " .
                    "(xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text ASC";
                 break;
             default:
-                $ordering = 
+                $ordering =
                     "CAST(EXTRACTVALUE(n0.numerical_props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') AS DECIMAL) ASC, " .
                     "EXTRACTVALUE(n0.props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') ASC";
         }
@@ -250,7 +249,7 @@ class QOMWalkerTest extends TestCase
 
     public function testDescendantQuery()
     {
-        $this->nodeTypeManager->expects($this->exactly(2))->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->exactly(2))->method('getSubtypes')->will($this->returnValue(array()));
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -288,7 +287,7 @@ class QOMWalkerTest extends TestCase
      */
     public function testDescendantQueryTrailingSlash()
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue( array() ));
+        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue(array()));
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             $this->factory->descendantNode('nt:unstructured', '/some/node/')

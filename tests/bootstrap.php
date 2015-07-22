@@ -59,3 +59,4 @@ define('OPTION_OBSERVATION_SUPPORTED',  'option.observation.supported');
 define('OPTION_LOCKING_SUPPORTED',      'option.locking.supported');
 
 //@TODO: do not pollute global space
+

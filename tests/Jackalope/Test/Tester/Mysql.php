@@ -18,5 +18,4 @@ class Mysql extends Generic
 
         $this->getConnection()->getConnection()->exec('SET foreign_key_checks = 1');
     }
-
 }

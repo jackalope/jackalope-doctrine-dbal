@@ -27,5 +27,4 @@ class Pgsql extends Generic
             $pdo->query($query);
         }
     }
-
 }

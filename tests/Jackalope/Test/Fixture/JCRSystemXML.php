@@ -36,5 +36,4 @@ class JCRSystemXML extends XMLDocument
     {
         return $this->getElementsByTagNameNS($this->namespaces['sv'], 'node');
     }
-
 }

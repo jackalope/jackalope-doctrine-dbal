@@ -172,7 +172,7 @@ class DBUnitFixtureXML extends XMLDocument
             $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode));
         }
 
-        list ($parentPath, $childPath) = $this->getPath($node);
+        list($parentPath, $childPath) = $this->getPath($node);
 
         $namespace  = '';
         $name       = $node->getAttributeNS($this->namespaces['sv'], 'name');
@@ -231,7 +231,7 @@ class DBUnitFixtureXML extends XMLDocument
 
         foreach ($node->childNodes as $child) {
             if ($child instanceof \DOMElement && $child->tagName == 'sv:property') {
-                list ($name, $propertyNameibute) = $this->getChildAttribute($child);
+                list($name, $propertyNameibute) = $this->getChildAttribute($child);
                 $properties[$name] = $propertyNameibute;
             }
         }
@@ -413,5 +413,4 @@ class DBUnitFixtureXML extends XMLDocument
 
         return $this;
     }
-
 }

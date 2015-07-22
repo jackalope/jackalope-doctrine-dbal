@@ -71,7 +71,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $topic->orderBefore('page3', 'page1');
-        $topic->orderBefore('page4', NULL);
+        $topic->orderBefore('page4', null);
 
         $this->session->save();
 
@@ -284,7 +284,6 @@ class ClientTest extends FunctionalTestCase
 
             /** @var $value \DOMElement */
             foreach ($values as $index => $value) {
-
                 $lengthAttribute = $value->attributes->getNamedItem('length');
                 if (null === $lengthAttribute) {
                     $this->fail(sprintf('Value %d for property "%s" is expected to have an attribute "length"', $index, $propertyName));

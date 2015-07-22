@@ -186,7 +186,6 @@ class RepositorySchema extends Schema
         $propTypes->addColumn('query_operators', 'integer'); // BITMASK
         $propTypes->addColumn('default_value', 'string', array('notnull' => false));
         $propTypes->setPrimaryKey(array('node_type_id', 'name'));
-
     }
 
     protected function addTypeChildsTable()
@@ -218,5 +217,4 @@ class RepositorySchema extends Schema
             $this->connection->exec($sql);
         }
     }
-
 }
