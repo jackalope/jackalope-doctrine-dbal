@@ -7,12 +7,10 @@ use Jackalope\Query\QOM\PropertyValue;
 use Jackalope\Query\QOM\QueryObjectModel;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 use Jackalope\Transport\DoctrineDBAL\Util\Xpath;
-
 use PHPCR\NamespaceException;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
-
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
@@ -537,17 +535,17 @@ class QOMWalker
 
         // Check if we have a property and a literal value (in random order)
         if (
-            ($operator1 instanceOf QOM\PropertyValueInterface
-                && $operator2 instanceOf QOM\LiteralInterface)
-            || ($operator1 instanceOf QOM\LiteralInterface
-                && $operator2 instanceOf QOM\PropertyValueInterface)
-            || ($operator1 instanceOf QOM\NodeNameInterface
-                && $operator2 instanceOf QOM\LiteralInterface)
-            || ($operator1 instanceOf QOM\LiteralInterface
-                && $operator2 instanceOf QOM\NodeNameInterface)
+            ($operator1 instanceof QOM\PropertyValueInterface
+                && $operator2 instanceof QOM\LiteralInterface)
+            || ($operator1 instanceof QOM\LiteralInterface
+                && $operator2 instanceof QOM\PropertyValueInterface)
+            || ($operator1 instanceof QOM\NodeNameInterface
+                && $operator2 instanceof QOM\LiteralInterface)
+            || ($operator1 instanceof QOM\LiteralInterface
+                && $operator2 instanceof QOM\NodeNameInterface)
         ) {
             // Check whether the left is the literal, at this point the other always is the literal/nodename operand
-            if ($operator1 instanceOf QOM\LiteralInterface) {
+            if ($operator1 instanceof QOM\LiteralInterface) {
                 $operand = $operator2;
                 $literalOperand = $operator1;
             } else {

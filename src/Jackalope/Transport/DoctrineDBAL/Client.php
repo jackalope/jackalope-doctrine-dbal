@@ -23,18 +23,15 @@ use PHPCR\SimpleCredentials;
 use PHPCR\PathNotFoundException;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\NodeType\ConstraintViolationException;
-
 use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\ValueConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
-
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDOConnection;
 use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
-
 use Jackalope\Node;
 use Jackalope\Property;
 use Jackalope\Query\Query;
@@ -285,7 +282,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function getUuidGenerator()
     {
         if (!$this->uuidGenerator) {
-            $this->uuidGenerator = function() {
+            $this->uuidGenerator = function () {
                 return UUIDHelper::generateUUID();
             };
         }
@@ -793,13 +790,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'depth'           => PathHelper::getPathDepth($path),
                     'parent_a'        => PathHelper::getParentPath($path),
                 ));
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 if ($e instanceof \PDOException || $e instanceof DBALException) {
-                   if(strpos($e->getMessage(), "SQLSTATE[23") !== false) {
-                       throw new ItemExistsException('Item ' . $path . ' already exists in the database');
-                   } else {
-                       throw new RepositoryException('Unknown database error while inserting item ' . $path . ': '.$e->getMessage(), 0, $e);
-                   }
+                    if (strpos($e->getMessage(), "SQLSTATE[23") !== false) {
+                        throw new ItemExistsException('Item ' . $path . ' already exists in the database');
+                    } else {
+                        throw new RepositoryException('Unknown database error while inserting item ' . $path . ': '.$e->getMessage(), 0, $e);
+                    }
                 } else {
                     throw $e;
                 }
@@ -1022,7 +1019,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param \DOMElement $propertyNode
      * @param \stdClass $data
      */
-    protected function mapPropertyFromElement(\DOMElement $propertyNode, \stdClass $data) 
+    protected function mapPropertyFromElement(\DOMElement $propertyNode, \stdClass $data)
     {
         $name = $propertyNode->getAttribute('sv:name');
 
@@ -1109,7 +1106,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $binaryData = $references = array();
 
         foreach ($properties as $property) {
-
             $targetDoms = array('stringDom');
 
             switch ($property->getType()) {
@@ -1197,7 +1193,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         );
 
         foreach ($doms as $targetDom => $properties) {
-
             $dom = new \DOMDocument('1.0', 'UTF-8');
             $rootNode = $dom->createElement('sv:node');
             foreach ($namespaces as $namespace => $uri) {
@@ -1254,7 +1249,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         PathHelper::assertValidAbsolutePath($path, false, true, $this->getNamespacePrefixes());
 
         $values[':path'] = $path;
-        $values[':pathd'] = rtrim($path,'/') . '/%';
+        $values[':pathd'] = rtrim($path, '/') . '/%';
         $values[':workspace'] = $this->workspaceName;
 
         if ($this->fetchDepth > 0) {
@@ -1412,7 +1407,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $i = 0;
             foreach ($paths as $path) {
                 $params[':path'.$i] = $path;
-                $params[':pathd'.$i] = rtrim($path,'/') . '/%';
+                $params[':pathd'.$i] = rtrim($path, '/') . '/%';
                 $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
                 $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
                 $i++;
@@ -1658,7 +1653,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function cleanIdentifierCache($root)
     {
         unset($this->nodeIdentifiers[$root]);
-        foreach(array_keys($this->nodeIdentifiers) as $path) {
+        foreach (array_keys($this->nodeIdentifiers) as $path) {
             if (strpos($path, "$root/") === 0) {
                 unset($this->nodeIdentifiers[$path]);
             }
@@ -2056,7 +2051,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'multiple' => (bool) $propertyData['multiple'],
                     'isFulltextSearchable' => (bool) $propertyData['fulltext_searchable'],
                     'isQueryOrderable' => (bool) $propertyData['query_orderable'],
-                    'queryOperators' => array (
+                    'queryOperators' => array(
                         0 => 'jcr.operator.equal.to',
                         1 => 'jcr.operator.not.equal.to',
                         2 => 'jcr.operator.greater.than',

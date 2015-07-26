@@ -10,7 +10,6 @@ namespace Jackalope\Transport\DoctrineDBAL\Util;
  */
 class Xpath
 {
-
     /**
      * @param $query
      *
@@ -55,7 +54,6 @@ class Xpath
             $current = '';
 
             foreach (str_split($query) as $character) {
-
                 if (in_array($character, $quotechars)) {
                     if ('' !== $current) {
                         $parts[] = $enclosure . $current . $enclosure;
@@ -71,7 +69,6 @@ class Xpath
                 } else {
                     $current .= $character;
                 }
-
             }
 
             if ($current) {
@@ -109,5 +106,4 @@ class Xpath
 
         return 'concat(' . $part1 . ', ' . self::concatBy2($parts) . ')';
     }
-
 }

@@ -4,14 +4,11 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\ArrayCache;
-
 use Doctrine\DBAL\Connection;
-
 use Jackalope\NotImplementedException;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
 use Jackalope\Query\Query;
-
 use PHPCR\ItemNotFoundException;
 
 /**

@@ -76,5 +76,4 @@ class Generic extends \PHPUnit_Extensions_Database_AbstractTester implements Fix
 
         $this->onSetUp();
     }
-
 }

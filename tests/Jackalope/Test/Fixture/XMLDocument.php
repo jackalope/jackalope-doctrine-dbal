@@ -128,5 +128,4 @@ abstract class XMLDocument extends \DOMDocument
 
         return $this;
     }
-
 }
