@@ -556,9 +556,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Set the namespaces property to an \ArrayObject instance
      *
-     * @param array $namespaces
+     * @param array|\ArrayObject $namespaces
      */
-    protected function setNamespaces(array $namespaces)
+    protected function setNamespaces($namespaces)
     {
         if ($this->namespaces instanceof \ArrayObject) {
             $this->namespaces->exchangeArray($namespaces);
