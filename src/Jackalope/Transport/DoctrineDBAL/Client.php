@@ -671,7 +671,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'values' => $values,
                 );
 
-                if (isset($resultSetUuids[$referenceEl->nodeValue])) {
+                if (!empty($resultSetUuids[$referenceEl->nodeValue])) {
                     $referenceElsToRemap[] = array($referenceEl, $newPath, $row['type'], $propsData);
                 }
             }

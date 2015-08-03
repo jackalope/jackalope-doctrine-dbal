@@ -25,9 +25,15 @@
     "provide": {
         "jackalope/jackalope-transport": "1.1.0"
     },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/danrot/phpcr-api-tests.git"
+        }
+    ],
     "require-dev": {
         "psr/log": "~1.0",
-        "phpcr/phpcr-api-tests": "2.1.7",
+        "phpcr/phpcr-api-tests": "dev-delete-node-with-reference as 2.1.7",
         "phpunit/phpunit": "4.7.*",
         "phpunit/dbunit": "~1.3"
     },
