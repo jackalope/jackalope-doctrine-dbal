@@ -600,16 +600,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         PathHelper::assertValidAbsolutePath($dstAbsPath, true, true, $this->getNamespacePrefixes());
 
-        $srcNodeId = $this->getSystemIdForNodePath($srcAbsPath, $srcWorkspace);
+        $srcNodeId = $this->getSystemIdForNode($srcAbsPath, $srcWorkspace);
         if (!$srcNodeId) {
             throw new PathNotFoundException("Source path '$srcAbsPath' not found");
         }
 
-        if ($this->getSystemIdForNodePath($dstAbsPath)) {
+        if ($this->getSystemIdForNode($dstAbsPath)) {
             throw new ItemExistsException("Cannot copy to destination path '$dstAbsPath' that already exists.");
         }
 
-        if (!$this->getSystemIdForNodePath(PathHelper::getParentPath($dstAbsPath))) {
+        if (!$this->getSystemIdForNode(PathHelper::getParentPath($dstAbsPath))) {
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
@@ -804,7 +804,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $nodeId = $this->getConnection()->lastInsertId($this->sequenceNodeName);
         } else {
-            $nodeId = $this->getSystemIdForNodePath($path);
+            $nodeId = $this->getSystemIdForNode($path);
             if (!$nodeId) {
                 throw new RepositoryException("nodeId for $path not found");
             }
@@ -874,7 +874,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $references = $referencesToUpdate[$nodeId];
                 foreach ($references['properties'] as $name => $data) {
                     foreach ($data['values'] as $value) {
-                        $targetId = $this->getSystemIdForNodeUuid($value);
+                        $targetId = $this->getSystemIdForNode($value);
                         if (false === $targetId) {
                             if (PropertyType::REFERENCE === $data['type']) {
                                 throw new ReferentialIntegrityException(sprintf(
@@ -1447,52 +1447,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function pathExists($path, $workspaceName = null)
     {
-        return (boolean) $this->getSystemIdForNodePath($path, $workspaceName);
+        return (boolean) $this->getSystemIdForNode($path, $workspaceName);
     }
 
     /**
-     * Get the database primary key for node at path.
+     * Get the database primary key for node.
      *
-     * @param string $path          Path of the node
+     * @param string $identifier    Path of the identifier
      * @param string $workspaceName To overwrite the current workspace
      *
      * @return bool|string The database id
      */
-    private function getSystemIdForNodePath($path, $workspaceName = null)
+    private function getSystemIdForNode($identifier, $workspaceName = null)
     {
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
         }
 
-        if ($this->getConnection()->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
-            $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
+        if (UUIDHelper::isUUID($identifier)) {
+            $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
         } else {
-            $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+            if ($this->getConnection()->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
+                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
+            } else {
+                $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
+            }
         }
 
-        if ($nodeId = $this->getConnection()->fetchColumn($query, array($path, $workspaceName))) {
-            return $nodeId;
-        }
-
-        return false;
-    }
-
-    /**
-     * Get the database primary key for node at path.
-     *
-     * @param string $uuid          Uuid of the node
-     * @param string $workspaceName To overwrite the current workspace
-     *
-     * @return bool|string The database id
-     */
-    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
-    {
-        if (null === $workspaceName) {
-            $workspaceName = $this->workspaceName;
-        }
-
-        $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
-        $nodeId = $this->getConnection()->fetchColumn($query, array($uuid, $workspaceName));
+        $nodeId = $this->getConnection()->fetchColumn($query, array($identifier, $workspaceName));
 
         return $nodeId ?: false;
     }
@@ -1692,7 +1674,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $nodePath = PathHelper::getParentPath($path);
-        $nodeId = $this->getSystemIdForNodePath($nodePath);
+        $nodeId = $this->getSystemIdForNode($nodePath);
         if (!$nodeId) {
             // no we really don't know that path
             throw new ItemNotFoundException("No item found at ".$path);
@@ -1780,11 +1762,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Source path '$srcAbsPath' not found");
         }
 
-        if ($this->getSystemIdForNodePath($dstAbsPath)) {
+        if ($this->getSystemIdForNode($dstAbsPath)) {
             throw new ItemExistsException("Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists.");
         }
 
-        if (!$this->getSystemIdForNodePath(PathHelper::getParentPath($dstAbsPath))) {
+        if (!$this->getSystemIdForNode(PathHelper::getParentPath($dstAbsPath))) {
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
@@ -2192,7 +2174,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $nodePath = PathHelper::getParentPath($path);
-        $nodeId = $this->getSystemIdForNodePath($nodePath);
+        $nodeId = $this->getSystemIdForNode($nodePath);
         $propertyName = PathHelper::getNodeName($path);
 
         $data = $this->getConnection()->fetchAll(
@@ -2474,7 +2456,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function getNodeReferences($path, $name = null, $weakReference = false)
     {
-        $targetId = $this->getSystemIdForNodePath($path);
+        $targetId = $this->getSystemIdForNode($path);
         $params = array($targetId);
 
         $table = $weakReference ? $this->referenceTables[PropertyType::WEAKREFERENCE] : $this->referenceTables[PropertyType::REFERENCE];
