@@ -47,16 +47,15 @@ if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {
 }
 
 // some constants
-define('SPEC_VERSION_DESC',             'jcr.specification.version');
-define('SPEC_NAME_DESC',                'jcr.specification.name');
-define('REP_VENDOR_DESC',               'jcr.repository.vendor');
-define('REP_VENDOR_URL_DESC',           'jcr.repository.vendor.url');
-define('REP_NAME_DESC',                 'jcr.repository.name');
-define('REP_VERSION_DESC',              'jcr.repository.version');
+define('SPEC_VERSION_DESC', 'jcr.specification.version');
+define('SPEC_NAME_DESC', 'jcr.specification.name');
+define('REP_VENDOR_DESC', 'jcr.repository.vendor');
+define('REP_VENDOR_URL_DESC', 'jcr.repository.vendor.url');
+define('REP_NAME_DESC', 'jcr.repository.name');
+define('REP_VERSION_DESC', 'jcr.repository.version');
 define('OPTION_TRANSACTIONS_SUPPORTED', 'option.transactions.supported');
-define('OPTION_VERSIONING_SUPPORTED',   'option.versioning.supported');
-define('OPTION_OBSERVATION_SUPPORTED',  'option.observation.supported');
-define('OPTION_LOCKING_SUPPORTED',      'option.locking.supported');
+define('OPTION_VERSIONING_SUPPORTED', 'option.versioning.supported');
+define('OPTION_OBSERVATION_SUPPORTED', 'option.observation.supported');
+define('OPTION_LOCKING_SUPPORTED', 'option.locking.supported');
 
 //@TODO: do not pollute global space
-
