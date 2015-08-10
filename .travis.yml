@@ -16,6 +16,11 @@ env:
 
 sudo: false
 
+cache:
+  directories:
+    - vendor
+    - $HOME/.composer/cache
+
 matrix:
   allow_failures:
     - php: hhvm
@@ -31,8 +36,8 @@ matrix:
 before_script:
   - composer selfupdate
   - rm -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini
-  - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-source --no-interaction; fi
-  - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-source --no-interaction; fi
+  - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-dist --no-interaction; fi
+  - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-dist --no-interaction; fi
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
