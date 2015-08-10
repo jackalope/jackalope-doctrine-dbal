@@ -1,7 +1,7 @@
 <?php
 
-// make sure we get ALL infos from php
-error_reporting(-1);
+/** make sure we get ALL infos from php */
+error_reporting(E_ALL | E_STRICT);
 
 if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
     die('You must set up the project dependencies, run the following commands:' . PHP_EOL .
@@ -13,10 +13,6 @@ if (!$loader = @include __DIR__.'/../vendor/autoload.php') {
 $loader->add('Jackalope\\Test', __DIR__);
 $loader->add('Jackalope', __DIR__ . '/../vendor/jackalope/jackalope/tests');
 
-// @TODO: move FixtureLoaderInterface to some autoload-able path
-require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/FixtureLoaderInterface.php';
-// @TODO: change phpcr-api-tests/inc/BaseCase to use namespaced ImplementationLoader
-require_once __DIR__ . '/../vendor/phpcr/phpcr-api-tests/inc/AbstractLoader.php';
 require_once __DIR__ . '/ImplementationLoader.php';
 require_once __DIR__ . '/generate_fixtures.php';
 
@@ -46,7 +42,10 @@ if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {
     $repositorySchema->reset();
 }
 
-// some constants
+/*
+ * constants for the repository descriptor test for JCR 1.0/JSR-170 and JSR-283 specs
+ */
+
 define('SPEC_VERSION_DESC', 'jcr.specification.version');
 define('SPEC_NAME_DESC', 'jcr.specification.name');
 define('REP_VENDOR_DESC', 'jcr.repository.vendor');
@@ -57,5 +56,3 @@ define('OPTION_TRANSACTIONS_SUPPORTED', 'option.transactions.supported');
 define('OPTION_VERSIONING_SUPPORTED', 'option.versioning.supported');
 define('OPTION_OBSERVATION_SUPPORTED', 'option.observation.supported');
 define('OPTION_LOCKING_SUPPORTED', 'option.locking.supported');
-
-//@TODO: do not pollute global space
