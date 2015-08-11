@@ -1,6 +1,0 @@
-<?php
-
-// do not initialize the database everytime
-putenv('JACKALOPE_NO_TEST_DB_INIT=1');
-
-return require_once(__DIR__ . '/vendor/phpcr/phpcr-benchmarks/config/phpbench');
