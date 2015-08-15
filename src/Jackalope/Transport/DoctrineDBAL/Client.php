@@ -671,7 +671,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'values' => $values,
                 );
 
-                if (!empty($resultSetUuids[$referenceEl->nodeValue])) {
+                if (isset($resultSetUuids[$referenceEl->nodeValue])) {
                     $referenceElsToRemap[] = array($referenceEl, $newPath, $row['type'], $propsData);
                 }
             }
@@ -738,12 +738,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Actually write the node into the database
      *
-     * @param string  $uuid      node uuid
-     * @param string  $path      absolute path of the node
-     * @param string  $type      node type
-     * @param boolean $isNewNode new nodes to insert (true) or existing node to update (false)
-     * @param array   $props
-     * @param array   $propsData
+     * @param string     $uuid      node uuid
+     * @param string     $path      absolute path of the node
+     * @param string     $type      node type name
+     * @param boolean    $isNewNode new nodes to insert (true) or existing node to update (false)
+     * @param Property[] $props
+     * @param array      $propsData
      *
      * @return boolean|string
      *
@@ -823,9 +823,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->syncBinaryData($nodeId, $propsData['binaryData']);
         }
 
-        if (!empty($propsData['references'])) {
-            $this->referencesToUpdate[$nodeId] = array('path' => $path, 'properties' => $propsData['references']);
-        }
+        $this->referencesToUpdate[$nodeId] = array('path' => $path, 'properties' => $propsData['references']);
 
         return $nodeId;
     }
@@ -856,23 +854,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    private function syncReferences($referencesToUpdate)
+    private function syncReferences(array $referencesToUpdate)
     {
         if ($referencesToUpdate) {
             // do not update references that are going to be deleted anyways
-            $toUpdate = array_diff_assoc($referencesToUpdate, $this->referencesToDelete);
+            $toUpdate = array_diff(array_keys($referencesToUpdate), array_keys($this->referencesToDelete));
 
             try {
                 foreach ($this->referenceTables as $table) {
                     $query = "DELETE FROM $table WHERE source_id IN (?)";
-                    $this->executeChunkedUpdate($query, array_keys($toUpdate));
+                    $this->executeChunkedUpdate($query, $toUpdate);
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException('Unexpected exception while cleaning up after saving', $e->getCode(), $e);
             }
 
             $updates = array();
-            foreach ($toUpdate as $nodeId => $references) {
+            foreach ($toUpdate as $nodeId) {
+                $references = $referencesToUpdate[$nodeId];
                 foreach ($references['properties'] as $name => $data) {
                     foreach ($data['values'] as $value) {
                         $targetId = $this->getSystemIdForNodeUuid($value);
