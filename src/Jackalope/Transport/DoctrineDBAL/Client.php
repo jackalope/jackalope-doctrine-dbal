@@ -695,7 +695,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
 
             try {
-                $this->getConnection()->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
+                $this->getConnection()->executeUpdate($query, array($newNodeId, $this->workspaceName, $row['id']));
             } catch (DBALException $e) {
                 throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
             }
@@ -1074,7 +1074,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 break;
         }
     }
-    
 
     /**
      * Seperate properties array into an xml and binary data.
@@ -2187,6 +2186,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * {@inheritDoc}
+     * @throws RepositoryException when no binary data found
      */
     public function getBinaryStream($path)
     {
@@ -2201,6 +2201,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             array($nodeId, $propertyName, $this->workspaceName)
         );
 
+        if (count($data) === 0) {
+            throw new RepositoryException('No binary data found in stream');
+        }
+
         $streams = array();
         foreach ($data as $row) {
             if (is_resource($row['data'])) {
@@ -2214,13 +2218,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $streams[] = $stream;
         }
 
-        // TODO even a multi value field could have only one value stored
-        // we need to also fetch if the property is multi valued instead of this count() check
-        if (count($data) > 1) {
-            return $streams;
+        if (count($data) === 1) {
+            // we don't know if this is a multivalue property or not.
+            // TODO we should have something more efficient to know this. a flag in the database?
+
+            // TODO use self::getProperty()->isMultiple() once implemented
+            $node = $this->getNode($nodePath);
+            if (!is_array($node->{':'.$propertyName})) {
+                return reset($streams);
+            }
         }
 
-        return reset($streams);
+        return $streams;
     }
 
     /**
@@ -2228,7 +2237,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getProperty($path)
     {
-        throw new NotImplementedException('Getting properties by path is implemented yet');
+        throw new NotImplementedException('Getting properties by path is not implemented yet');
     }
 
     /**
