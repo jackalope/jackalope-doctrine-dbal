@@ -2187,7 +2187,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * {@inheritDoc}
-     * @throws RepositoryException then no binary data found
+     * @throws RepositoryException when no binary data found
      */
     public function getBinaryStream($path)
     {
@@ -2205,7 +2205,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (count($data) === 0) {
             throw new RepositoryException('No binary data found in stream');
         }
-
 
         $streams = array();
         foreach ($data as $row) {
