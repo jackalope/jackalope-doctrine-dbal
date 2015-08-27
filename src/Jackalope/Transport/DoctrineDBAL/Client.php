@@ -695,7 +695,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
 
             try {
-                $this->getConnection()->executeUpdate($query, array($newNodeId, $this->workspaceName, $srcNodeId));
+                $this->getConnection()->executeUpdate($query, array($newNodeId, $this->workspaceName, $row['id']));
             } catch (DBALException $e) {
                 throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
             }
@@ -2187,6 +2187,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * {@inheritDoc}
+     * @throws RepositoryException when no binary data found
      */
     public function getBinaryStream($path)
     {
@@ -2200,6 +2201,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             'SELECT data, idx FROM phpcr_binarydata WHERE node_id = ? AND property_name = ? AND workspace_name = ?',
             array($nodeId, $propertyName, $this->workspaceName)
         );
+
+        if (count($data) === 0) {
+            throw new RepositoryException('No binary data found in stream');
+        }
 
         $streams = array();
         foreach ($data as $row) {
