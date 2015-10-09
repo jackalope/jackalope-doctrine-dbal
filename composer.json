@@ -27,7 +27,7 @@
     },
     "require-dev": {
         "psr/log": "~1.0",
-        "phpcr/phpcr-api-tests": "2.1.7",
+        "phpcr/phpcr-api-tests": "2.1.8",
         "phpunit/phpunit": "4.7.*",
         "phpunit/dbunit": "~1.3"
     },
