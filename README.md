@@ -175,7 +175,7 @@ $post->setProperty("jcr:description", "This is the first post on my blog! Do you
 $session->save();
 ```
 
-See [PHPCR Tutorial](https://github.com/phpcr/phpcr-docs/blob/master/tutorial/Tutorial.md)
+See [PHPCR Tutorial](http://phpcr.readthedocs.org/en/latest/book/index.html)
 for a more detailed tutorial on how to use the PHPCR API.
 
 
