@@ -53,13 +53,13 @@ class CachedClient extends Client
     private function clearNodeCache(Node $node)
     {
         $cacheKey = "nodes: {$node->getPath()}, ".$this->workspaceName;
-        $this->caches['node']->delete($cacheKey);
+        $this->caches['nodes']->delete($cacheKey);
 
         // actually in the DBAL all nodes have a uuid ..
         if ($node->isNodeType('mix:referenceable')) {
             $uuid = $node->getIdentifier();
             $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
-            $this->caches['node']->delete($cacheKey);
+            $this->caches['nodes']->delete($cacheKey);
         }
     }
 
