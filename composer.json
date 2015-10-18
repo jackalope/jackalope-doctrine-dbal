@@ -20,14 +20,14 @@
         "doctrine/dbal": ">=2.4.5,<3.0.x-dev",
         "phpcr/phpcr": "~2.1.2",
         "phpcr/phpcr-utils": "^1.2.8",
-        "jackalope/jackalope": "~1.2.2"
+        "jackalope/jackalope": "~1.2.4"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.1.0"
     },
     "require-dev": {
         "psr/log": "~1.0",
-        "phpcr/phpcr-api-tests": "2.1.9",
+        "phpcr/phpcr-api-tests": "2.1.10",
         "phpunit/phpunit": "4.7.*",
         "phpunit/dbunit": "~1.3"
     },

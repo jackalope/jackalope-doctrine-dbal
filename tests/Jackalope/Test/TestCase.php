@@ -4,8 +4,9 @@ namespace Jackalope\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
+use Jackalope\TestCase as BaseTestCase;
 
-abstract class TestCase extends \Jackalope\TestCase
+abstract class TestCase extends BaseTestCase
 {
     /**
      * @var Connection
