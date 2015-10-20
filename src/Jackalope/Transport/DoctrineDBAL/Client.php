@@ -28,7 +28,6 @@ use PHPCR\Util\ValueConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Driver\PDOConnection;
 use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
@@ -204,11 +203,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
      *
-     * @param PDOConnection $sqliteConnection
+     * @param \PDO $sqliteConnection
      *
      * @return Client
      */
-    private function registerSqliteFunctions(PDOConnection $sqliteConnection)
+    private function registerSqliteFunctions(\PDO $sqliteConnection)
     {
         $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
             if (null === $string) {
