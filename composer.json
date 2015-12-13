@@ -28,7 +28,8 @@
     "require-dev": {
         "psr/log": "~1.0",
         "phpcr/phpcr-api-tests": "2.1.11",
-        "phpcr/phpcr-benchmarks": "~1.0@dev",
+        "phpcr/phpcr-benchmarks": "dev-master",
+        "phpbench/phpbench": "dev-disable_timeout as dev-master",
         "phpunit/phpunit": "4.7.*",
         "phpunit/dbunit": "~1.3"
     },
