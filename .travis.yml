@@ -3,7 +3,6 @@ language: php
 sudo: false
 
 php:
-  - 5.3
   - 5.4
   - 5.5
   - 5.6
@@ -38,11 +37,15 @@ before_script:
   - rm -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini
   - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-dist --no-interaction; fi
   - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-dist --no-interaction; fi
+  - if [[ "$TRAVIS_PHP_VERSION" == "5.3" ]]; then composer remove phpbench/phpbench --no-update; fi
   - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
   - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
+  - cp $DB.phpunit.xml phpunit.xml
 
-script: php vendor/bin/phpunit -c $DB.phpunit.xml
+script: 
+    - php vendor/bin/phpunit
+    - if [[ ${TRAVIS_PHP_VERSION:0:3} != "5.3" ]]; then php vendor/phpbench/phpbench/bin/phpbench run --config=vendor/phpcr/phpcr-benchmarks/config/phpbench.json --iterations=2 --report=all; fi
 
 notifications:
   irc: "irc.freenode.org#jackalope"
