@@ -127,19 +127,19 @@ class DBUnitFixtureXML extends XMLDocument
             'type'          => 'nt:unstructured',
             'props'         => '<?xml version="1.0" encoding="UTF-8"?>'
                             . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
-                            . 'xmlns:lx="http://flux-cms.org/2.0"'
-                            . 'xmlns:test="http://liip.to/jackalope"'
-                            . 'xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
-                            . 'xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
-                            . 'xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
-                            . 'xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
-                            . 'xmlns:fn="http://www.w3.org/2005/xpath-functions"'
-                            . 'xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
-                            . 'xmlns:xs="http://www.w3.org/2001/XMLSchema"'
-                            . 'xmlns:new_prefix="http://a_new_namespace"'
-                            . 'xmlns:jcr="http://www.jcp.org/jcr/1.0"'
-                            . 'xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
-                            . 'xmlns:rep="internal" />',
+                            . ' xmlns:lx="http://flux-cms.org/2.0"'
+                            . ' xmlns:test="http://liip.to/jackalope"'
+                            . ' xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
+                            . ' xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
+                            . ' xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
+                            . ' xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
+                            . ' xmlns:fn="http://www.w3.org/2005/xpath-functions"'
+                            . ' xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
+                            . ' xmlns:xs="http://www.w3.org/2001/XMLSchema"'
+                            . ' xmlns:new_prefix="http://a_new_namespace"'
+                            . ' xmlns:jcr="http://www.jcp.org/jcr/1.0"'
+                            . ' xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
+                            . ' xmlns:rep="internal" />',
             'depth'         => 0,
             'sort_order'    => 0,
         ));
