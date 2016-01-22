@@ -47,9 +47,6 @@
 
             <exclude>
                 <!-- ignore whats not implemented yet -->
-                <directory>vendor/phpcr/phpcr/src/PHPCR/Version</directory>
-                <directory>vendor/jackalope/jackalope/src/Jackalope/Version</directory>
-
                 <directory>vendor/phpcr/phpcr/src/PHPCR/Lock</directory>
                 <directory>vendor/jackalope/jackalope/src/Jackalope/Lock</directory>
 
