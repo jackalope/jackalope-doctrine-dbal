@@ -67,6 +67,8 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
                     'Query\\QueryManagerTest::testGetQuery',
                     'Query\\QueryManagerTest::testGetQueryInvalid',
                     'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
+                    // TODO: implement CAST, see also https://github.com/jackalope/jackalope-doctrine-dbal/issues/267
+                    'Query\QuerySql2OperationsTest::testQueryFieldDate',
                     // TODO fix handling of order by with missing properties
                     'Query\QuerySql2OperationsTest::testQueryOrderWithMissingProperty',
 
