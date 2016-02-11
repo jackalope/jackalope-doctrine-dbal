@@ -124,7 +124,7 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\QueryObjectModelInterface $qom
+     * @param QueryObjectModel $qom
      *
      * @return string
      */
@@ -189,7 +189,9 @@ class QOMWalker
      * Validates the nodeTypes in given source
      *
      * @param QOM\SourceInterface $source
+     *
      * @return QOM\SelectorInterface[]
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateSource(QOM\SourceInterface $source)
@@ -208,6 +210,7 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface $source
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateSelectorSource(QOM\SelectorInterface $source)
@@ -225,8 +228,10 @@ class QOMWalker
     }
 
     /**
-     * @return QOM\SelectorInterface[]
      * @param QOM\JoinInterface $source
+     *
+     * @return QOM\SelectorInterface[]
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateJoinSource(QOM\JoinInterface $source)
@@ -288,22 +293,52 @@ class QOMWalker
     }
 
     /**
+     * @param QOM\JoinConditionInterface $right
+     *
+     * @return string the alias on the right side of a join
+     *
+     * @throws \BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
+     */
+    private function getRightJoinSelector(QOM\JoinConditionInterface $right)
+    {
+        if ($right instanceof QOM\ChildNodeJoinConditionInterface) {
+            return $right->getParentSelectorName();
+        } elseif ($right instanceof QOM\DescendantNodeJoinConditionInterface) {
+            return $right->getAncestorSelectorName();
+        } elseif ($right instanceof QOM\SameNodeJoinConditionInterface || $right instanceof QOM\EquiJoinConditionInterface) {
+            return $right->getSelector2Name();
+        }
+        throw new \BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+    }
+
+    /**
      * @param QOM\JoinInterface $source
+     * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
+     *        that checks the workspace_name and type
      *
      * @return string
      *
-     * @throws NotImplementedException
+     * @throws NotImplementedException if the right side of the join consists of another join
      */
-    public function walkJoinSource(QOM\JoinInterface $source)
+    public function walkJoinSource(QOM\JoinInterface $source, $root = true)
     {
-        if (!$source->getLeft() instanceof QOM\SelectorInterface || !$source->getRight() instanceof QOM\SelectorInterface) {
-            throw new NotImplementedException("Join with Joins");
+        $this->source = $left = $source->getLeft(); // The $left variable is used for storing the leftmost selector
+
+        if (!$source->getRight() instanceof QOM\SelectorInterface) {
+            throw new NotImplementedException('The right side of the join should not consist of another join');
         }
 
-        $this->source = $source->getLeft();
-        $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
-        $sql = "FROM phpcr_nodes $leftAlias ";
-
+        if ($source->getLeft() instanceof QOM\SelectorInterface) {
+            $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
+            $this->getTableAlias($source->getLeft()->getSelectorName());
+            $sql = "FROM phpcr_nodes $leftAlias ";
+        } else {
+            $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
+            $leftAlias = $this->getTableAlias($this->getRightJoinSelector($source->getLeft()->getJoinCondition()));
+            while (!$left instanceof QOM\SelectorInterface) {
+                $left = $left->getLeft();
+            }
+        }
         $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
 
@@ -323,18 +358,31 @@ class QOMWalker
         $sql .= "AND " . $this->walkJoinCondition($source->getLeft(), $source->getRight(), $source->getJoinCondition()) . " ";
         $sql .= ") "; // close on-clause
 
-        $sql .= "WHERE $leftAlias.workspace_name = ? AND $leftAlias.type IN ('" . $source->getLeft()->getNodeTypeName() ."'";
-        $subTypes = $this->nodeTypeManager->getSubtypes($source->getLeft()->getNodeTypeName());
-        foreach ($subTypes as $subType) {
-            /* @var $subType \PHPCR\NodeType\NodeTypeInterface */
-            $sql .= ", '" . $subType->getName() . "'";
+
+        if ($root) { // The method call is not recursed when $root is true, so we can add a WHERE clause
+            // TODO: revise this part for alternatives
+            $sql .= "WHERE $leftAlias.workspace_name = ? AND $leftAlias.type IN ('" . $left->getNodeTypeName() . "'";
+            $subTypes = $this->nodeTypeManager->getSubtypes($left->getNodeTypeName());
+            foreach ($subTypes as $subType) {
+                /* @var $subType \PHPCR\NodeType\NodeTypeInterface */
+                $sql .= ", '" . $subType->getName() . "'";
+            }
+            $sql .= ')';
         }
-        $sql .= ')';
 
         return $sql;
     }
 
-    public function walkJoinCondition(QOM\SelectorInterface $left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
+    /**
+     * @param QOM\SelectorInterface|QOM\JoinInterface $left
+     * @param QOM\SelectorInterface $right
+     * @param QOM\JoinConditionInterface $condition
+     *
+     * @return string
+     *
+     * @throws NotImplementedException if a SameNodeJoinCondtion is used.
+     */
+    public function walkJoinCondition($left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
         if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
             return $this->walkChildNodeJoinCondition($condition);
@@ -345,7 +393,12 @@ class QOMWalker
         }
 
         if ($condition instanceof QOM\EquiJoinConditionInterface) {
-            return $this->walkEquiJoinCondition($left->getSelectorName(), $right->getSelectorName(), $condition);
+            if ($left instanceof QOM\SelectorInterface) {
+                $selectorName = $left->getSelectorName();
+            } else {
+                $selectorName = $this->getRightJoinSelector($left->getJoinCondition());
+            }
+            return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
         }
 
         if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
@@ -453,6 +506,8 @@ class QOMWalker
 
     /**
      * @param QOM\PropertyExistenceInterface $constraint
+     *
+     * @return string
      */
     public function walkPropertyExistenceConstraint(QOM\PropertyExistenceInterface $constraint)
     {
@@ -599,7 +654,9 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\ComparisonInterface $constraint
+     * @param QOM\PropertyValueInterface $propertyOperand
+     * @param QOM\LiteralInterface $literalOperand
+     * @param string $operator
      *
      * @return string
      */
@@ -675,6 +732,10 @@ class QOMWalker
 
     /**
      * @param QOM\OperandInterface $operand
+     *
+     * @return string
+     *
+     * @throws InvalidQueryException
      */
     public function walkOperand(QOM\OperandInterface $operand)
     {
