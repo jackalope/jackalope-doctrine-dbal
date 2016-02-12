@@ -294,7 +294,8 @@ class QOMWalker
 
     /**
      * @param QOM\JoinInterface $source
-     * @param boolean $root
+     * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
+     *        that checks the workspace_name and type
      *
      * @return string
      *
@@ -354,7 +355,7 @@ class QOMWalker
     }
 
     /**
-     * @param $left
+     * @param QOM\SelectorInterface|QOM\JoinInterface $left
      * @param QOM\SelectorInterface $right
      * @param QOM\JoinConditionInterface $condition
      *
