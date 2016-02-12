@@ -15,6 +15,12 @@
             "homepage": "https://github.com/jackalope/jackalope-jackrabbit/contributors"
         }
     ],
+    "repositories": [
+        {
+            "type": "vcs",
+            "url":  "https://github.com/richard-fizz/jackalope-doctrine-dbal.git"
+        }
+    ],
     "require": {
         "php": ">=5.3.3",
         "doctrine/dbal": ">=2.4.5,<3.0.x-dev",
