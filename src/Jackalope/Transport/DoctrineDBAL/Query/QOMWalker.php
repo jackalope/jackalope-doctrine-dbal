@@ -266,7 +266,7 @@ class QOMWalker
         }
 
         if ($source instanceof QOM\JoinInterface) {
-            return $this->walkJoinSource($source, true);
+            return $this->walkJoinSource($source);
         }
 
         throw new NotImplementedException(sprintf("The source class '%s' is not supported", get_class($source)));
@@ -289,12 +289,13 @@ class QOMWalker
 
     /**
      * @param QOM\JoinInterface $source
+     * @param boolean $root
      *
      * @return string
      *
      * @throws NotImplementedException
      */
-    public function walkJoinSource(QOM\JoinInterface $source, $root = false)
+    public function walkJoinSource(QOM\JoinInterface $source, $root = true)
     {
         $this->source = $left = $source->getLeft(); // The $left variable is used for storing the leftmost selector
 
@@ -302,16 +303,16 @@ class QOMWalker
             throw new NotImplementedException('The right side of the join should not consist of another join');
         }
 
-        if (!$source->getLeft() instanceof QOM\SelectorInterface) {
-            $sql = $this->walkJoinSource($left) . ' '; // One step left, until we're at the selector
+        if ($source->getLeft() instanceof QOM\SelectorInterface) {
+            $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
+            $this->getTableAlias($source->getLeft()->getSelectorName());
+            $sql = "FROM phpcr_nodes $leftAlias ";
+        } else {
+            $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
             $leftAlias = $this->getTableAlias($source->getLeft()->getJoinCondition()->getSelector2Name());
             while (!$left instanceof QOM\SelectorInterface) {
                 $left = $left->getLeft();
             }
-        } else {
-            $leftAlias = $this->getTableAlias($source->getLeft()->getSelectorName());
-            $this->getTableAlias($source->getLeft()->getSelectorName());
-            $sql = "FROM phpcr_nodes $leftAlias ";
         }
         $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
@@ -333,7 +334,8 @@ class QOMWalker
         $sql .= ") "; // close on-clause
 
 
-        if ($root) {
+        if ($root) { // The method call is not recursed when $root is true, so we can add a WHERE clause
+            // TODO: revise this part for alternatives
             $sql .= "WHERE $leftAlias.workspace_name = ? AND $leftAlias.type IN ('" . $left->getNodeTypeName() . "'";
             $subTypes = $this->nodeTypeManager->getSubtypes($left->getNodeTypeName());
             foreach ($subTypes as $subType) {
@@ -357,10 +359,10 @@ class QOMWalker
         }
 
         if ($condition instanceof QOM\EquiJoinConditionInterface) {
-            if (!$left instanceof QOM\SelectorInterface) {
-                $selectorName = $left->getJoinCondition()->getSelector2Name();
-            } else {
+            if ($left instanceof QOM\SelectorInterface) {
                 $selectorName = $left->getSelectorName();
+            } else {
+                $selectorName = $left->getJoinCondition()->getSelector2Name();
             }
             return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
         }
@@ -404,8 +406,8 @@ class QOMWalker
     public function walkEquiJoinCondition($leftSelectorName, $rightSelectorName, QOM\EquiJoinConditionInterface $condition)
     {
         return $this->walkOperand(new PropertyValue($leftSelectorName, $condition->getProperty1Name())) . " " .
-        $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) . " " .
-        $this->walkOperand(new PropertyValue($rightSelectorName, $condition->getProperty2Name()));
+               $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) . " " .
+               $this->walkOperand(new PropertyValue($rightSelectorName, $condition->getProperty2Name()));
     }
 
     /**
@@ -465,7 +467,7 @@ class QOMWalker
      */
     public function walkFullTextSearchConstraint(QOM\FullTextSearchInterface $constraint)
     {
-        return $this->sqlXpathExtractValue($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName()) . ' LIKE ' . $this->conn->quote('%' . $constraint->getFullTextSearchExpression() . '%');
+        return $this->sqlXpathExtractValue($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName()).' LIKE '. $this->conn->quote('%'.$constraint->getFullTextSearchExpression().'%');
     }
 
     /**
@@ -593,8 +595,8 @@ class QOMWalker
                 }
 
                 return $this->platform->getConcatExpression("$alias.namespace", "(CASE $alias.namespace WHEN '' THEN '' ELSE ':' END)", "$alias.local_name") . " " .
-                $operator . " " .
-                $this->conn->quote($literal);
+                       $operator . " " .
+                       $this->conn->quote($literal);
             }
 
             if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
@@ -786,7 +788,7 @@ class QOMWalker
             }
         }
 
-        $sql .= ' ' . $direction;
+        $sql .= ' ' .$direction;
 
         return $sql;
     }
@@ -819,7 +821,7 @@ class QOMWalker
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
         if ($this->platform instanceof PostgreSqlPlatform) {
-            return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . ") = 't'";
+            return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
         if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
@@ -842,11 +844,11 @@ class QOMWalker
             return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
         if ($this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . "))[1]::text";
+            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
         if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
-        }
+        }return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . "))[1]::text::int";
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
@@ -854,7 +856,7 @@ class QOMWalker
     private function sqlXpathExtractNumValue($alias, $property)
     {
         if ($this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . "))[1]::text::int";
+            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
         }
 
 
@@ -896,7 +898,7 @@ class QOMWalker
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
         } elseif ($this->platform instanceof PostgreSqlPlatform) {
-            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . ") = 't'";
+            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
         } else {
@@ -916,13 +918,13 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface $source
-     * @param string $alias
+     * @param string                $alias
      *
      * @return string
      */
     private function sqlNodeTypeClause($alias, QOM\SelectorInterface $source)
     {
-        $sql = "$alias.type IN ('" . $source->getNodeTypeName() . "'";
+        $sql = "$alias.type IN ('" . $source->getNodeTypeName() ."'";
 
         $subTypes = $this->nodeTypeManager->getSubtypes($source->getNodeTypeName());
         foreach ($subTypes as $subType) {
