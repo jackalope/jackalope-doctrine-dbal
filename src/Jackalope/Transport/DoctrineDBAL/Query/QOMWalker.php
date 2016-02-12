@@ -293,6 +293,26 @@ class QOMWalker
     }
 
     /**
+     * @param QOM\JoinConditionInterface $right
+     *
+     * @return string the alias on the right side of a join
+     *
+     * @throws \BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
+     */
+    private function getRightJoinSelector(QOM\JoinConditionInterface $right) {
+        if($right instanceof QOM\ChildNodeJoinConditionInterface) {
+            return $right->getParentSelectorName();
+        }
+        elseif($right instanceof QOM\DescendantNodeJoinConditionInterface) {
+            return $right->getAncestorSelectorName();
+        }
+        elseif(method_exists($right, 'getSelector2Name')) {
+            return $right->getSelector2Name();
+        }
+        throw new \BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+    }
+
+    /**
      * @param QOM\JoinInterface $source
      * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
      *        that checks the workspace_name and type
@@ -315,7 +335,7 @@ class QOMWalker
             $sql = "FROM phpcr_nodes $leftAlias ";
         } else {
             $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
-            $leftAlias = $this->getTableAlias($source->getLeft()->getJoinCondition()->getSelector2Name());
+            $leftAlias = $this->getTableAlias($this->getRightJoinSelector($source->getLeft()->getJoinCondition()));
             while (!$left instanceof QOM\SelectorInterface) {
                 $left = $left->getLeft();
             }
@@ -377,7 +397,7 @@ class QOMWalker
             if ($left instanceof QOM\SelectorInterface) {
                 $selectorName = $left->getSelectorName();
             } else {
-                $selectorName = $left->getJoinCondition()->getSelector2Name();
+                $selectorName = $this->getRightJoinSelector($left->getJoinCondition());
             }
             return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
         }
