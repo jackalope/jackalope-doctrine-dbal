@@ -189,7 +189,9 @@ class QOMWalker
      * Validates the nodeTypes in given source
      *
      * @param QOM\SourceInterface $source
+     *
      * @return QOM\SelectorInterface[]
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateSource(QOM\SourceInterface $source)
@@ -208,6 +210,7 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface $source
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateSelectorSource(QOM\SelectorInterface $source)
@@ -225,8 +228,10 @@ class QOMWalker
     }
 
     /**
-     * @return QOM\SelectorInterface[]
      * @param QOM\JoinInterface $source
+     *
+     * @return QOM\SelectorInterface[]
+     *
      * @throws \PHPCR\Query\InvalidQueryException
      */
     protected function validateJoinSource(QOM\JoinInterface $source)
@@ -293,7 +298,7 @@ class QOMWalker
      *
      * @return string
      *
-     * @throws NotImplementedException
+     * @throws NotImplementedException if the right side of the join consists of another join
      */
     public function walkJoinSource(QOM\JoinInterface $source, $root = true)
     {
@@ -348,6 +353,15 @@ class QOMWalker
         return $sql;
     }
 
+    /**
+     * @param $left
+     * @param QOM\SelectorInterface $right
+     * @param QOM\JoinConditionInterface $condition
+     *
+     * @return string
+     *
+     * @throws NotImplementedException if a SameNodeJoinCondtion is used.
+     */
     public function walkJoinCondition($left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
         if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
@@ -472,6 +486,8 @@ class QOMWalker
 
     /**
      * @param QOM\PropertyExistenceInterface $constraint
+     *
+     * @return string
      */
     public function walkPropertyExistenceConstraint(QOM\PropertyExistenceInterface $constraint)
     {
@@ -618,7 +634,9 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\ComparisonInterface $constraint
+     * @param QOM\PropertyValueInterface $propertyOperand
+     * @param QOM\LiteralInterface $literalOperand
+     * @param string $operator
      *
      * @return string
      */
@@ -694,6 +712,10 @@ class QOMWalker
 
     /**
      * @param QOM\OperandInterface $operand
+     *
+     * @return string
+     *
+     * @throws InvalidQueryException
      */
     public function walkOperand(QOM\OperandInterface $operand)
     {
