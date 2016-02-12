@@ -848,7 +848,7 @@ class QOMWalker
         }
         if ($this->platform instanceof SqlitePlatform) {
             return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
-        }return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), " . $this->sqlXpathPostgreSQLNamespaces() . "))[1]::text::int";
+        }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
     }
