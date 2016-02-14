@@ -2716,5 +2716,3 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // TODO: Implement removeVersionLabel() method.
     }
 }
-
-
