@@ -26,12 +26,25 @@ class CachedClient extends Client
      */
     private $caches;
 
+    /**
+     * @var \Closure that accepts a cache key as argument and returns it after sanitizing it.
+     */
+    private $keySanitizer;
+
     public function __construct(FactoryInterface $factory, Connection $conn, array $caches = array())
     {
         parent::__construct($factory, $conn);
 
         $caches['meta'] = isset($caches['meta']) ? $caches['meta'] : new ArrayCache();
         $this->caches = $caches;
+        $this->keySanitizer = function($cacheKey){ return str_replace(' ', '_', $cacheKey);};
+    }
+
+    /**
+     * @param \Closure $sanitizer
+     */
+    public function setKeySanitizer(\Closure $sanitizer){
+        $this->keySanitizer = $sanitizer;
     }
 
     /**
@@ -48,13 +61,28 @@ class CachedClient extends Client
     }
 
     /**
+     * Sanitizes the key using $this->keySanitizer
+     *
+     * @param string $cacheKey
+     *
+     * @return mixed
+     */
+    private function sanitizeKey($cacheKey){
+        if($sanitizer = $this->keySanitizer){
+            return $sanitizer($cacheKey);
+        }
+        return $cacheKey;
+    }
+
+    /**
      * @param Node $node
      */
     private function clearNodeCache(Node $node)
     {
         $cacheKey = "nodes: {$node->getPath()}, ".$this->workspaceName;
-        $this->caches['nodes']->delete($cacheKey);
+        $cacheKey = $this->sanitizeKey($cacheKey);
 
+        $this->caches['nodes']->delete($cacheKey);
         // actually in the DBAL all nodes have a uuid ..
         if ($node->isNodeType('mix:referenceable')) {
             $uuid = $node->getIdentifier();
@@ -94,6 +122,8 @@ class CachedClient extends Client
     protected function workspaceExists($workspaceName)
     {
         $cacheKey = "workspace: $workspaceName";
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         $result = $this->caches['meta']->fetch($cacheKey);
         if (!$result && parent::workspaceExists($workspaceName)) {
             $result = 1;
@@ -109,6 +139,8 @@ class CachedClient extends Client
     protected function fetchUserNodeTypes()
     {
         $cacheKey = 'node_types';
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if (!$this->inTransaction && $result = $this->caches['meta']->fetch($cacheKey)) {
             return $result;
         }
@@ -128,6 +160,8 @@ class CachedClient extends Client
     public function getNodeTypes($nodeTypes = array())
     {
         $cacheKey = 'nodetypes: '.serialize($nodeTypes);
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         $result = $this->caches['meta']->fetch($cacheKey);
         if (!$result) {
             $result = parent::getNodeTypes($nodeTypes);
@@ -147,6 +181,8 @@ class CachedClient extends Client
         }
 
         $cacheKey = 'namespaces';
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         $result = $this->caches['meta']->fetch($cacheKey);
         if ($result) {
             $this->setNamespaces($result);
@@ -175,6 +211,8 @@ class CachedClient extends Client
     public function getAccessibleWorkspaceNames()
     {
         $cacheKey = 'workspaces';
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         $workspaces = $this->caches['meta']->fetch($cacheKey);
         if (!$workspaces) {
             $workspaces = parent::getAccessibleWorkspaceNames();
@@ -196,6 +234,8 @@ class CachedClient extends Client
         $this->assertLoggedIn();
 
         $cacheKey = "nodes: $path, ".$this->workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException(sprintf('Item "%s" not found in workspace "%s"', $path, $this->workspaceName));
@@ -254,6 +294,8 @@ class CachedClient extends Client
         }
 
         $cacheKey = "id: $uuid, ".$workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('false' === $result) {
                 return false;
@@ -422,6 +464,8 @@ class CachedClient extends Client
         $this->assertLoggedIn();
 
         $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException("no item found with uuid ".$uuid);
@@ -485,6 +529,8 @@ class CachedClient extends Client
         }
 
         $cacheKey = "nodes references: $path, $name, " . $this->workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             return $result;
         }
@@ -506,6 +552,8 @@ class CachedClient extends Client
         }
 
         $cacheKey = "nodes weak references: $path, $name, " . $this->workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if ($result = $this->caches['nodes']->fetch($cacheKey)) {
             return $result;
         }
@@ -529,6 +577,8 @@ class CachedClient extends Client
         $this->assertLoggedIn();
 
         $cacheKey = "query: {$query->getStatement()}, {$query->getLimit()}, {$query->getOffset()}, {$query->getLanguage()}, ".$this->workspaceName;
+        $cacheKey = $this->sanitizeKey($cacheKey);
+
         if ($result = $this->caches['query']->fetch($cacheKey)) {
             return $result;
         }
@@ -540,7 +590,7 @@ class CachedClient extends Client
         return $result;
     }
 
-        /**
+    /**
      * {@inheritDoc}
      */
     public function commitTransaction()
