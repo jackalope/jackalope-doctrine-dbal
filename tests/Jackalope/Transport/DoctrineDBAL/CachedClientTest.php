@@ -13,7 +13,7 @@ class CachedClientTest extends FunctionalTestCase
     protected function getClient(Connection $conn)
     {
         $this->cacheMock = $this->getMock('\Doctrine\Common\Cache\MemcachedCache');
-        return new CachedClient(new \Jackalope\Factory(), $conn, ['nodes' => $this->cacheMock, 'meta' => $this->cacheMock]);
+        return new CachedClient(new \Jackalope\Factory(), $conn, array('nodes' => $this->cacheMock, 'meta' => $this->cacheMock));
     }
 
     public function testArrayObjectIsConvertedToArray()
@@ -26,7 +26,8 @@ class CachedClientTest extends FunctionalTestCase
     /**
      * The default key sanitizer replaces spaces with underscores
      */
-    public function testDefaultKeySanitizer(){
+    public function testDefaultKeySanitizer()
+    {
         $this->cacheMock
             ->expects($this->at(0))
             ->method('fetch')
@@ -39,11 +40,12 @@ class CachedClientTest extends FunctionalTestCase
         $cachedClient->getNodeTypes();
     }
 
-    public function testCustomkeySanitizer(){
+    public function testCustomkeySanitizer()
+    {
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
         //set a custom sanitizer that reveres the cachekey
-        $cachedClient->setKeySanitizer(function($cacheKey){
+        $cachedClient->setKeySanitizer(function ($cacheKey) {
             return strrev($cacheKey);
         });
 
