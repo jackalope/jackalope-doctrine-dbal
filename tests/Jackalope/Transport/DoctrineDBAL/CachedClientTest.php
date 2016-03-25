@@ -12,7 +12,7 @@ class CachedClientTest extends FunctionalTestCase
 
     protected function getClient(Connection $conn)
     {
-        $this->cacheMock = $this->getMock('\Doctrine\Common\Cache\MemcachedCache');
+        $this->cacheMock = $this->getMock('\Doctrine\Common\Cache\ArrayCache');
         return new CachedClient(new \Jackalope\Factory(), $conn, array('nodes' => $this->cacheMock, 'meta' => $this->cacheMock));
     }
 
