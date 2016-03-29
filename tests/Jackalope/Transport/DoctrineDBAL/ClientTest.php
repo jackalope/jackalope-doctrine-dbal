@@ -30,6 +30,29 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals(1, count($result->getNodes()));
     }
 
+    /**
+     * If the node was deleted in another session and we refresh the session
+     * what should happen?
+     */
+    public function testRefreshWithDeletedNodes()
+    {
+        $root = $this->session->getNode('/');
+        $article = $root->addNode('article');
+        $article->setProperty('foo', 'bar');
+        $article->setProperty('bar', 'baz');
+        $article->setProperty('bar', 'baz');
+        $this->session->save();
+
+        // simulate node being deleted in another session.
+        $nbRows = $this->getConnection()->exec('DELETE FROM phpcr_nodes WHERE path="/article"');
+        $this->assertEquals(1, $nbRows);
+
+        $this->session->refresh(false);
+
+        // throws PathNotFoundException
+        $article->getProperty('foo');
+    }
+
     public function testAddNodeTypes()
     {
         $workspace = $this->session->getWorkspace();
