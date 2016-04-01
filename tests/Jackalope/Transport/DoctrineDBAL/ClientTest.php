@@ -525,4 +525,20 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals($child1['props'], $child2['props']);
         $this->assertEquals($child1['numerical_props'], $child2['numerical_props']);
     }
+
+    /**
+     * The date value should not change when saving.
+     */
+    public function testDate()
+    {
+        $rootNode = $this->session->getNode('/');
+        $child1 = $rootNode->addNode('child1');
+        $date = new \DateTime();
+        $before = $date->format('c');
+        $child1->setProperty('date', $date);
+        $this->session->save();
+        $after = $date->format('c');
+
+        $this->assertEquals($before, $after);
+    }
 }

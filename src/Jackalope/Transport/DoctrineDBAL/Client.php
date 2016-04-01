@@ -1157,6 +1157,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     }
                     foreach ((array) $values as $key => $date) {
                         if ($date instanceof \DateTime) {
+                            // do not modify the instance which is associated with the node.
+                            $date = clone $date;
+
+                            // normalize to UTC for storage.
                             $date->setTimezone(new \DateTimeZone('UTC'));
                         }
                         $values[$key] = $date;
