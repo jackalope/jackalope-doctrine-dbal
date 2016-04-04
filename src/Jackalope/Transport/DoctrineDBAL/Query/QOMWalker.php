@@ -690,6 +690,10 @@ class QOMWalker
             );
         }
 
+        if ('=' === $operator) {
+            return $this->sqlXpathComparePropertyValue($alias, $property, $literalOperand->getLiteralValue(), $operator);
+        }
+
         return sprintf(
             '%s %s %s',
             $this->sqlXpathExtractNumValue($alias, $property),
