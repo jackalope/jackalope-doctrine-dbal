@@ -526,6 +526,37 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals($child1['numerical_props'], $child2['numerical_props']);
     }
 
+    public function testCopySiblingWithSamePrefix()
+    {
+        $rootNode = $this->session->getNode('/');
+        $child1 = $rootNode->addNode('child1');
+        $child1->setProperty('string', 'Hello');
+        $child1->setProperty('number', 1234);
+        $child2 = $rootNode->addNode('child1-2');
+        $child2->setProperty('string', 'Hello');
+        $child2->setProperty('number', 1234);
+
+        $this->session->save();
+
+        $this->session->getWorkspace()->copy('/child1', '/child2');
+
+        $stmt = $this->conn->query("SELECT * FROM phpcr_nodes WHERE path LIKE '/child%'");
+        $children = $stmt->fetchAll();
+
+        $this->assertCount(3, $children);
+
+        $paths = array_map(
+            function ($child) {
+                return $child['path'];
+            },
+            $children
+        );
+
+        $this->assertContains('/child1', $paths);
+        $this->assertContains('/child2', $paths);
+        $this->assertContains('/child1-2', $paths);
+    }
+
     /**
      * The date value should not change when saving.
      */
