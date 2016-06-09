@@ -37,7 +37,9 @@ class CachedClient extends Client
 
         $caches['meta'] = isset($caches['meta']) ? $caches['meta'] : new ArrayCache();
         $this->caches = $caches;
-        $this->keySanitizer = function ($cacheKey) { return str_replace(' ', '_', $cacheKey);};
+        $this->keySanitizer = function ($cacheKey) {
+            return str_replace(' ', '_', $cacheKey);
+        };
     }
 
     /**
