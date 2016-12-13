@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Jackalope\NamespaceRegistry;
 use Jackalope\Version\GenericVersioningInterface;
 use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
@@ -149,6 +150,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $coreNamespaces = array(
         NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
+        NamespaceRegistry::PREFIX_REP => NamespaceRegistry::NAMESPACE_REP,
         NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
         NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
         NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
