@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Jackalope\NamespaceRegistry;
 use Jackalope\Version\GenericVersioningInterface;
 use Jackalope\Version\VersionHandler;
 use PHPCR\LoginException;
@@ -30,6 +31,8 @@ use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\ValueConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
+use PHPCR\Version\LabelExistsVersionException;
+use PHPCR\Version\VersionException;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DBALException;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
@@ -51,7 +54,6 @@ use Jackalope\NodeType\NodeTypeDefinition;
 use Jackalope\FactoryInterface;
 use Jackalope\NotImplementedException;
 use Jackalope\NodeType\NodeProcessor;
-use PHPCR\Version\VersionException;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -148,6 +150,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $coreNamespaces = array(
         NamespaceRegistryInterface::PREFIX_EMPTY => NamespaceRegistryInterface::NAMESPACE_EMPTY,
+        NamespaceRegistry::PREFIX_REP => NamespaceRegistry::NAMESPACE_REP,
         NamespaceRegistryInterface::PREFIX_JCR => NamespaceRegistryInterface::NAMESPACE_JCR,
         NamespaceRegistryInterface::PREFIX_NT => NamespaceRegistryInterface::NAMESPACE_NT,
         NamespaceRegistryInterface::PREFIX_MIX => NamespaceRegistryInterface::NAMESPACE_MIX,
@@ -1916,6 +1919,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
+     * Returns a handler for the versioning mechanism
+     *
+     * @return VersionHandler
+     */
+    private function getVersionHandler()
+    {
+        return $this->versionHandler;
+    }
+
+    /**
      * {@inheritDoc}
      */
     public function storeNodes(array $operations)
@@ -2653,7 +2666,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function restoreItem($removeExisting, $versionPath, $path)
     {
-        throw new NotImplementedException();
+        return $this->versionHandler->restoreItem($removeExisting, $versionPath, $path);
     }
 
     /**
@@ -2675,5 +2688,33 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->versionHandler = $versionHandler;
+    }
+
+    /**
+     * Adds the label <code>label</code> to the specified version.
+     *
+     * @param string $versionName the absolute path to the version
+     * @param string $label
+     * @param boolean $moveLabel
+     *
+     * @throws LabelExistsVersionException if, the label is set to another version and
+     * the parameter moveLabel is set to false.
+     *
+     * @throws RepositoryException in case of an other error.
+     */
+    public function addVersionLabel($versionName, $label, $moveLabel)
+    {
+        // TODO: Implement addVersionLabel() method.
+    }
+
+    /**
+     * Removes a label from the specified version.
+     *
+     * @param string $versionPath the absolute path to the version.
+     * @param string $label the label, that has to be removed.
+     */
+    public function removeVersionLabel($versionPath, $label)
+    {
+        // TODO: Implement removeVersionLabel() method.
     }
 }

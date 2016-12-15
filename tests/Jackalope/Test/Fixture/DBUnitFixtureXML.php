@@ -114,11 +114,6 @@ class DBUnitFixtureXML extends XMLDocument
             $this->rootNodes[$workspaceName] = true;
         }
 
-        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'fixtures' . DIRECTORY_SEPARATOR . 'system.xml');
-        foreach ($srcDom->load()->getNodes() as $node) {
-            $this->addNode($workspaceName, $node);
-        }
-
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
@@ -131,6 +126,62 @@ class DBUnitFixtureXML extends XMLDocument
         $uuid = UUIDHelper::generateUUID();
         $this->ids[$uuid] = self::$idCounter++;
 
+        $this->addRow('phpcr_nodes', array(
+            'id'             => self::$idCounter++,
+            'path'           => '/jcr:system',
+            'parent'         => '/',
+            'local_name'     => 'jcr:system',
+            'namespace'      => 'http://www.jcp.org/jcr/1.0',
+            'workspace_name' => $workspaceName,
+            'identifier'     => UUIDHelper::generateUUID(),
+            'type'           => 'rep:system',
+            'props'          => '<?xml version="1.0" encoding="UTF-8"?>'
+                . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
+                . ' xmlns:lx="http://flux-cms.org/2.0"'
+                . ' xmlns:test="http://liip.to/jackalope"'
+                . ' xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
+                . ' xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
+                . ' xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
+                . ' xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
+                . ' xmlns:fn="http://www.w3.org/2005/xpath-functions"'
+                . ' xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
+                . ' xmlns:xs="http://www.w3.org/2001/XMLSchema"'
+                . ' xmlns:new_prefix="http://a_new_namespace"'
+                . ' xmlns:jcr="http://www.jcp.org/jcr/1.0"'
+                . ' xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
+                . ' xmlns:rep="internal" />',
+            'depth'          => 1,
+            'sort_order'     => 0,
+        ));
+
+        $this->addRow('phpcr_nodes', array(
+            'id'             => self::$idCounter++,
+            'path'           => '/jcr:system/jcr:versionStorage',
+            'parent'         => '/jcr:system',
+            'local_name'     => 'jcr:versionStorage',
+            'namespace'      => 'http://www.jcp.org/jcr/1.0',
+            'workspace_name' => $workspaceName,
+            'identifier'     => UUIDHelper::generateUUID(),
+            'type'           => 'rep:versionStorage',
+            'props'          => '<?xml version="1.0" encoding="UTF-8"?>'
+                . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
+                . ' xmlns:lx="http://flux-cms.org/2.0"'
+                . ' xmlns:test="http://liip.to/jackalope"'
+                . ' xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
+                . ' xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
+                . ' xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
+                . ' xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
+                . ' xmlns:fn="http://www.w3.org/2005/xpath-functions"'
+                . ' xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
+                . ' xmlns:xs="http://www.w3.org/2001/XMLSchema"'
+                . ' xmlns:new_prefix="http://a_new_namespace"'
+                . ' xmlns:jcr="http://www.jcp.org/jcr/1.0"'
+                . ' xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
+                . ' xmlns:rep="internal" />',
+            'depth'          => 2,
+            'sort_order'     => 0,
+        ));
+
         return $this->addRow('phpcr_nodes', array(
             'id'             => $this->ids[$uuid],
             'path'           => '/',
@@ -142,19 +193,19 @@ class DBUnitFixtureXML extends XMLDocument
             'type'           => 'nt:unstructured',
             'props'          => '<?xml version="1.0" encoding="UTF-8"?>'
                              . '<sv:node xmlns:crx="http://www.day.com/crx/1.0"'
-                             . 'xmlns:lx="http://flux-cms.org/2.0"'
-                             . 'xmlns:test="http://liip.to/jackalope"'
-                             . 'xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
-                             . 'xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
-                             . 'xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
-                             . 'xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
-                             . 'xmlns:fn="http://www.w3.org/2005/xpath-functions"'
-                             . 'xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
-                             . 'xmlns:xs="http://www.w3.org/2001/XMLSchema"'
-                             . 'xmlns:new_prefix="http://a_new_namespace"'
-                             . 'xmlns:jcr="http://www.jcp.org/jcr/1.0"'
-                             . 'xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
-                             . 'xmlns:rep="internal" />',
+                             . ' xmlns:lx="http://flux-cms.org/2.0"'
+                             . ' xmlns:test="http://liip.to/jackalope"'
+                             . ' xmlns:mix="http://www.jcp.org/jcr/mix/1.0"'
+                             . ' xmlns:sling="http://sling.apache.org/jcr/sling/1.0"'
+                             . ' xmlns:nt="http://www.jcp.org/jcr/nt/1.0"'
+                             . ' xmlns:fn_old="http://www.w3.org/2004/10/xpath-functions"'
+                             . ' xmlns:fn="http://www.w3.org/2005/xpath-functions"'
+                             . ' xmlns:vlt="http://www.day.com/jcr/vault/1.0"'
+                             . ' xmlns:xs="http://www.w3.org/2001/XMLSchema"'
+                             . ' xmlns:new_prefix="http://a_new_namespace"'
+                             . ' xmlns:jcr="http://www.jcp.org/jcr/1.0"'
+                             . ' xmlns:sv="http://www.jcp.org/jcr/sv/1.0"'
+                             . ' xmlns:rep="internal" />',
             'depth'          => 0,
             'sort_order'     => 0,
         ));
