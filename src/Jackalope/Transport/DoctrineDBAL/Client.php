@@ -619,7 +619,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // 4. if a reference is in the properties, either update the uuid based on the map if its inside the copied graph or keep it.
         // 5. "May drop mixin types"
 
-        $query = 'SELECT * FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
+        $query = 'SELECT * FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ? ORDER BY depth, sort_order';
         $stmt = $this->getConnection()->executeQuery($query, array($srcAbsPath, $srcAbsPath . '/%', $srcWorkspace));
         $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
