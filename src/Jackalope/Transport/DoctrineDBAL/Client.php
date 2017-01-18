@@ -1998,8 +1998,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Fetch a user-defined node-type definition.
      *
-     * @param string $name
-     *
      * @return array
      */
     protected function fetchUserNodeTypes()
@@ -2080,31 +2078,36 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 throw new RepositoryException(sprintf('%s: can\'t reregister built-in node type.', $type->getName()));
             }
 
-            if ($allowUpdate) {
-                $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
-                $result = $this->getConnection()->fetchColumn($query, array($type->getName()));
-                if ($result) {
-                    $this->getConnection()->delete('phpcr_type_nodes', array('node_type_id' => $result));
-                    $this->getConnection()->delete('phpcr_type_props', array('node_type_id' => $result));
-                    $this->getConnection()->delete('phpcr_type_childs', array('node_type_id' => $result));
+            $nodeTypeName = $type->getName();
+
+            $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
+            $result = $this->getConnection()->fetchColumn($query, array($nodeTypeName));
+
+            $data = array(
+                'name' => $nodeTypeName,
+                'supertypes' => implode(' ', $type->getDeclaredSuperTypeNames()),
+                'is_abstract' => $type->isAbstract() ? 1 : 0,
+                'is_mixin' => $type->isMixin() ? 1 : 0,
+                'queryable' => $type->isQueryable() ? 1 : 0,
+                'orderable_child_nodes' => $type->hasOrderableChildNodes() ? 1 : 0,
+                'primary_item' => $type->getPrimaryItemName(),
+            );
+
+            if ($result) {
+                if (!$allowUpdate) {
+                    throw new NodeTypeExistsException("Could not register node type with the name '$nodeTypeName'.");
                 }
-            }
 
-            try {
-                $this->getConnection()->insert('phpcr_type_nodes', array(
-                    'name' => $type->getName(),
-                    'supertypes' => implode(' ', $type->getDeclaredSuperTypeNames()),
-                    'is_abstract' => $type->isAbstract() ? 1 : 0,
-                    'is_mixin' => $type->isMixin() ? 1 : 0,
-                    'queryable' => $type->isQueryable() ? 1 : 0,
-                    'orderable_child_nodes' => $type->hasOrderableChildNodes() ? 1 : 0,
-                    'primary_item' => $type->getPrimaryItemName(),
-                ));
-            } catch (DBALException $e) {
-                throw new NodeTypeExistsException("Could not register node type with the name '".$type->getName()."'");
-            }
+                $this->getConnection()->update('phpcr_type_nodes', $data, array('node_type_id' => $result));
+                $this->getConnection()->delete('phpcr_type_props', array('node_type_id' => $result));
+                $this->getConnection()->delete('phpcr_type_childs', array('node_type_id' => $result));
 
-            $nodeTypeId = $this->getConnection()->lastInsertId($this->sequenceTypeName);
+                $nodeTypeId = $result;
+            } else {
+                $this->getConnection()->insert('phpcr_type_nodes', $data);
+
+                $nodeTypeId = $this->getConnection()->lastInsertId($this->sequenceTypeName);
+            }
 
             if ($propDefs = $type->getDeclaredPropertyDefinitions()) {
                 foreach ($propDefs as $propertyDef) {
