@@ -2078,17 +2078,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 throw new RepositoryException(sprintf('%s: can\'t reregister built-in node type.', $type->getName()));
             }
 
-            if ($allowUpdate) {
-                $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
-                $result = $this->getConnection()->fetchColumn($query, array($type->getName()));
-                if ($result) {
-                    $this->getConnection()->delete('phpcr_type_props', array('node_type_id' => $result));
-                    $this->getConnection()->delete('phpcr_type_childs', array('node_type_id' => $result));
-                }
-            }
+            $nodeTypeName = $type->getName();
+
+            $query = "SELECT * FROM phpcr_type_nodes WHERE name = ?";
+            $result = $this->getConnection()->fetchColumn($query, array($nodeTypeName));
 
             $data = array(
-                'name' => $type->getName(),
+                'name' => $nodeTypeName,
                 'supertypes' => implode(' ', $type->getDeclaredSuperTypeNames()),
                 'is_abstract' => $type->isAbstract() ? 1 : 0,
                 'is_mixin' => $type->isMixin() ? 1 : 0,
@@ -2097,19 +2093,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 'primary_item' => $type->getPrimaryItemName(),
             );
 
-            try {
-                if ($allowUpdate && $result) {
-                    $this->getConnection()->update('phpcr_type_nodes', $data, array('node_type_id' => $result));
-                } else {
-                    $this->getConnection()->insert('phpcr_type_nodes', $data);
+            if ($result) {
+                if (!$allowUpdate) {
+                    throw new NodeTypeExistsException("Could not register node type with the name '$nodeTypeName'.");
                 }
-            } catch (DBALException $e) {
-                throw new NodeTypeExistsException("Could not register node type with the name '".$type->getName()."'");
-            }
 
-            if ($allowUpdate && $result) {
+                $this->getConnection()->update('phpcr_type_nodes', $data, array('node_type_id' => $result));
+                $this->getConnection()->delete('phpcr_type_props', array('node_type_id' => $result));
+                $this->getConnection()->delete('phpcr_type_childs', array('node_type_id' => $result));
+
                 $nodeTypeId = $result;
             } else {
+                $this->getConnection()->insert('phpcr_type_nodes', $data);
+
                 $nodeTypeId = $this->getConnection()->lastInsertId($this->sequenceTypeName);
             }
 
