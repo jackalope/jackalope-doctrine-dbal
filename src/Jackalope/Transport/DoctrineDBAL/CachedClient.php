@@ -2,6 +2,8 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use ArrayObject;
+use Closure;
 use Doctrine\Common\Cache\Cache;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
@@ -10,6 +12,7 @@ use Jackalope\FactoryInterface;
 use Jackalope\Node;
 use Jackalope\Query\Query;
 use PHPCR\ItemNotFoundException;
+use PHPCR\RepositoryException;
 
 /**
  * Class to add caching to the Doctrine DBAL client.
@@ -27,7 +30,7 @@ class CachedClient extends Client
     private $caches;
 
     /**
-     * @var \Closure that accepts a cache key as argument and returns it after sanitizing it.
+     * @var Closure that accepts a cache key as argument and returns it after sanitizing it.
      */
     private $keySanitizer;
 
@@ -43,9 +46,9 @@ class CachedClient extends Client
     }
 
     /**
-     * @param \Closure $sanitizer
+     * @param Closure $sanitizer
      */
-    public function setKeySanitizer(\Closure $sanitizer)
+    public function setKeySanitizer(Closure $sanitizer)
     {
         $this->keySanitizer = $sanitizer;
     }
@@ -75,11 +78,14 @@ class CachedClient extends Client
         if ($sanitizer = $this->keySanitizer) {
             return $sanitizer($cacheKey);
         }
+
         return $cacheKey;
     }
 
     /**
      * @param Node $node
+     *
+     * @throws RepositoryException
      */
     private function clearNodeCache(Node $node)
     {
@@ -87,7 +93,8 @@ class CachedClient extends Client
         $cacheKey = $this->sanitizeKey($cacheKey);
 
         $this->caches['nodes']->delete($cacheKey);
-        // actually in the DBAL all nodes have a uuid ..
+
+        // Actually in the DBAL all nodes have a uuid ..
         if ($node->isNodeType('mix:referenceable')) {
             $uuid = $node->getIdentifier();
             $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
@@ -180,7 +187,7 @@ class CachedClient extends Client
      */
     public function getNamespaces()
     {
-        if ($this->namespaces instanceof \ArrayObject) {
+        if ($this->namespaces instanceof ArrayObject) {
             return parent::getNamespaces();
         }
 
@@ -228,6 +235,8 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
+     *
+     * @throws RepositoryException
      */
     public function getNode($path)
     {
@@ -242,7 +251,7 @@ class CachedClient extends Client
 
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
-                throw new ItemNotFoundException(sprintf('Item "%s" not found in workspace "%s"', $path, $this->workspaceName));
+                throw new ItemNotFoundException("Item '$path' not found in workspace '$this->workspaceName'");
             }
 
             return $result;
@@ -276,7 +285,7 @@ class CachedClient extends Client
         foreach ($paths as $key => $path) {
             try {
                 $nodes[$key] = $this->getNode($path);
-            } catch (\PHPCR\ItemNotFoundException $e) {
+            } catch (ItemNotFoundException $e) {
                 // ignore
             }
         }
@@ -317,6 +326,8 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
+     *
+     * @throws RepositoryException
      */
     public function getNodeByIdentifier($uuid)
     {
@@ -433,6 +444,8 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
+     *
+     * @throws RepositoryException
      */
     public function reorderChildren(Node $node)
     {
@@ -458,6 +471,8 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
+     *
+     * @throws RepositoryException
      */
     public function getNodePathForIdentifier($uuid, $workspace = null)
     {
@@ -467,12 +482,12 @@ class CachedClient extends Client
 
         $this->assertLoggedIn();
 
-        $cacheKey = "nodes by uuid: $uuid, ".$this->workspaceName;
+        $cacheKey = "nodes by uuid: $uuid, $this->workspaceName";
         $cacheKey = $this->sanitizeKey($cacheKey);
 
         if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
-                throw new ItemNotFoundException("no item found with uuid ".$uuid);
+                throw new ItemNotFoundException("no item found with uuid $uuid");
             }
 
             return $result;

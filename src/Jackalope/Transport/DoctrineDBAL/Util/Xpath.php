@@ -38,6 +38,7 @@ class Xpath
      *
      * @param string $query
      * @param string $enclosure
+     * @param bool   $doubleEscapeSingleQuote
      *
      * @return string
      */
@@ -59,7 +60,7 @@ class Xpath
                         $parts[] = $enclosure . $current . $enclosure;
                     }
 
-                    if ($character == '\'') {
+                    if ($character === '\'') {
                         $parts[] = sprintf($escapeSingleQuote, $character);
                     } else {
                         $parts[] = sprintf($escapeDoubleQuote, $character);
@@ -75,17 +76,17 @@ class Xpath
                 $parts[] =  $enclosure . $current . $enclosure;
             }
 
+            $ret = 'concat(' . implode(', ', $parts) . ')';
+
             if (count($parts) > 2) {
                 $part1 = array_shift($parts);
                 $ret = 'concat(' . $part1 . ', ' . self::concatBy2($parts) . ')';
-            } else {
-                $ret = 'concat(' . join(', ', $parts) . ')';
             }
-        } else {
-            $ret = $enclosure . $query . $enclosure;
+
+            return $ret;
         }
 
-        return $ret;
+        return $enclosure . $query . $enclosure;
     }
 
     /**

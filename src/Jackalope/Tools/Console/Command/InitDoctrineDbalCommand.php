@@ -2,7 +2,10 @@
 
 namespace Jackalope\Tools\Console\Command;
 
+use InvalidArgumentException;
+use PDOException;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Exception\InvalidArgumentException as CliInvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -27,6 +30,9 @@ class InitDoctrineDbalCommand extends Command
 
     /**
      * @see Command
+     *
+     * @throws CliInvalidArgumentException
+     * @throws PDOException
      */
     protected function configure()
     {
@@ -57,17 +63,24 @@ EOT
 
     /**
      * {@inheritDoc}
+     *
+     * @throws CliInvalidArgumentException
+     * @throws InvalidArgumentException
+     * @throws PDOException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $connection = $this->getHelper('jackalope-doctrine-dbal')->getConnection();
+
         if (!$connection instanceof Connection) {
             $output->write(PHP_EOL.'<error>The provided connection is not an instance of the Doctrine DBAL connection.</error>'.PHP_EOL);
-            throw new \InvalidArgumentException('The provided connection is not an instance of the Doctrine DBAL connection.');
+
+            throw new InvalidArgumentException('The provided connection is not an instance of the Doctrine DBAL connection.');
         }
 
         if (true !== $input->getOption('dump-sql') && !$input->getOption('force')) {
-            $output->write('ATTENTION: This operation should not be executed in a production environment. Please use "--force" to execute the command.' . PHP_EOL . PHP_EOL);
+            $output->write('ATTENTION: This operation should not be executed in a production environment. Please use "--force" to execute the command.' .PHP_EOL.PHP_EOL);
+
             return self::RETURN_CODE_NO_FORCE;
         }
 
@@ -104,8 +117,8 @@ EOT
                     $connection->exec($sql);
                 }
             }
-        } catch (\PDOException $e) {
-            if ("42S01" === $e->getCode()) {
+        } catch (PDOException $e) {
+            if ('42S01' === $e->getCode()) {
                 $output->write(PHP_EOL.'<error>The tables already exist. Nothing was changed.</error>'.PHP_EOL.PHP_EOL);
 
                 return self::RETURN_CODE_NOT_DROP;
@@ -115,7 +128,7 @@ EOT
         }
 
         if (true !== $input->getOption('dump-sql')) {
-            $output->writeln("Jackalope Doctrine DBAL tables have been initialized successfully.");
+            $output->writeln('Jackalope Doctrine DBAL tables have been initialized successfully.');
         }
 
         return 0;
