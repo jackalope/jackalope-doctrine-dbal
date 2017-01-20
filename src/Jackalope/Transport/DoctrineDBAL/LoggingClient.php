@@ -2,19 +2,16 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\Connection;
 use Jackalope\FactoryInterface;
 use Jackalope\Transport\AbstractReadWriteLoggingWrapper;
 use Jackalope\Transport\QueryInterface as QueryTransport;
-use Jackalope\Transport\PermissionInterface;
 use Jackalope\Transport\TransactionInterface;
-use Jackalope\Transport\VersioningInterface;
 use Jackalope\Transport\NodeTypeManagementInterface;
-use Jackalope\Transport\LockingInterface;
-use Jackalope\Transport\ObservationInterface;
 use Jackalope\Transport\WorkspaceManagementInterface;
 use Jackalope\Query\Query;
-use PHPCR\Observation\EventFilterInterface;
-use PHPCR\SessionInterface;
+use PHPCR\NamespaceException;
+use PHPCR\Query\InvalidQueryException;
 use Jackalope\Transport\Logging\LoggerInterface;
 
 /**
@@ -27,7 +24,11 @@ use Jackalope\Transport\Logging\LoggerInterface;
  */
 
 // PermissionInterface, VersioningInterface, LockingInterface, ObservationInterface
-class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTransport, NodeTypeManagementInterface, WorkspaceManagementInterface, TransactionInterface
+class LoggingClient extends AbstractReadWriteLoggingWrapper implements
+    QueryTransport,
+    NodeTypeManagementInterface,
+    WorkspaceManagementInterface,
+    TransactionInterface
 {
     /**
      * @var Client
@@ -66,6 +67,8 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
 
     /**
      * {@inheritDoc}
+     *
+     * @throws InvalidQueryException
      */
     public function query(Query $query)
     {
@@ -85,6 +88,8 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
 
     /**
      * {@inheritDoc}
+     *
+     * @throws NamespaceException
      */
     public function registerNamespace($prefix, $uri)
     {
