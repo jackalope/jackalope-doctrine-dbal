@@ -2092,19 +2092,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = '
 SELECT 
-phpcr_type_nodes.name AS nodeName, phpcr_type_nodes.is_abstract AS nodeAbstract, 
-phpcr_type_nodes.is_mixin AS nodeMixin, phpcr_type_nodes.queryable AS nodeQueryable, 
-phpcr_type_nodes.orderable_child_nodes AS nodeHasOrderableChildNodes, 
-phpcr_type_nodes.primary_item AS nodePrimaryItemName, phpcr_type_nodes.supertypes AS declaredSuperTypeNames, 
-phpcr_type_props.name AS propertyName, phpcr_type_props.auto_created AS propertyAutoCreated, 
-phpcr_type_props.mandatory AS propertyMandatory, phpcr_type_props.protected AS propertyProtected, 
-phpcr_type_props.on_parent_version AS propertyOnParentVersion, phpcr_type_props.required_type AS propertyRequiredType, 
-phpcr_type_props.multiple AS propertyMultiple, phpcr_type_props.fulltext_searchable AS propertyFulltextSearchable, 
-phpcr_type_props.query_orderable AS propertyQueryOrderable, phpcr_type_props.default_value as propertyDefaultValue,
-phpcr_type_childs.name AS childName, phpcr_type_childs.auto_created AS childAutoCreated, 
-phpcr_type_childs.mandatory AS childMandatory, phpcr_type_childs.protected AS childProtected, 
-phpcr_type_childs.on_parent_version AS childOnParentVersion, phpcr_type_childs.default_type AS childDefaultType, 
-phpcr_type_childs.primary_types AS childPrimaryTypes 
+phpcr_type_nodes.name AS node_name, phpcr_type_nodes.is_abstract AS node_abstract, 
+phpcr_type_nodes.is_mixin AS node_mixin, phpcr_type_nodes.queryable AS node_queryable, 
+phpcr_type_nodes.orderable_child_nodes AS node_has_orderable_child_nodes, 
+phpcr_type_nodes.primary_item AS node_primary_item_name, phpcr_type_nodes.supertypes AS declared_super_type_names, 
+phpcr_type_props.name AS property_name, phpcr_type_props.auto_created AS property_auto_created, 
+phpcr_type_props.mandatory AS property_mandatory, phpcr_type_props.protected AS property_protected, 
+phpcr_type_props.on_parent_version AS property_on_parent_version, 
+phpcr_type_props.required_type AS property_required_type, phpcr_type_props.multiple AS property_multiple, 
+phpcr_type_props.fulltext_searchable AS property_fulltext_searchable, 
+phpcr_type_props.query_orderable AS property_query_orderable, phpcr_type_props.default_value as property_default_value,
+phpcr_type_childs.name AS child_name, phpcr_type_childs.auto_created AS child_auto_created, 
+phpcr_type_childs.mandatory AS child_mandatory, phpcr_type_childs.protected AS child_protected, 
+phpcr_type_childs.on_parent_version AS child_on_parent_version, phpcr_type_childs.default_type AS child_default_type, 
+phpcr_type_childs.primary_types AS child_primary_types 
 FROM 
 phpcr_type_nodes 
 LEFT JOIN 
@@ -2119,34 +2120,34 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         $statement->execute();
 
         while ($row = $statement->fetch()) {
-            $nodeName = $row['nodeName'];
+            $nodeName = $row['node_name'];
 
             if (!isset($result[$nodeName])) {
                 $result[$nodeName] = array(
-                    'name'                        => $row['nodeName'],
-                    'isAbstract'                  => (bool) $row['nodeAbstract'],
-                    'isMixin'                     => (bool) $row['nodeMixin'],
-                    'isQueryable'                 => (bool) $row['nodeQueryable'],
-                    'hasOrderableChildNodes'      => (bool) $row['nodeHasOrderableChildNodes'],
-                    'primaryItemName'             => $row['nodePrimaryItemName'],
-                    'declaredSuperTypeNames'      => array_filter(explode(' ', $row['declaredSuperTypeNames'])),
+                    'name'                        => $nodeName,
+                    'isAbstract'                  => (bool) $row['node_abstract'],
+                    'isMixin'                     => (bool) $row['node_mixin'],
+                    'isQueryable'                 => (bool) $row['node_queryable'],
+                    'hasOrderableChildNodes'      => (bool) $row['node_has_orderable_child_nodes'],
+                    'primaryItemName'             => $row['node_primary_item_name'],
+                    'declaredSuperTypeNames'      => array_filter(explode(' ', $row['declared_super_type_names'])),
                     'declaredPropertyDefinitions' => array(),
                     'declaredNodeDefinitions'     => array(),
                 );
             }
 
-            if (($propertyName = $row['propertyName']) !== null) {
+            if (($propertyName = $row['property_name']) !== null) {
                 $result[$nodeName]['declaredPropertyDefinitions'][] = array(
                     'declaringNodeType'    => $nodeName,
                     'name'                 => $propertyName,
-                    'isAutoCreated'        => (bool) $row['propertyAutoCreated'],
-                    'isMandatory'          => (bool) $row['propertyMandatory'],
-                    'isProtected'          => (bool) $row['propertyProtected'],
-                    'onParentVersion'      => (bool) $row['propertyOnParentVersion'],
-                    'requiredType'         => (int)  $row['propertyRequiredType'],
-                    'multiple'             => (bool) $row['propertyMultiple'],
-                    'isFulltextSearchable' => (bool) $row['propertyFulltextSearchable'],
-                    'isQueryOrderable'     => (bool) $row['propertyQueryOrderable'],
+                    'isAutoCreated'        => (bool) $row['property_auto_created'],
+                    'isMandatory'          => (bool) $row['property_mandatory'],
+                    'isProtected'          => (bool) $row['property_protected'],
+                    'onParentVersion'      => (bool) $row['property_on_parent_version'],
+                    'requiredType'         => (int)  $row['property_required_type'],
+                    'multiple'             => (bool) $row['property_multiple'],
+                    'isFulltextSearchable' => (bool) $row['property_fulltext_searchable'],
+                    'isQueryOrderable'     => (bool) $row['property_query_orderable'],
                     'queryOperators'       => array(
                         QOM::JCR_OPERATOR_EQUAL_TO,
                         QOM::JCR_OPERATOR_NOT_EQUAL_TO,
@@ -2156,21 +2157,21 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                         QOM::JCR_OPERATOR_LESS_THAN_OR_EQUAL_TO,
                         QOM::JCR_OPERATOR_LIKE,
                     ),
-                    'defaultValues' => array($row['propertyDefaultValue'])
+                    'defaultValues' => array($row['property_default_value'])
                 );
             }
 
-            if (($childName = $row['childName']) !== null) {
+            if (($childName = $row['child_name']) !== null) {
                 $result[$nodeName]['declaredNodeDefinitions'][] = array(
                     'declaringNodeType'        => $nodeName,
                     'name'                     => $childName,
-                    'isAutoCreated'            => (bool) $row['childAutoCreated'],
-                    'isMandatory'              => (bool) $row['childMandatory'],
-                    'isProtected'              => (bool) $row['childProtected'],
-                    'onParentVersion'          => (bool) $row['childOnParentVersion'],
+                    'isAutoCreated'            => (bool) $row['child_auto_created'],
+                    'isMandatory'              => (bool) $row['child_mandatory'],
+                    'isProtected'              => (bool) $row['child_protected'],
+                    'onParentVersion'          => (bool) $row['child_on_parent_version'],
                     'allowsSameNameSiblings'   => false,
-                    'defaultPrimaryTypeName'   => $row['childDefaultType'],
-                    'requiredPrimaryTypeNames' => array_filter(explode(' ', $row['childPrimaryTypes']))
+                    'defaultPrimaryTypeName'   => $row['child_default_type'],
+                    'requiredPrimaryTypeNames' => array_filter(explode(' ', $row['child_primary_types']))
                 );
             }
         }
