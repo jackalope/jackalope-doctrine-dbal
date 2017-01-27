@@ -17,6 +17,7 @@ use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\NoSuchNodeTypeException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
+use PHPCR\Query\QOM\QueryObjectModelConstantsInterface as QOM;
 use PHPCR\RepositoryInterface;
 use PHPCR\NamespaceRegistryInterface as NS;
 use PHPCR\CredentialsInterface;
@@ -2088,61 +2089,88 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function fetchUserNodeTypes()
     {
         $result = array();
-        $query = "SELECT * FROM phpcr_type_nodes";
-        foreach ($this->getConnection()->fetchAll($query) as $data) {
-            $name = $data['name'];
-            $result[$name] = array(
-                'name' => $name,
-                'isAbstract' => (bool) $data['is_abstract'],
-                'isMixin' => (bool) ($data['is_mixin']),
-                'isQueryable' => (bool) $data['queryable'],
-                'hasOrderableChildNodes' => (bool) $data['orderable_child_nodes'],
-                'primaryItemName' => $data['primary_item'],
-                'declaredSuperTypeNames' => array_filter(explode(' ', $data['supertypes'])),
-                'declaredPropertyDefinitions' => array(),
-                'declaredNodeDefinitions' => array(),
-            );
 
-            $query = 'SELECT * FROM phpcr_type_props WHERE node_type_id = ?';
-            $props = $this->getConnection()->fetchAll($query, array($data['node_type_id']));
-            foreach ($props as $propertyData) {
-                $result[$name]['declaredPropertyDefinitions'][] = array(
-                    'declaringNodeType' => $data['name'],
-                    'name' => $propertyData['name'],
-                    'isAutoCreated' => (bool) $propertyData['auto_created'],
-                    'isMandatory' => (bool) $propertyData['mandatory'],
-                    'isProtected' => (bool) $propertyData['protected'],
-                    'onParentVersion' => $propertyData['on_parent_version'],
-                    'requiredType' => (int) $propertyData['required_type'],
-                    'multiple' => (bool) $propertyData['multiple'],
-                    'isFulltextSearchable' => (bool) $propertyData['fulltext_searchable'],
-                    'isQueryOrderable' => (bool) $propertyData['query_orderable'],
-                    'queryOperators' => array(
-                        0 => 'jcr.operator.equal.to',
-                        1 => 'jcr.operator.not.equal.to',
-                        2 => 'jcr.operator.greater.than',
-                        3 => 'jcr.operator.greater.than.or.equal.to',
-                        4 => 'jcr.operator.less.than',
-                        5 => 'jcr.operator.less.than.or.equal.to',
-                        6 => 'jcr.operator.like',
-                    ),
-                    'defaultValues' => array($propertyData['default_value']),
+        $query = '
+SELECT 
+phpcr_type_nodes.name AS nodeName, phpcr_type_nodes.is_abstract AS nodeAbstract, 
+phpcr_type_nodes.is_mixin AS nodeMixin, phpcr_type_nodes.queryable AS nodeQueryable, 
+phpcr_type_nodes.orderable_child_nodes AS nodeHasOrderableChildNodes, 
+phpcr_type_nodes.primary_item AS nodePrimaryItemName, phpcr_type_nodes.supertypes AS declaredSuperTypeNames, 
+phpcr_type_props.name AS propertyName, phpcr_type_props.auto_created AS propertyAutoCreated, 
+phpcr_type_props.mandatory AS propertyMandatory, phpcr_type_props.protected AS propertyProtected, 
+phpcr_type_props.on_parent_version AS propertyOnParentVersion, phpcr_type_props.required_type AS propertyRequiredType, 
+phpcr_type_props.multiple AS propertyMultiple, phpcr_type_props.fulltext_searchable AS propertyFulltextSearchable, 
+phpcr_type_props.query_orderable AS propertyQueryOrderable, phpcr_type_props.default_value as propertyDefaultValue,
+phpcr_type_childs.name AS childName, phpcr_type_childs.auto_created AS childAutoCreated, 
+phpcr_type_childs.mandatory AS childMandatory, phpcr_type_childs.protected AS childProtected, 
+phpcr_type_childs.on_parent_version AS childOnParentVersion, phpcr_type_childs.default_type AS childDefaultType, 
+phpcr_type_childs.primary_types AS childPrimaryTypes 
+FROM 
+phpcr_type_nodes 
+LEFT JOIN 
+phpcr_type_props ON phpcr_type_nodes.node_type_id = phpcr_type_props.node_type_id 
+LEFT JOIN 
+phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type_id
+';
+
+        $statement = $this->getConnection()
+            ->prepare($query);
+
+        $statement->execute();
+
+        while ($row = $statement->fetch()) {
+            $nodeName = $row['nodeName'];
+
+            if (!isset($result[$nodeName])) {
+                $result[$nodeName] = array(
+                    'name'                        => $row['nodeName'],
+                    'isAbstract'                  => (bool) $row['nodeAbstract'],
+                    'isMixin'                     => (bool) $row['nodeMixin'],
+                    'isQueryable'                 => (bool) $row['nodeQueryable'],
+                    'hasOrderableChildNodes'      => (bool) $row['nodeHasOrderableChildNodes'],
+                    'primaryItemName'             => $row['nodePrimaryItemName'],
+                    'declaredSuperTypeNames'      => array_filter(explode(' ', $row['declaredSuperTypeNames'])),
+                    'declaredPropertyDefinitions' => array(),
+                    'declaredNodeDefinitions'     => array(),
                 );
             }
 
-            $query = 'SELECT * FROM phpcr_type_childs WHERE node_type_id = ?';
-            $childs = $this->getConnection()->fetchAll($query, array($data['node_type_id']));
-            foreach ($childs as $childData) {
-                $result[$name]['declaredNodeDefinitions'][] = array(
-                    'declaringNodeType' => $data['name'],
-                    'name' => $childData['name'],
-                    'isAutoCreated' => (bool) $childData['auto_created'],
-                    'isMandatory' => (bool) $childData['mandatory'],
-                    'isProtected' => (bool) $childData['protected'],
-                    'onParentVersion' => $childData['on_parent_version'],
-                    'allowsSameNameSiblings' => false,
-                    'defaultPrimaryTypeName' => $childData['default_type'],
-                    'requiredPrimaryTypeNames' => array_filter(explode(" ", $childData['primary_types'])),
+            if (($propertyName = $row['propertyName']) !== null) {
+                $result[$nodeName]['declaredPropertyDefinitions'][] = array(
+                    'declaringNodeType'    => $nodeName,
+                    'name'                 => $propertyName,
+                    'isAutoCreated'        => (bool) $row['propertyAutoCreated'],
+                    'isMandatory'          => (bool) $row['propertyMandatory'],
+                    'isProtected'          => (bool) $row['propertyProtected'],
+                    'onParentVersion'      => (bool) $row['propertyOnParentVersion'],
+                    'requiredType'         => (int)  $row['propertyRequiredType'],
+                    'multiple'             => (bool) $row['propertyMultiple'],
+                    'isFulltextSearchable' => (bool) $row['propertyFulltextSearchable'],
+                    'isQueryOrderable'     => (bool) $row['propertyQueryOrderable'],
+                    'queryOperators'       => array(
+                        QOM::JCR_OPERATOR_EQUAL_TO,
+                        QOM::JCR_OPERATOR_NOT_EQUAL_TO,
+                        QOM::JCR_OPERATOR_GREATER_THAN,
+                        QOM::JCR_OPERATOR_GREATER_THAN_OR_EQUAL_TO,
+                        QOM::JCR_OPERATOR_LESS_THAN,
+                        QOM::JCR_OPERATOR_LESS_THAN_OR_EQUAL_TO,
+                        QOM::JCR_OPERATOR_LIKE,
+                    ),
+                    'defaultValues' => array($row['propertyDefaultValue'])
+                );
+            }
+
+            if (($childName = $row['childName']) !== null) {
+                $result[$nodeName]['declaredNodeDefinitions'][] = array(
+                    'declaringNodeType'        => $nodeName,
+                    'name'                     => $childName,
+                    'isAutoCreated'            => (bool) $row['childAutoCreated'],
+                    'isMandatory'              => (bool) $row['childMandatory'],
+                    'isProtected'              => (bool) $row['childProtected'],
+                    'onParentVersion'          => (bool) $row['childOnParentVersion'],
+                    'allowsSameNameSiblings'   => false,
+                    'defaultPrimaryTypeName'   => $row['childDefaultType'],
+                    'requiredPrimaryTypeNames' => array_filter(explode(' ', $row['childPrimaryTypes']))
                 );
             }
         }
