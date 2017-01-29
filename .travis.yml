@@ -3,9 +3,9 @@ language: php
 sudo: false
 
 php:
-  - 5.4
-  - 5.5
   - 5.6
+  - 7.0
+  - 7.1
   - hhvm
 
 env:
@@ -25,11 +25,11 @@ matrix:
     - php: hhvm
     # hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
   include:
-    - php: 5.3
+    - php: 5.6
       env: DB=mysql PACKAGE_VERSION=low
-    - php: 5.3
+    - php: 5.6
       env: DB=pgsql PACKAGE_VERSION=low
-    - php: 5.3
+    - php: 5.6
       env: DB=sqlite PACKAGE_VERSION=low
 
 before_script:
