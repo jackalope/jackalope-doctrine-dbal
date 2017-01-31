@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.3.0
+-----
+
+* Added auto-detection of binary collation for MySQL, so that not always utf8_bin is used.
+  A new `setCaseSensitiveEncoding` method has been introduced, which can be used to override
+  the auto detected value.
+
 1.2
 ---
 

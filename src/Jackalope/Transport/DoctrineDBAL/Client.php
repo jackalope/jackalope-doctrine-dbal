@@ -207,6 +207,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $nodeProcessor;
 
     /**
+     * @var string
+     */
+    private $caseSensitiveEncoding;
+
+    /**
      * @param FactoryInterface $factory
      * @param Connection       $conn
      */
@@ -438,6 +443,34 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     public function setCheckLoginOnServer($bool)
     {
         $this->checkLoginOnServer = $bool;
+    }
+
+    /**
+     * This will control the collate which is being used on MySQL when querying nodes. It will be autodetected by just
+     * appending _bin to the current charset, which is good enough in most cases.
+     *
+     * @param string $encoding
+     */
+    public function setCaseSensitiveEncoding($encoding)
+    {
+        $this->caseSensitiveEncoding = $encoding;
+    }
+
+    /**
+     * Returns the collate which is being used on MySQL when querying nodes.
+     *
+     * @return string
+     */
+    private function getCaseSensitiveEncoding()
+    {
+        if (!$this->caseSensitiveEncoding) {
+            $params = $this->conn->getParams();
+            $charset = isset($params['charset']) ? $params['charset'] : 'utf8';
+
+            return $this->caseSensitiveEncoding = $charset === 'binary' ? $charset : $charset . '_bin';
+        }
+
+        return $this->caseSensitiveEncoding;
     }
 
     protected function workspaceExists($workspaceName)
@@ -1541,7 +1574,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
         } else {
             if ($this->getConnection()->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
-                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE utf8_bin = ? AND workspace_name = ?';
+                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE ' . $this->getCaseSensitiveEncoding() .' = ? AND workspace_name = ?';
             } else {
                 $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
             }
