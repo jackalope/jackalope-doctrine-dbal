@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
+use Jackalope\Query\QOM\SameNodeJoinCondition;
 use Jackalope\Test\TestCase;
 use Jackalope\Query\QOM\Length;
 use Jackalope\Query\QOM\PropertyValue;
@@ -294,5 +295,25 @@ class QOMWalkerTest extends TestCase
         );
 
         $this->walker->walkQOMQuery($query);
+    }
+
+    public function sameNodeJoinConditions()
+    {
+        return array(
+            array(new SameNodeJoinCondition('file', 'nt:unstructured', 'jcr:content')),
+            array(new SameNodeJoinCondition('file', 'nt:unstructured', '..')),
+            array(new SameNodeJoinCondition('file', 'nt:unstructured', '../..')),
+            array(new SameNodeJoinCondition('file', 'nt:unstructured', '../something')),
+        );
+    }
+
+    /**
+     * @dataProvider sameNodeJoinConditions
+     */
+    public function testWalkSameNodeJoinCondition($same)
+    {
+        $sql = $this->walker->walkSameNodeJoinCondition($same);
+
+        var_dump($sql);
     }
 }
