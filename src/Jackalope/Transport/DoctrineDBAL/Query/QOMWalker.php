@@ -850,7 +850,16 @@ class QOMWalker
     {
         $value = $operand->getLiteralValue();
 
-        return $value instanceof \DateTime ? $value->format('c') : $value;
+        /**
+         * Normalize Dates to UTC
+         */
+        if($value instanceof \DateTime){
+            $valueUTC = clone($value);
+            $valueUTC->setTimezone(new \DateTimeZone('UTC'));
+            return $valueUTC->format('c');
+        }
+
+        return $value;
     }
 
     /**
