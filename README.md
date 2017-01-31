@@ -21,7 +21,7 @@ This code is dual licensed under the MIT license and the Apache License Version
 
 # Preconditions
 
-* php >= 5.3
+* php >= 5.6
 * One of the following databases, including the PDO extension for it:
     * MySQL >= 5.1.5 (we need the ExtractValue function)
     * PostgreSQL
@@ -120,6 +120,11 @@ sample code to get a PHPCR session with the doctrine-dbal backend:
 ```php
 // For further details, please see Doctrine configuration page.
 // http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
+
+use Doctrine\DBAL\DriverManager;
+use Jackalope\RepositoryFactoryDoctrineDBAL;
+use PHPCR\SimpleCredentials;
+
 $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
 $host      = 'localhost';
 $user      = 'jackalope';
@@ -128,21 +133,22 @@ $database  = 'jackalope'; // $path = 'jackalope.db'; // for SQLite
 $workspace = 'default';
 
 // Bootstrap Doctrine
-$dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
-  'driver'    => $driver,
-  'host'      => $host,
-  'user'      => $user,
-  'password'  => $pass,
-  'dbname'    => $database,
-  // 'path'   => $path, // for SQLite
-));
+$connection = DriverManager::getConnection([
+    'driver'    => $driver,
+    'host'      => $host,
+    'user'      => $user,
+    'password'  => $pass,
+    'dbname'    => $database,
+    // 'path'   => $path, // for SQLite
+]);
 
-$factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
+$factory = new RepositoryFactoryDoctrineDBAL();
 $repository = $factory->getRepository(
-  array('jackalope.doctrine_dbal_connection' => $dbConn)
+    ['jackalope.doctrine_dbal_connection' => $connection]
 );
-// dummy credentials to comply with the API
-$credentials = new \PHPCR\SimpleCredentials(null, null);
+
+// Dummy credentials to comply with the API
+$credentials = new SimpleCredentials(null, null);
 $session = $repository->login($credentials, $workspace);
 ```
 
@@ -158,19 +164,22 @@ storage backend as well. From this point on, there are no differences in the
 usage (except for supported features, that is).
 
 ```php
-// see Bootstrapping for how to get the session.
+// See Bootstrapping for how to get the session.
 
-$rootNode = $session->getNode("/");
-$whitewashing = $rootNode->addNode("www-whitewashing-de");
+$rootNode = $session->getNode('/');
+$whitewashing = $rootNode->addNode('www-whitewashing-de');
+
 $session->save();
 
-$posts = $whitewashing->addNode("posts");
+$posts = $whitewashing->addNode('posts');
+
 $session->save();
 
-$post = $posts->addNode("welcome-to-blog");
-$post->addMixin("mix:title");
-$post->setProperty("jcr:title", "Welcome to my Blog!");
-$post->setProperty("jcr:description", "This is the first post on my blog! Do you like it?");
+$post = $posts->addNode('welcome-to-blog');
+
+$post->addMixin('mix:title');
+$post->setProperty('jcr:title', 'Welcome to my Blog!');
+$post->setProperty('jcr:description', 'This is the first post on my blog! Do you like it?');
 
 $session->save();
 ```
@@ -203,12 +212,17 @@ queries used. To enable logging, provide a logger instance to the repository
 factory:
 
 ```php
-$factory = new \Jackalope\RepositoryFactoryDoctrineDBAL();
-$logger = new Jackalope\Transport\Logging\DebugStack();
-$options = array(
-  'jackalope.doctrine_dbal_connection' => $dbConn,
-  'jackalope.logger' => $logger,
-);
+use Jackalope\RepositoryFactoryDoctrineDBAL;
+use Jackalope\Transport\Logging\DebugStack;
+
+$factory = new RepositoryFactoryDoctrineDBAL();
+$logger = new DebugStack();
+
+$options = [
+    'jackalope.doctrine_dbal_connection' => $connection,
+    'jackalope.logger' => $logger,
+];
+
 $repository = $factory->getRepository($options);
 
 //...
