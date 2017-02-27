@@ -212,6 +212,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $caseSensitiveEncoding;
 
     /**
+     * @var array
+     */
+    private $userNodeTypes;
+
+    /**
      * @param FactoryInterface $factory
      * @param Connection       $conn
      */
@@ -2104,14 +2109,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $standardTypes = StandardNodeTypes::getNodeTypeData();
 
-        $userTypes = $this->fetchUserNodeTypes();
+        if ($this->userNodeTypes === null) {
+            $this->userNodeTypes = $this->fetchUserNodeTypes();
+        }
 
         if ($nodeTypes) {
             $nodeTypes = array_flip($nodeTypes);
-            return array_values(array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($userTypes, $nodeTypes));
+            return array_values(array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($this->userNodeTypes, $nodeTypes));
         }
 
-        return array_values($standardTypes + $userTypes);
+        return array_values($standardTypes + $this->userNodeTypes);
     }
 
     /**
