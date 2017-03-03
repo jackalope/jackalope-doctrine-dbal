@@ -1,12 +1,23 @@
 <?php
 
+use Jackalope\Test\Tester\Generic;
 use Doctrine\DBAL\Connection;
 use Doctrine\Common\Cache\ArrayCache;
+use Jackalope\Factory;
+use Jackalope\Repository;
+use Jackalope\RepositoryFactoryDoctrineDBAL;
+use Jackalope\Session;
+use Jackalope\Transport\DoctrineDBAL\Client;
+use Jackalope\Transport\Logging\Psr3Logger;
+use PHPCR\RepositoryException;
+use PHPCR\SimpleCredentials;
+use PHPCR\Test\AbstractLoader;
+use Psr\Log\NullLogger;
 
 /**
  * Implementation loader for jackalope-doctrine-dbal
  */
-class ImplementationLoader extends \PHPCR\Test\AbstractLoader
+class ImplementationLoader extends AbstractLoader
 {
     private static $instance = null;
 
@@ -33,59 +44,59 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
     protected function __construct(Connection $connection, $fixturePath)
     {
-        parent::__construct('Jackalope\RepositoryFactoryDoctrineDBAL', $GLOBALS['phpcr.workspace']);
+        parent::__construct(RepositoryFactoryDoctrineDBAL::class, $GLOBALS['phpcr.workspace']);
 
         $this->connection   = $connection;
         $this->fixturePath  = $fixturePath;
 
-        $this->unsupportedChapters = array(
-                    'ShareableNodes', //TODO: Not implemented, no test currently written for it
-                    'AccessControlManagement', //TODO: Not implemented, no test currently written for it
-                    'LifecycleManagement', //TODO: Not implemented, no test currently written for it
-                    'RetentionAndHold', //TODO: Not implemented, no test currently written for it
-                    'SameNameSiblings', //TODO: Not implemented, no test currently written for it
-                    'PermissionsAndCapabilities', //TODO: Transport does not support permissions
-                    'Observation', //TODO: Transport does not support observation
-                    'Versioning', //TODO: Transport does not support versioning
-                    'Locking', //TODO: Transport does not support locking
-        );
+        $this->unsupportedChapters = [
+            'ShareableNodes', //TODO: Not implemented, no test currently written for it
+            'AccessControlManagement', //TODO: Not implemented, no test currently written for it
+            'LifecycleManagement', //TODO: Not implemented, no test currently written for it
+            'RetentionAndHold', //TODO: Not implemented, no test currently written for it
+            'SameNameSiblings', //TODO: Not implemented, no test currently written for it
+            'PermissionsAndCapabilities', //TODO: Transport does not support permissions
+            'Observation', //TODO: Transport does not support observation
+            'Versioning', //TODO: Transport does not support versioning
+            'Locking', //TODO: Transport does not support locking
+        ];
 
-        $this->unsupportedCases = array(
-                    'Query\\XPath', // Query language 'xpath' not implemented.
-                    'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
-                    'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
-        );
+        $this->unsupportedCases = [
+            'Query\\XPath', // Query language 'xpath' not implemented.
+            'Query\\Sql1', // Query language 'sql' is legacy and only makes sense with jackrabbit
+            'Writing\\CloneMethodsTest', // TODO: Support for workspace->clone, node->update, node->getCorrespondingNodePath
+        ];
 
-        $this->unsupportedTests = array(
-                    'Connecting\\RepositoryTest::testLoginException', //TODO: figure out what would be invalid credentials
+        $this->unsupportedTests = [
+            'Connecting\\RepositoryTest::testLoginException', //TODO: figure out what would be invalid credentials
 
-                    'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
-                    'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
-                    'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
+            'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
+            'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
+            'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
 
-                    //TODO: implement getQuery method in Jackalope QueryManager
-                    'Query\\QueryManagerTest::testGetQuery',
-                    'Query\\QueryManagerTest::testGetQueryInvalid',
-                    'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
-                    // TODO: implement CAST, see also https://github.com/jackalope/jackalope-doctrine-dbal/issues/267
-                    'Query\QuerySql2OperationsTest::testQueryFieldDate',
-                    // TODO fix handling of order by with missing properties
-                    'Query\QuerySql2OperationsTest::testQueryOrderWithMissingProperty',
+            //TODO: implement getQuery method in Jackalope QueryManager
+            'Query\\QueryManagerTest::testGetQuery',
+            'Query\\QueryManagerTest::testGetQueryInvalid',
+            'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
+            // TODO: implement CAST, see also https://github.com/jackalope/jackalope-doctrine-dbal/issues/267
+            'Query\QuerySql2OperationsTest::testQueryFieldDate',
+            // TODO fix handling of order by with missing properties
+            'Query\QuerySql2OperationsTest::testQueryOrderWithMissingProperty',
 
-                    // this seems a bug in php with arrayiterator - and jackalope is using
-                    // arrayiterator for the search result
-                    // TODO https://github.com/phpcr/phpcr-api-tests/issues/22
-                    'Query\\NodeViewTest::testSeekable',
+            // this seems a bug in php with arrayiterator - and jackalope is using
+            // arrayiterator for the search result
+            // TODO https://github.com/phpcr/phpcr-api-tests/issues/22
+            'Query\\NodeViewTest::testSeekable',
 
-                    'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
+            'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
 
-                    //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
-                    'Transactions\\TransactionMethodsTest::testTransactionCommit',
+            //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
+            'Transactions\\TransactionMethodsTest::testTransactionCommit',
 
-                    // TODO: implement creating workspace with source
-                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
-                    'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
-        );
+            // TODO: implement creating workspace with source
+            'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
+            'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
+        ];
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {
             $this->unsupportedTests[] = 'Query\\QuerySql2OperationsTest::testQueryRightJoin';
@@ -102,42 +113,42 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         if (empty($GLOBALS['data_caches'])) {
             $caches = null;
         } else {
-            $caches = array();
+            $caches = [];
             foreach (explode(',', $GLOBALS['data_caches']) as $key) {
                 $caches[$key] = new ArrayCache();
             }
         }
 
-        return array(
+        return [
             'jackalope.doctrine_dbal_connection' => $this->connection,
             'jackalope.data_caches' => $caches,
-            \Jackalope\Session::OPTION_AUTO_LASTMODIFIED => false,
-            'jackalope.logger' => new \Jackalope\Transport\Logging\Psr3Logger(new \Psr\Log\NullLogger()),
-        );
+            Session::OPTION_AUTO_LASTMODIFIED => false,
+            'jackalope.logger' => new Psr3Logger(new NullLogger()),
+        ];
     }
 
     public function getSessionWithLastModified()
     {
-        /** @var $session \Jackalope\Session */
+        /** @var $session Session */
         $session = $this->getSession();
-        $session->setSessionOption(\Jackalope\Session::OPTION_AUTO_LASTMODIFIED, true);
+        $session->setSessionOption(Session::OPTION_AUTO_LASTMODIFIED, true);
 
         return $session;
     }
 
     public function getCredentials()
     {
-        return new \PHPCR\SimpleCredentials($GLOBALS['phpcr.user'], $GLOBALS['phpcr.pass']);
+        return new SimpleCredentials($GLOBALS['phpcr.user'], $GLOBALS['phpcr.pass']);
     }
 
     public function getInvalidCredentials()
     {
-        return new \PHPCR\SimpleCredentials('nonexistinguser', '');
+        return new SimpleCredentials('nonexistinguser', '');
     }
 
     public function getRestrictedCredentials()
     {
-        return new \PHPCR\SimpleCredentials('anonymous', 'abc');
+        return new SimpleCredentials('anonymous', 'abc');
     }
 
     /**
@@ -157,19 +168,19 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
 
     public function getRepository()
     {
-        $transport = new \Jackalope\Transport\DoctrineDBAL\Client(new \Jackalope\Factory, $this->connection);
-        foreach (array($GLOBALS['phpcr.workspace'], $this->otherWorkspacename) as $workspace) {
+        $transport = new Client(new Factory, $this->connection);
+        foreach ([$GLOBALS['phpcr.workspace'], $this->otherWorkspacename] as $workspace) {
             try {
                 $transport->createWorkspace($workspace);
-            } catch (\PHPCR\RepositoryException $e) {
-                if ($e->getMessage() != "Workspace '$workspace' already exists") {
+            } catch (RepositoryException $e) {
+                if ($e->getMessage() !== "Workspace '$workspace' already exists") {
                     // if the message is not that the workspace already exists, something went really wrong
                     throw $e;
                 }
             }
         }
 
-        return new \Jackalope\Repository(null, $transport, $this->getRepositoryFactoryParameters());
+        return new Repository(null, $transport, $this->getRepositoryFactoryParameters());
     }
 
     public function getFixtureLoader()
@@ -177,11 +188,11 @@ class ImplementationLoader extends \PHPCR\Test\AbstractLoader
         $testerClass = '\\Jackalope\\Test\\Tester\\' . ucfirst(strtolower($this->connection->getWrappedConnection()->getAttribute(PDO::ATTR_DRIVER_NAME)));
         if (!class_exists($testerClass)) {
             // load Generic Tester if no database specific Tester class found
-            $testerClass = '\\Jackalope\\Test\\Tester\\Generic';
+            $testerClass = Generic::class;
         }
 
         return new $testerClass(
-            new \PHPUnit_Extensions_Database_DB_DefaultDatabaseConnection($this->connection->getWrappedConnection(), "tests"),
+            new PHPUnit_Extensions_Database_DB_DefaultDatabaseConnection($this->connection->getWrappedConnection(), 'tests'),
             $this->fixturePath
         );
     }

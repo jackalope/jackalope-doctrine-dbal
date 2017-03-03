@@ -2,6 +2,9 @@
 
 namespace Jackalope;
 
+use Jackalope\Transport\DoctrineDBAL\CachedClient;
+use Jackalope\Transport\DoctrineDBAL\Client;
+use Jackalope\Transport\DoctrineDBAL\LoggingClient;
 use PHPCR\ConfigurationException;
 use PHPCR\RepositoryFactoryInterface;
 
@@ -30,16 +33,16 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      *
      * @var array
      */
-    private static $required = array(
+    private static $required = [
         'jackalope.doctrine_dbal_connection' => 'Doctrine\\DBAL\\Connection (required): connection instance',
-    );
+    ];
 
     /**
      * List of optional parameters for doctrine dbal.
      *
      * @var array
      */
-    private static $optional = array(
+    private static $optional = [
         'jackalope.factory' => 'string or object: Use a custom factory class for Jackalope objects',
         'jackalope.check_login_on_server' => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
         'jackalope.disable_transactions' => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
@@ -47,7 +50,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         'jackalope.data_caches' => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
         'jackalope.logger' => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
         Session::OPTION_AUTO_LASTMODIFIED => 'boolean: Whether to automatically update nodes having mix:lastModified. Defaults to true.',
-    );
+    ];
 
     /**
      * Get a repository connected to the backend with the provided doctrine
@@ -84,17 +87,19 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         $dbConn = $parameters['jackalope.doctrine_dbal_connection'];
 
         $transport = isset($parameters['jackalope.data_caches'])
-            ? $factory->get('Transport\DoctrineDBAL\CachedClient', array($dbConn, $parameters['jackalope.data_caches']))
-            : $factory->get('Transport\DoctrineDBAL\Client', array($dbConn));
+            ? $factory->get(CachedClient::class, [$dbConn, $parameters['jackalope.data_caches']])
+            : $factory->get(Client::class, [$dbConn]);
 
         if (isset($parameters['jackalope.check_login_on_server'])) {
             $transport->setCheckLoginOnServer($parameters['jackalope.check_login_on_server']);
         }
+
         if (isset($parameters['jackalope.uuid_generator'])) {
             $transport->setUuidGenerator($parameters['jackalope.uuid_generator']);
         }
+
         if (isset($parameters['jackalope.logger'])) {
-            $transport = $factory->get('Transport\DoctrineDBAL\LoggingClient', array($transport, $parameters['jackalope.logger']));
+            $transport = $factory->get(LoggingClient::class, [$transport, $parameters['jackalope.logger']]);
         }
 
         $options['transactions'] = empty($parameters['jackalope.disable_transactions']);

@@ -4,10 +4,13 @@ namespace Jackalope\Test;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\Session;
 use Jackalope\Transport\DoctrineDBAL\Client;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+use PHPCR\RepositoryException;
+use PHPCR\SimpleCredentials;
 
 /**
  * Base class for testing jackalope clients.
@@ -38,22 +41,22 @@ class FunctionalTestCase extends TestCase
         $this->transport = $this->getClient($conn);
 
         $this->transport->createWorkspace('default');
-        $this->repository = new \Jackalope\Repository(null, $this->transport);
+        $this->repository = new Repository(null, $this->transport);
 
         try {
             $this->transport->createWorkspace($GLOBALS['phpcr.workspace']);
-        } catch (\PHPCR\RepositoryException $e) {
-            if ($e->getMessage() != "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
+        } catch (RepositoryException $e) {
+            if ($e->getMessage() !== "Workspace '".$GLOBALS['phpcr.workspace']."' already exists") {
                 // if the message is not that the workspace already exists, something went really wrong
                 throw $e;
             }
         }
-        $this->session = $this->repository->login(new \PHPCR\SimpleCredentials("user", "passwd"), $GLOBALS['phpcr.workspace']);
+        $this->session = $this->repository->login(new SimpleCredentials('user', 'passwd'), $GLOBALS['phpcr.workspace']);
     }
 
     protected function loadFixtures(Connection $conn)
     {
-        $options = array('disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform);
+        $options = ['disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform];
         $schema = new RepositorySchema($options, $conn);
         $tables = $schema->getTables();
 
@@ -64,6 +67,6 @@ class FunctionalTestCase extends TestCase
 
     protected function getClient(Connection $conn)
     {
-        return new Client(new \Jackalope\Factory(), $conn);
+        return new Client(new Factory(), $conn);
     }
 }

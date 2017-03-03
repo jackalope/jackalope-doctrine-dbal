@@ -2,7 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\DBAL\DriverManager;
 use Jackalope\Test\FunctionalTestCase;
 
 class PrefetchTest extends FunctionalTestCase
@@ -35,7 +34,7 @@ class PrefetchTest extends FunctionalTestCase
     {
         $this->transport->setFetchDepth(1);
 
-        $list = $this->transport->getNodes(array('/node-a', '/node-b'));
+        $list = $this->transport->getNodes(['/node-a', '/node-b']);
 
         $this->assertCount(6, $list);
 
@@ -43,7 +42,7 @@ class PrefetchTest extends FunctionalTestCase
         sort($keys);
 
         $this->assertEquals(
-            array('/node-a', '/node-a/child-a', '/node-a/child-b', '/node-b', '/node-b/child-a', '/node-b/child-b'),
+            ['/node-a', '/node-a/child-a', '/node-a/child-b', '/node-b', '/node-b/child-a', '/node-b/child-b'],
             $keys
         );
 

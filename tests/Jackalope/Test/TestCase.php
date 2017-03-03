@@ -21,14 +21,14 @@ abstract class TestCase extends BaseTestCase
             $this->conn = $dbConn;
 
             if ($this->conn === null) {
-                $this->conn = DriverManager::getConnection(array(
+                $this->conn = DriverManager::getConnection([
                     'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
                     'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
                     'host'      => @$GLOBALS['phpcr.doctrine.dbal.host'],
                     'user'      => @$GLOBALS['phpcr.doctrine.dbal.username'],
                     'password'  => @$GLOBALS['phpcr.doctrine.dbal.password'],
                     'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']
-                ));
+                ]);
             }
         }
 

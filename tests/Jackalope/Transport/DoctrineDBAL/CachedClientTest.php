@@ -2,7 +2,9 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
+use Jackalope\Factory;
 use Jackalope\Test\FunctionalTestCase;
 
 class CachedClientTest extends FunctionalTestCase
@@ -12,15 +14,18 @@ class CachedClientTest extends FunctionalTestCase
 
     protected function getClient(Connection $conn)
     {
-        $this->cacheMock = $this->getMock('\Doctrine\Common\Cache\ArrayCache');
-        return new CachedClient(new \Jackalope\Factory(), $conn, array('nodes' => $this->cacheMock, 'meta' => $this->cacheMock));
+        $this->cacheMock = $this->getMockBuilder(ArrayCache::class)
+            ->getMock()
+        ;
+
+        return new CachedClient(new Factory(), $conn, ['nodes' => $this->cacheMock, 'meta' => $this->cacheMock]);
     }
 
     public function testArrayObjectIsConvertedToArray()
     {
         $namespaces = $this->transport->getNamespaces();
 
-        $this->assertInternalType("array", $namespaces);
+        $this->assertInternalType('array', $namespaces);
     }
 
     /**

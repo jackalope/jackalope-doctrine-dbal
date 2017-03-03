@@ -34,7 +34,7 @@ class CachedClient extends Client
      */
     private $keySanitizer;
 
-    public function __construct(FactoryInterface $factory, Connection $conn, array $caches = array())
+    public function __construct(FactoryInterface $factory, Connection $conn, array $caches = [])
     {
         parent::__construct($factory, $conn);
 
@@ -58,7 +58,7 @@ class CachedClient extends Client
      */
     private function clearCaches(array $caches = null)
     {
-        $caches = $caches ?: array('nodes', 'query');
+        $caches = $caches ?: ['nodes', 'query'];
         foreach ($caches as $cache) {
             if (isset($this->caches[$cache])) {
                 $this->caches[$cache]->deleteAll();
@@ -168,7 +168,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodeTypes($nodeTypes = array())
+    public function getNodeTypes($nodeTypes = [])
     {
         $cacheKey = 'nodetypes: '.serialize($nodeTypes);
         $cacheKey = $this->sanitizeKey($cacheKey);
@@ -281,7 +281,7 @@ class CachedClient extends Client
             return parent::getNodes($paths);
         }
 
-        $nodes = array();
+        $nodes = [];
         foreach ($paths as $key => $path) {
             try {
                 $nodes[$key] = $this->getNode($path);
@@ -343,7 +343,7 @@ class CachedClient extends Client
      */
     public function getNodesByIdentifier($uuids)
     {
-        $data = array();
+        $data = [];
         foreach ($uuids as $uuid) {
             try {
                 $path = $this->getNodePathForIdentifier($uuid);

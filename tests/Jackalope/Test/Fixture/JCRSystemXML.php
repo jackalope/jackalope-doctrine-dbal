@@ -2,6 +2,8 @@
 
 namespace Jackalope\Test\Fixture;
 
+use DOMXPath;
+
 /**
  * Jackalope Document or System Views.
  *
@@ -17,9 +19,9 @@ class JCRSystemXML extends XMLDocument
      */
     public function getNamespaces()
     {
-        $namespaces = array();
+        $namespaces = [];
 
-        $xpath = new \DOMXPath($this);
+        $xpath = new DOMXPath($this);
         foreach ($xpath->query('namespace::*') as $node) {
             $namespaces[$this->documentElement->lookupPrefix($node->nodeValue)] = $node->nodeValue;
         }

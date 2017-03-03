@@ -50,8 +50,8 @@ class Xpath
         if ((strpos($query, '\'') !== false)
             || (strpos($query, '"') !== false)
         ) {
-            $quotechars = array('\'','"');
-            $parts = array();
+            $quotechars = ['\'','"'];
+            $parts = [];
             $current = '';
 
             foreach (str_split($query) as $character) {

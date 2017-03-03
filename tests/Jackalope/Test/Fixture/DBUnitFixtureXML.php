@@ -2,6 +2,9 @@
 
 namespace Jackalope\Test\Fixture;
 
+use DOMDocument;
+use DOMElement;
+use InvalidArgumentException;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\UUIDHelper;
 
@@ -48,10 +51,10 @@ class DBUnitFixtureXML extends XMLDocument
     {
         parent::__construct($file, $options);
 
-        $this->tables           = array();
-        $this->ids              = array();
-        $this->references       = array();
-        $this->expectedNodes    = array();
+        $this->tables           = [];
+        $this->ids              = [];
+        $this->references       = [];
+        $this->expectedNodes    = [];
     }
 
     public function addDataset()
@@ -59,20 +62,20 @@ class DBUnitFixtureXML extends XMLDocument
         $this->appendChild($this->createElement('dataset'));
 
         // purge binary in case no binary properties are in fixture
-        $this->ensureTableExists('phpcr_binarydata', array(
+        $this->ensureTableExists('phpcr_binarydata', [
             'node_id',
             'property_name',
             'workspace_name',
             'idx',
             'data',
-        ));
+        ]);
 
         return $this;
     }
 
     public function addWorkspace($name)
     {
-        $this->addRow('phpcr_workspaces', array('name' => $name));
+        $this->addRow('phpcr_workspaces', ['name' => $name]);
 
         return $this;
     }
@@ -82,7 +85,7 @@ class DBUnitFixtureXML extends XMLDocument
         $namespaces = array_diff($namespaces, $this->namespaces);
 
         foreach ($namespaces as $prefix => $uri) {
-            $this->addRow('phpcr_namespaces', array('prefix' => $prefix, 'uri' => $uri));
+            $this->addRow('phpcr_namespaces', ['prefix' => $prefix, 'uri' => $uri]);
         }
 
         return $this;
@@ -101,9 +104,11 @@ class DBUnitFixtureXML extends XMLDocument
     public function addNodes($workspaceName, \DOMNodeList $nodes)
     {
         $node = $nodes->item(0);
+
         if ('jcr:root' !== $node->getAttributeNS($this->namespaces['sv'], 'name')) {
             $this->addRootNode('tests');
         }
+
         foreach ($nodes as $node) {
             $this->addNode($workspaceName, $node);
         }
@@ -116,7 +121,7 @@ class DBUnitFixtureXML extends XMLDocument
         $uuid = UUIDHelper::generateUUID();
         $this->ids[$uuid] = self::$idCounter++;
 
-        return $this->addRow('phpcr_nodes', array(
+        return $this->addRow('phpcr_nodes', [
             'id'            => $this->ids[$uuid],
             'path'          => '/',
             'parent'        => '',
@@ -142,10 +147,10 @@ class DBUnitFixtureXML extends XMLDocument
                             . ' xmlns:rep="internal" />',
             'depth'         => 0,
             'sort_order'    => 0,
-        ));
+        ]);
     }
 
-    public function addNode($workspaceName, \DOMElement $node)
+    public function addNode($workspaceName, DOMElement $node)
     {
         $properties = $this->getAttributes($node);
         $uuid = isset($properties['jcr:uuid']['value'][0])
@@ -153,7 +158,7 @@ class DBUnitFixtureXML extends XMLDocument
         $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])
             ? $this->expectedNodes[$uuid] : self::$idCounter++;
 
-        $dom = new \DOMDocument('1.0', 'UTF-8');
+        $dom = new DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
         foreach ($this->namespaces as $namespace => $uri) {
             $phpcrNode->setAttribute('xmlns:' . $namespace, $uri);
@@ -161,12 +166,12 @@ class DBUnitFixtureXML extends XMLDocument
         $dom->appendChild($phpcrNode);
 
         foreach ($properties as $propertyName => $propertyData) {
-            if ($propertyName == 'jcr:uuid') {
+            if ($propertyName === 'jcr:uuid') {
                 continue;
             }
 
             if (!isset($this->jcrTypes[$propertyData['type']])) {
-                throw new \InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
+                throw new InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
             }
 
             $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode));
@@ -176,11 +181,11 @@ class DBUnitFixtureXML extends XMLDocument
 
         $namespace  = '';
         $name       = $node->getAttributeNS($this->namespaces['sv'], 'name');
-        if (count($parts = explode(':', $name, 2)) == 2) {
+        if (count($parts = explode(':', $name, 2)) === 2) {
             list($namespace, $name) = $parts;
         }
 
-        if ($namespace == 'jcr' && $name == 'root') {
+        if ($namespace === 'jcr' && $name === 'root') {
             $id         = 1;
             $childPath  = '/';
             $parentPath = '';
@@ -188,7 +193,7 @@ class DBUnitFixtureXML extends XMLDocument
             $namespace  = '';
         }
 
-        $this->addRow('phpcr_nodes', array(
+        $this->addRow('phpcr_nodes', [
             'id'            => $id,
             'path'          => $childPath,
             'parent'        => $parentPath,
@@ -200,7 +205,7 @@ class DBUnitFixtureXML extends XMLDocument
             'props'         => $dom->saveXML(),
             'depth'         => PathHelper::getPathDepth($childPath),
             'sort_order'    => $id - 2,
-        ));
+        ]);
 
         return $this;
     }
@@ -211,7 +216,7 @@ class DBUnitFixtureXML extends XMLDocument
             $table = 'phpcr_nodes_'.$type.'s';
 
             // make sure we have the references even if there is not a single entry in it to have it truncated
-            $this->ensureTableExists($table, array('source_id', 'source_property_name', 'target_id'));
+            $this->ensureTableExists($table, ['source_id', 'source_property_name', 'target_id']);
 
             foreach ($references as $uuid => $reference) {
                 if (isset($this->ids[$uuid])) {
@@ -227,10 +232,10 @@ class DBUnitFixtureXML extends XMLDocument
 
     public function getAttributes(\DOMElement $node)
     {
-        $properties = array();
+        $properties = [];
 
         foreach ($node->childNodes as $child) {
-            if ($child instanceof \DOMElement && $child->tagName == 'sv:property') {
+            if ($child instanceof DOMElement && $child->tagName === 'sv:property') {
                 list($name, $propertyNameibute) = $this->getChildAttribute($child);
                 $properties[$name] = $propertyNameibute;
             }
@@ -239,13 +244,13 @@ class DBUnitFixtureXML extends XMLDocument
         return $properties;
     }
 
-    public function getChildAttribute(\DOMElement $node)
+    public function getChildAttribute(DOMElement $node)
     {
         $name = $node->getAttributeNS($this->namespaces['sv'], 'name');
         $type = strtolower($node->getAttributeNS($this->namespaces['sv'], 'type'));
 
-        $values = array();
-        if ($name == 'jcr:created') {
+        $values = [];
+        if ($name === 'jcr:created') {
             $values[] = date(self::DATEFORMAT);
         } else {
             foreach ($node->getElementsByTagNameNS($this->namespaces['sv'], 'value') as $nodeValue) {
@@ -254,14 +259,14 @@ class DBUnitFixtureXML extends XMLDocument
         }
 
         $isMultiValue = false;
-        if ($name == 'jcr:mixinTypes'
+        if ($name === 'jcr:mixinTypes'
             || count($values) > 1
-            || ($node->hasAttributeNS($this->namespaces['sv'], 'multiple') && $node->getAttributeNS($this->namespaces['sv'], 'multiple') == 'true')
+            || ($node->hasAttributeNS($this->namespaces['sv'], 'multiple') && $node->getAttributeNS($this->namespaces['sv'], 'multiple') === 'true')
         ) {
             $isMultiValue = true;
         }
 
-        return array($name, array('type' =>  $type, 'value' => $values, 'multiValued' => $isMultiValue));
+        return [$name, ['type' =>  $type, 'value' => $values, 'multiValued' => $isMultiValue]];
     }
 
     public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, \DOMDocument $dom)
@@ -307,11 +312,11 @@ class DBUnitFixtureXML extends XMLDocument
                     $targetId = $this->expectedNodes[$value] = self::$idCounter++;
                 }
                 // do not repeat references
-                $this->references[$type][$value][$id . $propertyName . $targetId] = array(
+                $this->references[$type][$value][$id . $propertyName . $targetId] = [
                     'source_id'             => $id,
                     'source_property_name'  => $propertyName,
                     'target_id'             => $targetId,
-                );
+                ];
                 break;
         }
 
@@ -337,24 +342,24 @@ class DBUnitFixtureXML extends XMLDocument
         return $valueNode;
     }
 
-    public function getPath(\DOMElement $node)
+    public function getPath(DOMElement $node)
     {
         $childPath  = '';
 
         $parent = $node;
         do {
-            if ($parent->tagName == 'sv:node') {
+            if ($parent->tagName === 'sv:node') {
                 $childPath = '/' . $parent->getAttributeNS($this->namespaces['sv'], 'name') . $childPath;
             }
             $parent = $parent->parentNode;
-        } while ($parent instanceof \DOMElement);
+        } while ($parent instanceof DOMElement);
 
         $parentPath = implode('/', array_slice(explode('/', $childPath), 0, -1));
         if (empty($parentPath)) {
             $parentPath = '/';
         }
 
-        return array($parentPath, $childPath);
+        return [$parentPath, $childPath];
     }
 
     /**
@@ -370,13 +375,13 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $data = base64_decode($data);
 
-        $this->addRow('phpcr_binarydata', array(
+        $this->addRow('phpcr_binarydata', [
             'node_id'       => $id,
             'property_name' => $propertyName,
             'workspace_name'  => $workspaceName,
             'idx'           => $idx,
             'data'          => $data,
-        ));
+        ]);
 
         return strlen($data);
     }
@@ -393,6 +398,7 @@ class DBUnitFixtureXML extends XMLDocument
                 $row->appendChild($this->createElement('value', htmlspecialchars($value)));
             }
         }
+
         $this->tables[$tableName]->appendChild($row);
 
         return $this;
@@ -403,9 +409,11 @@ class DBUnitFixtureXML extends XMLDocument
         if (!isset($this->tables[$tableName])) {
             $table = $this->createElement('table');
             $table->setAttribute('name', $tableName);
+
             foreach ($columns as $k) {
                 $table->appendChild($this->createElement('column', $k));
             }
+
             $this->documentElement->appendChild($table);
 
             $this->tables[$tableName] = $table;
