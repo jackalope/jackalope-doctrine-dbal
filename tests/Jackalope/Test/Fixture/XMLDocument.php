@@ -2,13 +2,16 @@
 
 namespace Jackalope\Test\Fixture;
 
+use DOMDocument;
+use DOMNode;
+
 /**
  * Base for Jackalope Document or System Views and PHPUnit DBUnit Fixture XML classes.
  *
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author cryptocompress <cryptocompress@googlemail.com>
  */
-abstract class XMLDocument extends \DOMDocument
+abstract class XMLDocument extends DOMDocument
 {
     /**
      * file path
@@ -47,22 +50,22 @@ abstract class XMLDocument extends \DOMDocument
         $this->file                 = $file;
         $this->options              = $options;
 
-        $this->jcrTypes = array(
-            'string'        => array(1, 'clob_data'),
-            'binary'        => array(2, 'int_data'),
-            'long'          => array(3, 'int_data'),
-            'double'        => array(4, 'float_data'),
-            'date'          => array(5, 'datetime_data'),
-            'boolean'       => array(6, 'int_data'),
-            'name'          => array(7, 'string_data'),
-            'path'          => array(8, 'string_data'),
-            'reference'     => array(9, 'string_data'),
-            'weakreference' => array(10, 'string_data'),
-            'uri'           => array(11, 'string_data'),
-            'decimal'       => array(12, 'string_data'),
-        );
+        $this->jcrTypes = [
+            'string'        => [1, 'clob_data'],
+            'binary'        => [2, 'int_data'],
+            'long'          => [3, 'int_data'],
+            'double'        => [4, 'float_data'],
+            'date'          => [5, 'datetime_data'],
+            'boolean'       => [6, 'int_data'],
+            'name'          => [7, 'string_data'],
+            'path'          => [8, 'string_data'],
+            'reference'     => [9, 'string_data'],
+            'weakreference' => [10, 'string_data'],
+            'uri'           => [11, 'string_data'],
+            'decimal'       => [12, 'string_data'],
+        ];
 
-        $this->namespaces = array(
+        $this->namespaces = [
             'xml'   => 'http://www.w3.org/XML/1998/namespace',
             'mix'   => 'http://www.jcp.org/jcr/mix/1.0',
             'nt'    => 'http://www.jcp.org/jcr/nt/1.0',
@@ -71,7 +74,7 @@ abstract class XMLDocument extends \DOMDocument
             'sv'    => 'http://www.jcp.org/jcr/sv/1.0',
             'phpcr' => 'http://www.jcp.org/jcr/phpcr/1.0',
             'rep'   => 'internal'
-        );
+        ];
     }
 
     /**
@@ -80,7 +83,7 @@ abstract class XMLDocument extends \DOMDocument
      * @param string $file    - file path
      * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      *
-     * @return \Jackalope\Test\XMLDocument
+     * @return XMLDocument
      */
     public function load($file = null, $options = null)
     {
@@ -100,12 +103,12 @@ abstract class XMLDocument extends \DOMDocument
     /**
      * Dumps the internal XML tree back into a string.
      *
-     * @param \DOMNode $node    - node to dump
+     * @param DOMNode $node    - node to dump
      * @param int      $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      *
      * @return string
      */
-    public function saveXml(\DOMNode $node = null, $options = null)
+    public function saveXml(DOMNode $node = null, $options = null)
     {
         return str_replace('escaping_x0020 bla &lt;&gt;\'""', 'escaping_x0020 bla"', parent::saveXML($node));
     }
@@ -115,7 +118,7 @@ abstract class XMLDocument extends \DOMDocument
      *
      * @param string $file
      *
-     * @return \Jackalope\Test\XMLDocument
+     * @return XMLDocument
      */
     public function save($file = null)
     {

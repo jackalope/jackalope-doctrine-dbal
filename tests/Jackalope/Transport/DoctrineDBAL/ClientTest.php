@@ -2,10 +2,17 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use DateTime;
+use DOMDocument;
+use DOMXPath;
 use Jackalope\Test\FunctionalTestCase;
+use PDO;
 use PHPCR\PropertyType;
+use PHPCR\Query\QueryInterface;
 use PHPCR\Util\NodeHelper;
 use PHPCR\Util\PathHelper;
+use PHPCR\ValueFormatException;
+use ReflectionClass;
 
 class ClientTest extends FunctionalTestCase
 {
@@ -19,12 +26,12 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $qm = $this->session->getWorkspace()->getQueryManager();
-        $query = $qm->createQuery('SELECT * FROM [nt:unstructured]', \PHPCR\Query\QueryInterface::JCR_SQL2);
+        $query = $qm->createQuery('SELECT * FROM [nt:unstructured]', QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
         $this->assertEquals(2, count($result->getNodes()));
 
-        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE foo = "bar"', \PHPCR\Query\QueryInterface::JCR_SQL2);
+        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE foo = "bar"', QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
         $this->assertEquals(1, count($result->getNodes()));
@@ -40,7 +47,7 @@ class ClientTest extends FunctionalTestCase
         $propertyDefs = $template->getPropertyDefinitionTemplates();
         $propertyTemplate = $ntm->createPropertyDefinitionTemplate();
         $propertyTemplate->setName('headline');
-        $propertyTemplate->setRequiredType(\PHPCR\PropertyType::STRING);
+        $propertyTemplate->setRequiredType(PropertyType::STRING);
         $propertyDefs[] = $propertyTemplate;
 
         $childDefs = $template->getNodeDefinitionTemplates();
@@ -50,7 +57,7 @@ class ClientTest extends FunctionalTestCase
         $nodeTemplate->setMandatory(true);
         $childDefs[] = $nodeTemplate;
 
-        $ntm->registerNodeTypes(array($template), true);
+        $ntm->registerNodeTypes([$template], true);
 
         $def = $ntm->getNodeType('phpcr:article');
         $this->assertEquals("phpcr:article", $def->getName());
@@ -86,11 +93,11 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, array('name' => 'page3', 'parent' => '/topic'));
+        $stmnt = $this->conn->executeQuery($query, ['name' => 'page3', 'parent' => '/topic']);
         $row = $stmnt->fetch();
         $this->assertEquals(0, $row['sort_order']);
 
-        $stmnt = $this->conn->executeQuery($query, array('name' => 'page4', 'parent' => '/topic'));
+        $stmnt = $this->conn->executeQuery($query, ['name' => 'page4', 'parent' => '/topic']);
 
         $row = $stmnt->fetch();
         $this->assertEquals(4, $row['sort_order']);
@@ -124,12 +131,12 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic'));
+        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic']);
         $row = $stmnt->fetch();
 
         $this->assertEquals($row['depth'], '1');
 
-        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic/page1'));
+        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic/page1']);
         $row = $stmnt->fetch();
 
         $this->assertEquals($row['depth'], '2');
@@ -163,11 +170,11 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2'));
+        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic1/page1/page2']);
         $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '3');
 
-        $stmnt = $this->conn->executeQuery($query, array('path' => '/topic1/page1/page2/topic3/page3'));
+        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic1/page1/page2/topic3/page3']);
         $row = $stmnt->fetch();
         $this->assertEquals($row['depth'], '5');
     }
@@ -178,7 +185,8 @@ class ClientTest extends FunctionalTestCase
     public function testOutOfRangeCharacterOccurrence($string, $isValid)
     {
         if (false === $isValid) {
-            $this->setExpectedException('PHPCR\ValueFormatException', 'Invalid character detected');
+            $this->expectException(ValueFormatException::class);
+            $this->expectExceptionMessage('Invalid character detected');
         }
 
         $root = $this->session->getNode('/');
@@ -189,19 +197,19 @@ class ClientTest extends FunctionalTestCase
 
     public function provideTestOutOfRangeCharacters()
     {
-        return array(
-            array('This is valid too!'.$this->translateCharFromCode('\u0009'), true),
-            array('This is valid', true),
-            array($this->translateCharFromCode('\uD7FF'), true),
-            array('This is on the edge, but valid too.'. $this->translateCharFromCode('\uFFFD'), true),
-            array($this->translateCharFromCode('\u10000'), true),
-            array($this->translateCharFromCode('\u10FFFF'), true),
-            array($this->translateCharFromCode('\u0001'), false),
-            array($this->translateCharFromCode('\u0002'), false),
-            array($this->translateCharFromCode('\u0003'), false),
-            array($this->translateCharFromCode('\u0008'), false),
-            array($this->translateCharFromCode('\uFFFF'), false),
-        );
+        return [
+            ['This is valid too!'.$this->translateCharFromCode('\u0009'), true],
+            ['This is valid', true],
+            [$this->translateCharFromCode('\uD7FF'), true],
+            ['This is on the edge, but valid too.'. $this->translateCharFromCode('\uFFFD'), true],
+            [$this->translateCharFromCode('\u10000'), true],
+            [$this->translateCharFromCode('\u10FFFF'), true],
+            [$this->translateCharFromCode('\u0001'), false],
+            [$this->translateCharFromCode('\u0002'), false],
+            [$this->translateCharFromCode('\u0003'), false],
+            [$this->translateCharFromCode('\u0008'), false],
+            [$this->translateCharFromCode('\uFFFF'), false],
+        ];
     }
 
     private function translateCharFromCode($char)
@@ -211,12 +219,11 @@ class ClientTest extends FunctionalTestCase
 
     public function testDeleteMoreThanOneThousandNodes()
     {
-        $nodes = array();
         $root = $this->session->getNode('/');
         $parent = $root->addNode('test-more-than-one-thousand');
 
         for ($i = 0; $i <= 1200; $i++) {
-            $nodes[] = $parent->addNode('node-'.$i);
+            $parent->addNode('node-'.$i);
         }
 
         $this->session->save();
@@ -231,22 +238,22 @@ class ClientTest extends FunctionalTestCase
         $rootNode = $this->session->getRootNode();
         $node = $rootNode->addNode('testLengthAttribute');
 
-        $data = array(
+        $data = [
             // PropertyName         PropertyValue                   PropertyType            Expected Length
-            'simpleString'  => array('simplestring',                PropertyType::STRING,   12),
-            'mbString'      => array('stringMultibit漢',             PropertyType::STRING,   17),
-            'long'          => array(42,                            PropertyType::LONG,     2),
-            'double'        => array(3.1415,                        PropertyType::DOUBLE,   6),
-            'decimal'       => array(3.141592,                      PropertyType::DECIMAL,  8),
-            'date'          => array(new \DateTime('now'),          PropertyType::DATE,     29),
-            'booleanTrue'   => array(true,                          PropertyType::BOOLEAN,  1),
-            'booleanFalse'  => array(false,                         PropertyType::BOOLEAN,  0),
-            'name'          => array('nt:unstructured',             PropertyType::NAME,     15),
-            'uri'           => array('https://google.com',          PropertyType::URI,      18),
-            'path'          => array('/root/testLengthAttribute',   PropertyType::PATH,     25),
+            'simpleString'  => ['simplestring',                PropertyType::STRING,   12],
+            'mbString'      => ['stringMultibit漢',             PropertyType::STRING,   17],
+            'long'          => [42,                            PropertyType::LONG,     2],
+            'double'        => [3.1415,                        PropertyType::DOUBLE,   6],
+            'decimal'       => [3.141592,                      PropertyType::DECIMAL,  8],
+            'date'          => [new DateTime('now'),          PropertyType::DATE,     29],
+            'booleanTrue'   => [true,                          PropertyType::BOOLEAN,  1],
+            'booleanFalse'  => [false,                         PropertyType::BOOLEAN,  0],
+            'name'          => ['nt:unstructured',             PropertyType::NAME,     15],
+            'uri'           => ['https://google.com',          PropertyType::URI,      18],
+            'path'          => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
             // 'multiString'   => array(array('foo', 'bar'),           PropertyType::STRING,   array(3,3)),
             // (weak)reference...
-        );
+        ];
 
         foreach ($data as $propertyName => $propertyInfo) {
             $node->setProperty($propertyName, $propertyInfo[0], $propertyInfo[1]);
@@ -254,23 +261,23 @@ class ClientTest extends FunctionalTestCase
 
         $this->session->save();
 
-        $statement = $this->getConnection()->executeQuery('SELECT props, numerical_props FROM phpcr_nodes WHERE path = ?', array('/testLengthAttribute'));
-        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+        $statement = $this->getConnection()->executeQuery('SELECT props, numerical_props FROM phpcr_nodes WHERE path = ?', ['/testLengthAttribute']);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
         $props = $row['props'];
         $decimalProps = $row['numerical_props'];
 
         foreach ($data as $propertyName => $propertyInfo) {
             $propertyElement = null;
 
-            foreach (array($props, $decimalProps) as $propXml) {
-                if (null == $propXml) {
+            foreach ([$props, $decimalProps] as $propXml) {
+                if (null === $propXml) {
                     continue;
                 }
 
-                $doc = new \DOMDocument('1.0', 'utf-8');
+                $doc = new DOMDocument('1.0', 'utf-8');
                 $doc->loadXML($propXml);
 
-                $xpath = new \DOMXPath($doc);
+                $xpath = new DOMXPath($doc);
                 $propertyElement = $xpath->query(sprintf('sv:property[@sv:name="%s"]', $propertyName));
 
                 if ($propertyElement->length > 0) {
@@ -295,7 +302,7 @@ class ClientTest extends FunctionalTestCase
 
     public function testUuid()
     {
-        $class = new \ReflectionClass('Jackalope\Transport\DoctrineDBAL\Client');
+        $class = new ReflectionClass(Client::class);
         $method = $class->getMethod('generateUuid');
         $method->setAccessible(true);
 
@@ -330,10 +337,8 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        foreach (array(
-            '/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'
-        ) as $path) {
-            $stmnt = $this->conn->executeQuery($query, array('path' => $path));
+        foreach (['/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'] as $path) {
+            $stmnt = $this->conn->executeQuery($query, ['path' => $path]);
             $row = $stmnt->fetch();
             $this->assertTrue(false !== $row, $path . ' does not exist in database');
         }
@@ -354,14 +359,14 @@ class ClientTest extends FunctionalTestCase
         $rootNode = $this->session->getRootNode();
         $node = $rootNode->addNode('testStoreTypes');
 
-        $data = array(
-            array('string_1', 'string_1', PropertyType::STRING),
-            array('string_2', 'string_1', PropertyType::STRING),
-            array('long_1', '10', PropertyType::LONG),
-            array('long_2', '20', PropertyType::LONG),
-            array('decimal_1', '10.0', PropertyType::DECIMAL),
-            array('decimal_2', '20.0', PropertyType::DECIMAL),
-        );
+        $data = [
+            ['string_1', 'string_1', PropertyType::STRING],
+            ['string_2', 'string_1', PropertyType::STRING],
+            ['long_1', '10', PropertyType::LONG],
+            ['long_2', '20', PropertyType::LONG],
+            ['decimal_1', '10.0', PropertyType::DECIMAL],
+            ['decimal_2', '20.0', PropertyType::DECIMAL],
+        ];
 
         foreach ($data as $propertyData) {
             $node->setProperty($propertyData[0], $propertyData[1], $propertyData[2]);
@@ -378,98 +383,98 @@ class ClientTest extends FunctionalTestCase
 
     public function provideOrder()
     {
-        return array(
-            array(
-                array(
-                    'one' => array(
+        return [
+            [
+                [
+                    'one' => [
                         'value' => 'AAA',
-                    ),
-                    'two' => array(
+                    ],
+                    'two' => [
                         'value' => 'BBB',
-                    ),
-                    'three' => array(
+                    ],
+                    'three' => [
                         'value' => 'CCC',
-                    ),
-                ),
+                    ],
+                ],
                 'value DESC',
-                array('three', 'two', 'one'),
-            ),
+                ['three', 'two', 'one'],
+            ],
 
             // longs
-            array(
-                array(
-                    'one' => array(
+            [
+                [
+                    'one' => [
                         'value' => 30,
-                    ),
-                    'two' => array(
+                    ],
+                    'two' => [
                         'value' => 20,
-                    ),
-                    'three' => array(
+                    ],
+                    'three' => [
                         'value' => 10,
-                    ),
-                ),
+                    ],
+                ],
                 'value',
-                array('three', 'two', 'one'),
-            ),
+                ['three', 'two', 'one'],
+            ],
 
             // longs (ensure that values are not cast as strings)
-            array(
-                array(
-                    'one' => array(
+            [
+                [
+                    'one' => [
                         'value' => 10,
-                    ),
-                    'two' => array(
+                    ],
+                    'two' => [
                         'value' => 100,
-                    ),
-                    'three' => array(
+                    ],
+                    'three' => [
                         'value' => 20,
-                    ),
-                ),
+                    ],
+                ],
                 'value',
-                array('one', 'three', 'two'),
-            ),
+                ['one', 'three', 'two'],
+            ],
 
             // decimals
-            array(
-                array(
-                    'one' => array(
+            [
+                [
+                    'one' => [
                         'value' => 10.01,
-                    ),
-                    'two' => array(
+                    ],
+                    'two' => [
                         'value' => 0.01,
-                    ),
-                    'three' => array(
+                    ],
+                    'three' => [
                         'value' => 5.05,
-                    ),
-                ),
+                    ],
+                ],
                 'value',
-                array('two', 'three', 'one'),
-            ),
+                ['two', 'three', 'one'],
+            ],
 
             // mixed
-            array(
-                array(
-                    'one' => array(
+            [
+                [
+                    'one' => [
                         'title' => 'AAA',
                         'value' => 10.01,
-                    ),
-                    'two' => array(
+                    ],
+                    'two' => [
                         'title' => 'AAA',
                         'value' => 0.01,
-                    ),
-                    'three' => array(
+                    ],
+                    'three' => [
                         'title' => 'CCC',
                         'value' => 5.05,
-                    ),
-                    'four' => array(
+                    ],
+                    'four' => [
                         'title' => 'BBB',
                         'value' => 5.05,
-                    ),
-                ),
+                    ],
+                ],
                 'title, value ASC',
-                array('two', 'one', 'four', 'three'),
-            ),
-        );
+                ['two', 'one', 'four', 'three'],
+            ],
+        ];
     }
 
     /**
@@ -489,7 +494,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $qm = $this->session->getWorkspace()->getQueryManager();
-        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY ' . $orderBy, \PHPCR\Query\QueryInterface::JCR_SQL2);
+        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY ' . $orderBy, QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
         $rows = $result->getRows();
@@ -564,7 +569,7 @@ class ClientTest extends FunctionalTestCase
     {
         $rootNode = $this->session->getNode('/');
         $child1 = $rootNode->addNode('child1');
-        $date = new \DateTime();
+        $date = new DateTime();
         $before = $date->format('c');
         $child1->setProperty('date', $date);
         $this->session->save();

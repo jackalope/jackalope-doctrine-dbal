@@ -39,7 +39,7 @@ class InitDoctrineDbalCommand extends Command
         $this
             ->setName('jackalope:init:dbal')
             ->setDescription('Prepare the database for Jackalope Doctrine-Dbal.')
-            ->setDefinition(array(
+            ->setDefinition([
                 new InputOption(
                     'force', null, InputOption::VALUE_NONE,
                     'Set this parameter to execute this action'
@@ -52,7 +52,7 @@ class InitDoctrineDbalCommand extends Command
                     'drop', null, InputOption::VALUE_NONE,
                     'Drop any existing tables before trying to create the new tables.'
                 )
-            ))
+            ])
             ->setHelp(<<<EOT
 Prepare the database for Jackalope Doctrine-DBAL transport.
 Processes the schema and either creates it directly in the database or generate the SQL output.

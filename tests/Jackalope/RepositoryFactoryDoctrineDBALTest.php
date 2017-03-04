@@ -2,32 +2,37 @@
 
 namespace Jackalope;
 
+use Doctrine\DBAL\Connection;
+use PHPCR\ConfigurationException;
+
 class RepositoryFactoryDoctrineDBALTest extends \PHPUnit_Framework_TestCase
 {
     /**
-     * @expectedException \PHPCR\ConfigurationException
      * @expectedExceptionMessage missing
      */
     public function testMissingRequired()
     {
+        $this->expectException(ConfigurationException::class);
+
         $factory = new RepositoryFactoryDoctrineDBAL();
-        $factory->getRepository(array());
+        $factory->getRepository([]);
     }
 
     /**
-     * @expectedException \PHPCR\ConfigurationException
      * @expectedExceptionMessage unknown
      */
     public function testExtraParameter()
     {
+        $this->expectException(ConfigurationException::class);
+
         $factory = new RepositoryFactoryDoctrineDBAL();
-        $conn = $this->getMockBuilder('Doctrine\DBAL\Connection')
+        $conn = $this->getMockBuilder(Connection::class)
             ->disableOriginalConstructor()
             ->getMock()
         ;
-        $this->assertNull($factory->getRepository(array(
+        $this->assertNull($factory->getRepository([
             'jackalope.doctrine_dbal_connection' => $conn,
             'unknown' => 'garbage',
-        )));
+        ]));
     }
 }

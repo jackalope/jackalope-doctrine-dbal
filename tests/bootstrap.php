@@ -1,5 +1,8 @@
 <?php
 
+use Doctrine\DBAL\DriverManager;
+use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+
 /** Make sure we get ALL infos from php */
 error_reporting(E_ALL | E_STRICT);
 
@@ -28,7 +31,7 @@ generate_fixtures(
  * For further details, please see Doctrine configuration page.
  * http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
  */
-$dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
+$dbConn = DriverManager::getConnection([
     'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
     'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
     'host'      => @$GLOBALS['phpcr.doctrine.dbal.host'],
@@ -36,19 +39,18 @@ $dbConn = \Doctrine\DBAL\DriverManager::getConnection(array(
     'user'      => @$GLOBALS['phpcr.doctrine.dbal.username'],
     'password'  => @$GLOBALS['phpcr.doctrine.dbal.password'],
     'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']
-));
+]);
 
 /** Recreate database schema */
 if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {
-    $options = array('disable_fks' => $dbConn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform);
-    $repositorySchema = new \Jackalope\Transport\DoctrineDBAL\RepositorySchema($options, $dbConn);
+    $options = ['disable_fks' => $dbConn->getDatabasePlatform() instanceof \Doctrine\DBAL\Platforms\SqlitePlatform];
+    $repositorySchema = new RepositorySchema($options, $dbConn);
     $repositorySchema->reset();
 }
 
 /**
  * constants for the repository descriptor test for JCR 1.0/JSR-170 and JSR-283 specs
  */
-
 define('SPEC_VERSION_DESC', 'jcr.specification.version');
 define('SPEC_NAME_DESC', 'jcr.specification.name');
 define('REP_VENDOR_DESC', 'jcr.repository.vendor');

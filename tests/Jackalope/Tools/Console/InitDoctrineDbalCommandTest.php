@@ -2,15 +2,17 @@
 
 namespace Jackalope\Tools\Console\Command;
 
+use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
+use PDOException;
+use PHPUnit_Framework_TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Tester\CommandTester;
-use Symfony\Component\Console\Command\Command;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 
-class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
+class InitDoctrineDbalCommandTest extends PHPUnit_Framework_TestCase
 {
     /**
      * @var HelperSet
@@ -34,11 +36,11 @@ class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $this->connection = $this->getMockBuilder('Doctrine\DBAL\Connection')
+        $this->connection = $this->getMockBuilder(Connection::class)
             ->disableOriginalConstructor()
             ->getMock();
 
-        $this->platform = $this->getMockBuilder('Doctrine\DBAL\Platforms\MySqlPlatform')
+        $this->platform = $this->getMockBuilder(MySqlPlatform::class)
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -47,9 +49,9 @@ class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
             ->method('getDatabasePlatform')
             ->will($this->returnValue($this->platform));
 
-        $this->helperSet = new HelperSet(array(
+        $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
-        ));
+        ]);
 
         $this->application = new Application();
         $this->application->setHelperSet($this->helperSet);
@@ -71,9 +73,9 @@ class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
     {
         $command = $this->application->find($name);
         $commandTester = new CommandTester($command);
-        $args = array_merge(array(
+        $args = array_merge([
             'command' => $command->getName(),
-        ), $args);
+        ], $args);
         $this->assertEquals($status, $commandTester->execute($args));
 
         return $commandTester;
@@ -81,11 +83,11 @@ class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
 
     public function testCommand()
     {
-        $this->executeCommand('jackalope:init:dbal', array(), 2);
-        $this->executeCommand('jackalope:init:dbal', array('--dump-sql' => true), 0);
-        $this->executeCommand('jackalope:init:dbal', array('--dump-sql' => true, '--drop' => true), 0);
-        $this->executeCommand('jackalope:init:dbal', array('--force' => true), 0);
-        $this->executeCommand('jackalope:init:dbal', array('--force' => true, '--drop' => true), 0);
+        $this->executeCommand('jackalope:init:dbal', [], 2);
+        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true], 0);
+        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true, '--drop' => true], 0);
+        $this->executeCommand('jackalope:init:dbal', ['--force' => true], 0);
+        $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 0);
 
         // Unfortunately PDO doesn't follow internals and uses a non integer error code, which cannot be manually created
         $this->connection
@@ -94,11 +96,11 @@ class InitDoctrineDbalCommandTest extends \PHPUnit_Framework_TestCase
             ->will($this->throwException(new MockPDOException('', '42S01')))
         ;
 
-        $this->executeCommand('jackalope:init:dbal', array('--force' => true, '--drop' => true), 1);
+        $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 1);
     }
 }
 
-class MockPDOException extends \PDOException
+class MockPDOException extends PDOException
 {
     public function __construct($msg, $code)
     {

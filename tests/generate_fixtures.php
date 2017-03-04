@@ -1,4 +1,8 @@
 <?php
+
+use Jackalope\Test\Fixture\DBUnitFixtureXML;
+use Jackalope\Test\Fixture\JCRSystemXML;
+
 /**
  * Convert Jackalope Document or System Views into PHPUnit DBUnit Fixture XML files
  *
@@ -8,24 +12,19 @@
 function generate_fixtures($srcDir, $destDir)
 {
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($srcDir)) as $srcFile) {
-        if (method_exists($srcFile, 'getExtension')) {
-            $extension = $srcFile->getExtension();
-        } else {
-            // fallback for PHP <5.3.6
-            $extension = pathinfo($srcFile, PATHINFO_EXTENSION);
-        }
+        $extension = $srcFile->getExtension();
         
         if (!$srcFile->isFile() || $extension !== 'xml') {
             continue;
         }
 
-        $srcDom = new \Jackalope\Test\Fixture\JCRSystemXML($srcFile->getPathname());
+        $srcDom = new JCRSystemXML($srcFile->getPathname());
         $nodes  = $srcDom->load()->getNodes();
         if ($nodes->length < 1) {
             continue;
         }
 
-        $destDom = new \Jackalope\Test\Fixture\DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
+        $destDom = new DBUnitFixtureXML(str_replace($srcDir, $destDir, $srcFile->getPathname()));
         $destDom->addDataset();
         $destDom->addWorkspace('tests');
         $destDom->addNamespaces($srcDom->getNamespaces());
