@@ -1,4 +1,8 @@
-# Jackalope [![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
+# Jackalope Doctrine-DBAL
+
+[![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
+[![Latest Stable Version](https://poser.pugx.org/jackalope/jackalope-doctrine-dbal/version.png)](https://packagist.org/packages/jackalope/jackalope-doctrine-dbal)
+[![Total Downloads](https://poser.pugx.org/jackalope/jackalope-doctrine-dbal/d/total.png)](https://packagist.org/packages/jackalope/jackalope-doctrine-dbal)
 
 Implementation of the PHP Content Repository API ([PHPCR](http://phpcr.github.io))
 using a relational database to persist data.

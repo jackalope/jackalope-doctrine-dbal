@@ -4,9 +4,13 @@ Changelog
 1.3.0
 -----
 
-* Added auto-detection of binary collation for MySQL, so that not always utf8_bin is used.
+* upgraded to PHP 5.6 / 7
+* bugfix #339 fix datetime comparison with different timezones
+* bugfix #337 Added auto-detection of binary collation for MySQL, so that not always utf8_bin is used.
   A new `setCaseSensitiveEncoding` method has been introduced, which can be used to override
   the auto detected value.
+* performance #336 better custom node type loading
+* bugfix #333 keep sort order when clone/copying a node
 
 1.2
 ---
