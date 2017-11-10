@@ -100,7 +100,7 @@ EOT
                     if (false === $input->getOption('force')) {
                         throw $e;
                     }
-                // remove this once we require Doctrine DBAL 2.5+
+                    // remove this once we require Doctrine DBAL 2.5+
                 } catch (DBALException $e) {
                     if (false === $input->getOption('force')) {
                         throw $e;
