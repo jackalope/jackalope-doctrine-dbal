@@ -27,7 +27,7 @@
     "repositories": [
         {
             "type": "git",
-            "url": "git@github.com:gabriel-caruso/phpcr-api-tests.git"
+            "url": "https://github.com/gabriel-caruso/phpcr-api-tests.git"
         }
     ],
     "require-dev": {
