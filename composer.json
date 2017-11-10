@@ -24,9 +24,15 @@
     "provide": {
         "jackalope/jackalope-transport": "1.3.0"
     },
+    "repositories": [
+        {
+            "type": "git",
+            "url": "git@github.com:gabriel-caruso/phpcr-api-tests.git"
+        }
+    ],
     "require-dev": {
         "psr/log": "^1.0",
-        "phpcr/phpcr-api-tests": "2.1.17",
+        "phpcr/phpcr-api-tests": "dev-phpunit as 2.1",
         "phpunit/phpunit": "^5.7",
         "phpunit/dbunit": "^1.3"
     },
