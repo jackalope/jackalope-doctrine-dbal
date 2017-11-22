@@ -4,8 +4,9 @@ namespace Jackalope;
 
 use Doctrine\DBAL\Connection;
 use PHPCR\ConfigurationException;
+use PHPUnit\Framework\TestCase;
 
-class RepositoryFactoryDoctrineDBALTest extends \PHPUnit_Framework_TestCase
+class RepositoryFactoryDoctrineDBALTest extends TestCase
 {
     /**
      * @expectedExceptionMessage missing

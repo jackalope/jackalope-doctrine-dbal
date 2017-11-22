@@ -5,14 +5,14 @@ namespace Jackalope\Tools\Console\Command;
 use Doctrine\DBAL\Platforms\MySqlPlatform;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use PDOException;
-use PHPUnit_Framework_TestCase;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Tester\CommandTester;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 
-class InitDoctrineDbalCommandTest extends PHPUnit_Framework_TestCase
+class InitDoctrineDbalCommandTest extends TestCase
 {
     /**
      * @var HelperSet
