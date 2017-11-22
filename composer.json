@@ -34,7 +34,10 @@
         "psr-0": { "Jackalope\\": "src/" }
     },
     "autoload-dev": {
-        "psr-0": { "Jackalope\\": "tests/" }
+        "psr-0": {
+            "Jackalope\\": "tests/",
+            "PHPCR": "vendor/phpcr/phpcr/tests"
+        }
     },
     "bin": ["bin/jackalope"],
     "extra": {
