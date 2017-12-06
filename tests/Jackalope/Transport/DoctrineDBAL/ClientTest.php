@@ -29,12 +29,12 @@ class ClientTest extends FunctionalTestCase
         $query = $qm->createQuery('SELECT * FROM [nt:unstructured]', QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
-        $this->assertEquals(2, count($result->getNodes()));
+        $this->assertCount(2, $result->getNodes());
 
         $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE foo = "bar"', QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
-        $this->assertEquals(1, count($result->getNodes()));
+        $this->assertCount(1, $result->getNodes());
     }
 
     public function testAddNodeTypes()
@@ -61,8 +61,8 @@ class ClientTest extends FunctionalTestCase
 
         $def = $ntm->getNodeType('phpcr:article');
         $this->assertEquals("phpcr:article", $def->getName());
-        $this->assertEquals(1, count($def->getDeclaredPropertyDefinitions()));
-        $this->assertEquals(1, count($def->getDeclaredChildNodeDefinitions()));
+        $this->assertCount(1, $def->getDeclaredPropertyDefinitions());
+        $this->assertCount(1, $def->getDeclaredChildNodeDefinitions());
     }
 
     public function testReorderNodes()
@@ -340,7 +340,7 @@ class ClientTest extends FunctionalTestCase
         foreach (['/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'] as $path) {
             $stmnt = $this->conn->executeQuery($query, ['path' => $path]);
             $row = $stmnt->fetch();
-            $this->assertTrue(false !== $row, $path . ' does not exist in database');
+            $this->assertNotFalse($row, $path . ' does not exist in database');
         }
     }
 
