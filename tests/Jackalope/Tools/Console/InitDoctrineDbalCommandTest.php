@@ -11,6 +11,7 @@ use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Tester\CommandTester;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
+use Doctrine\DBAL\Schema\AbstractSchemaManager;
 
 class InitDoctrineDbalCommandTest extends TestCase
 {
@@ -30,6 +31,11 @@ class InitDoctrineDbalCommandTest extends TestCase
     protected $platform;
 
     /**
+     * @var AbstractSchemaManager
+     */
+    protected $schemaManager;
+
+    /**
      * @var Application
      */
     protected $application;
@@ -37,6 +43,10 @@ class InitDoctrineDbalCommandTest extends TestCase
     public function setUp()
     {
         $this->connection = $this->getMockBuilder(Connection::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $this->schemaManager = $this->getMockBuilder(AbstractSchemaManager::class)
             ->disableOriginalConstructor()
             ->getMock();
 
@@ -48,6 +58,16 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->expects($this->any())
             ->method('getDatabasePlatform')
             ->will($this->returnValue($this->platform));
+
+        $this->schemaManager
+            ->expects($this->any())
+            ->method('createSchemaConfig')
+            ->will($this->returnValue(null));
+
+        $this->connection
+            ->expects($this->any())
+            ->method('getSchemaManager')
+            ->will($this->returnValue($this->schemaManager));
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),

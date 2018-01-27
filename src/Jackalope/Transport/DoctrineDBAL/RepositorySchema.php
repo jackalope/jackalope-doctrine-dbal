@@ -22,6 +22,11 @@ class RepositorySchema extends Schema
     private $connection;
 
     /**
+     * @var integer
+     */
+    private $maxIndexLength;
+
+    /**
      * @param array $options The options could be use to make the table
      *                               names configurable.
      * @param Connection $connection
@@ -66,7 +71,7 @@ class RepositorySchema extends Schema
     protected function addNamespacesTable()
     {
         $namespace = $this->createTable('phpcr_namespaces');
-        $namespace->addColumn('prefix', 'string');
+        $namespace->addColumn('prefix', 'string', ['length' => $this->getMaxIndexLength()]);
         $namespace->addColumn('uri', 'string');
         $namespace->setPrimaryKey(['prefix']);
     }
@@ -74,7 +79,7 @@ class RepositorySchema extends Schema
     protected function addWorkspacesTable()
     {
         $workspace = $this->createTable('phpcr_workspaces');
-        $workspace->addColumn('name', 'string');
+        $workspace->addColumn('name', 'string', ['length' => $this->getMaxIndexLength()]);
         $workspace->setPrimaryKey(['name']);
     }
 
@@ -86,13 +91,13 @@ class RepositorySchema extends Schema
         // TODO increase the size of 'path' and 'parent' but this causes issues on MySQL due to key length
         $nodes = $this->createTable('phpcr_nodes');
         $nodes->addColumn('id', 'integer', ['autoincrement' => true]);
-        $nodes->addColumn('path', 'string');
-        $nodes->addColumn('parent', 'string');
-        $nodes->addColumn('local_name', 'string');
-        $nodes->addColumn('namespace', 'string');
-        $nodes->addColumn('workspace_name', 'string');
-        $nodes->addColumn('identifier', 'string');
-        $nodes->addColumn('type', 'string');
+        $nodes->addColumn('path', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('parent', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('local_name', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('namespace', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('workspace_name', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('identifier', 'string', ['length' => $this->getMaxIndexLength()]);
+        $nodes->addColumn('type', 'string', ['length' => $this->getMaxIndexLength()]);
         $nodes->addColumn('props', 'text');
         $nodes->addColumn('numerical_props', 'text', ['notnull' => false]);
         $nodes->addColumn('depth', 'integer');
@@ -110,8 +115,8 @@ class RepositorySchema extends Schema
     protected function addInternalIndexTypesTable()
     {
         $indexJcrTypes = $this->createTable('phpcr_internal_index_types');
-        $indexJcrTypes->addColumn('type', 'string');
-        $indexJcrTypes->addColumn('node_id', 'integer');
+        $indexJcrTypes->addColumn('type', 'string', ['length' => $this->getMaxIndexLength()]);
+        $indexJcrTypes->addColumn('node_id', 'integer', ['length' => $this->getMaxIndexLength()]);
         $indexJcrTypes->setPrimaryKey(['type', 'node_id']);
     }
 
@@ -120,8 +125,8 @@ class RepositorySchema extends Schema
         $binary = $this->createTable('phpcr_binarydata');
         $binary->addColumn('id', 'integer', ['autoincrement' => true]);
         $binary->addColumn('node_id', 'integer');
-        $binary->addColumn('property_name', 'string');
-        $binary->addColumn('workspace_name', 'string');
+        $binary->addColumn('property_name', 'string', ['length' => $this->getMaxIndexLength()]);
+        $binary->addColumn('workspace_name', 'string', ['length' => $this->getMaxIndexLength()]);
         $binary->addColumn('idx', 'integer', ['default' => 0]);
         $binary->addColumn('data', 'blob');
         $binary->setPrimaryKey(['id']);
@@ -132,7 +137,7 @@ class RepositorySchema extends Schema
     {
         $references = $this->createTable('phpcr_nodes_references');
         $references->addColumn('source_id', 'integer');
-        $references->addColumn('source_property_name', 'string', ['length' => 220]);
+        $references->addColumn('source_property_name', 'string', ['length' => $this->getMaxIndexLength(220)]);
         $references->addColumn('target_id', 'integer');
         $references->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $references->addIndex(['target_id']);
@@ -147,7 +152,7 @@ class RepositorySchema extends Schema
     {
         $weakreferences = $this->createTable('phpcr_nodes_weakreferences');
         $weakreferences->addColumn('source_id', 'integer');
-        $weakreferences->addColumn('source_property_name', 'string', ['length' => 220]);
+        $weakreferences->addColumn('source_property_name', 'string', ['length' => $this->getMaxIndexLength(220)]);
         $weakreferences->addColumn('target_id', 'integer');
         $weakreferences->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $weakreferences->addIndex(['target_id']);
@@ -161,7 +166,7 @@ class RepositorySchema extends Schema
     {
         $types = $this->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', ['autoincrement' => true]);
-        $types->addColumn('name', 'string');
+        $types->addColumn('name', 'string', ['length' => $this->getMaxIndexLength()]);
         $types->addColumn('supertypes', 'string');
         $types->addColumn('is_abstract', 'boolean');
         $types->addColumn('is_mixin', 'boolean');
@@ -176,7 +181,7 @@ class RepositorySchema extends Schema
     {
         $propTypes = $this->createTable('phpcr_type_props');
         $propTypes->addColumn('node_type_id', 'integer');
-        $propTypes->addColumn('name', 'string');
+        $propTypes->addColumn('name', 'string', ['length' => $this->getMaxIndexLength()]);
         $propTypes->addColumn('protected', 'boolean');
         $propTypes->addColumn('auto_created', 'boolean');
         $propTypes->addColumn('mandatory', 'boolean');
@@ -218,5 +223,31 @@ class RepositorySchema extends Schema
         foreach ($this->toSql($this->connection->getDatabasePlatform()) as $sql) {
             $this->connection->exec($sql);
         }
+    }
+
+    private function getMaxIndexLength($currentMaxLength = 255)
+    {
+        if (null !== $this->maxIndexLength) {
+            return $currentMaxLength < $this->maxIndexLength ? $currentMaxLength : $this->maxIndexLength;
+        }
+
+        $this->maxIndexLength = 255;
+
+        if ($this->isConnectionCharsetUtf8mb4()) {
+            $this->maxIndexLength = 191;
+        }
+
+        return $currentMaxLength < $this->maxIndexLength ? $currentMaxLength : $this->maxIndexLength;
+    }
+
+    private function isConnectionCharsetUtf8mb4()
+    {
+        if (!$this->connection) {
+            return false;
+        }
+
+        $databaseParameters = $this->connection->getParams();
+
+        return isset($databaseParameters['charset']) && 'utf8mb4' === strtolower($databaseParameters['charset']);
     }
 }
