@@ -84,7 +84,7 @@ EOT
             return self::RETURN_CODE_NO_FORCE;
         }
 
-        $schema = new RepositorySchema;
+        $schema = new RepositorySchema([], $connection);
 
         try {
             if ($input->getOption('drop')) {
