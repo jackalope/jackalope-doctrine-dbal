@@ -1,10 +1,16 @@
 Changelog
 =========
 
-1.3.1
+1.3.2
 -----
 
 * Detect utf8mb4 encoding and use shorter fields so MySQL can handle indexes on 4 byte UTF-8.
+
+1.3.1
+-----
+
+* Support PHP 7.2
+* Allow Symfony 4 components
 
 1.3.0
 -----
