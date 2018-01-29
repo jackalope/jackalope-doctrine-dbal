@@ -24,7 +24,7 @@ class RepositorySchema extends Schema
     /**
      * @var integer
      */
-    private $maxIndexLength;
+    private $maxIndexLength = -1;
 
     /**
      * @param array $options The options could be use to make the table
@@ -225,19 +225,24 @@ class RepositorySchema extends Schema
         }
     }
 
-    private function getMaxIndexLength($currentMaxLength = 255)
+    private function getMaxIndexLength($currentMaxLength = null)
     {
-        if (null !== $this->maxIndexLength) {
-            return $currentMaxLength < $this->maxIndexLength ? $currentMaxLength : $this->maxIndexLength;
+        if (-1 === $this->maxIndexLength) {
+            $this->maxIndexLength = null;
+
+            if ($this->isConnectionCharsetUtf8mb4()) {
+                $this->maxIndexLength = 191;
+            }
         }
 
-        $this->maxIndexLength = 255;
-
-        if ($this->isConnectionCharsetUtf8mb4()) {
-            $this->maxIndexLength = 191;
+        if ($currentMaxLength && (
+            null === $this->maxIndexLength
+            || $currentMaxLength < $this->maxIndexLength
+        )) {
+            return $currentMaxLength;
         }
-
-        return $currentMaxLength < $this->maxIndexLength ? $currentMaxLength : $this->maxIndexLength;
+        
+        return $this->maxIndexLength;
     }
 
     private function isConnectionCharsetUtf8mb4()
