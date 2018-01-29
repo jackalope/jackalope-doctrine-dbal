@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.3.1
+-----
+
+* Detect utf8mb4 encoding and use shorter fields so MySQL can handle indexes on 4 byte UTF-8.
+
 1.3.0
 -----
 
