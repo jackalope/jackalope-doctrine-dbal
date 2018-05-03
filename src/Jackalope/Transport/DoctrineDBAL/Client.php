@@ -6,6 +6,8 @@ use ArrayObject;
 use Closure;
 use DateTime;
 use DateTimeZone;
+use Doctrine\DBAL\FetchMode;
+use Doctrine\DBAL\ParameterType;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
@@ -687,7 +689,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT * FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ? ORDER BY depth, sort_order';
         $stmt = $this->getConnection()->executeQuery($query, [$srcAbsPath, $srcAbsPath . '/%', $srcWorkspace]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(FetchMode::ASSOCIATIVE);
 
         $uuidMap = [];
         $resultSetUuids = [];
@@ -917,11 +919,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $params['idx'] = $idx;
                 $params['data'] = $data;
                 $types = [
-                    PDO::PARAM_INT,
-                    PDO::PARAM_STR,
-                    PDO::PARAM_STR,
-                    PDO::PARAM_INT,
-                    PDO::PARAM_LOB
+                    ParameterType::INTEGER,
+                    ParameterType::STRING,
+                    ParameterType::STRING,
+                    ParameterType::INTEGER,
+                    ParameterType::LARGE_OBJECT,
                 ];
                 $this->getConnection()->insert('phpcr_binarydata', $params, $types);
             }
@@ -1011,11 +1013,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $missingTargets = [];
                 foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                     $stmt = $this->getConnection()->executeQuery($query, [$chunk], [Connection::PARAM_INT_ARRAY]);
-                    $missingTargets = array_merge($missingTargets, $stmt->fetchAll(\PDO::FETCH_COLUMN));
+                    $missingTargets = array_merge($missingTargets, $stmt->fetchAll(FetchMode::COLUMN));
                 }
             } else {
                 $stmt = $this->getConnection()->executeQuery($query, [$params], [Connection::PARAM_INT_ARRAY]);
-                $missingTargets = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                $missingTargets = $stmt->fetchAll(FetchMode::COLUMN);
             }
             if ($missingTargets) {
                 $paths = [];
@@ -1328,7 +1330,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = "SELECT DISTINCT name FROM phpcr_workspaces";
         $stmt = $this->getConnection()->executeQuery($query);
 
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(FetchMode::COLUMN);
     }
 
     /**
@@ -1363,7 +1365,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $stmt = $this->getConnection()->executeQuery($query, $values);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $rows = $stmt->fetchAll(FetchMode::ASSOCIATIVE);
         if (empty($rows)) {
             throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
         }
@@ -1619,14 +1621,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $all += $this->getConnection()->fetchAll(
                     $query,
                     [$this->workspaceName, $chunk],
-                    [PDO::PARAM_STR, Connection::PARAM_STR_ARRAY]
+                    [ParameterType::STRING, Connection::PARAM_STR_ARRAY]
                 );
             }
         } else {
             $all = $this->getConnection()->fetchAll(
                 $query,
                 [$this->workspaceName, $identifiers],
-                [PDO::PARAM_STR, Connection::PARAM_STR_ARRAY]
+                [ParameterType::STRING, Connection::PARAM_STR_ARRAY]
             );
         }
 
@@ -1925,7 +1927,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $i = 0;
         $values = $ids = [];
         $srcAbsPathPattern = '/^' . preg_quote($srcAbsPath, '/') . '/';
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        while ($row = $stmt->fetch(FetchMode::ASSOCIATIVE)) {
             $values[':id' . $i]     = $row['id'];
             $values[':path' . $i]   = preg_replace($srcAbsPathPattern, $dstAbsPath, $row['path'], 1);
             $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
@@ -2625,7 +2627,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         $stmt = $this->getConnection()->executeQuery($query, $params);
 
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return $stmt->fetchAll(FetchMode::COLUMN);
     }
 
     /**

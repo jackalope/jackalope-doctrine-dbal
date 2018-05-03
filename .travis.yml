@@ -3,11 +3,8 @@ language: php
 sudo: false
 
 php:
-  - 5.6
-  - 7.0
   - 7.1
   - 7.2
-  - hhvm
 
 env:
   - DB=mysql PACKAGE_VERSION=high
@@ -22,15 +19,12 @@ cache:
     - $HOME/.composer/cache
 
 matrix:
-  allow_failures:
-    - php: hhvm
-    # hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
   include:
-    - php: 5.6
+    - php: 7.1
       env: DB=mysql PACKAGE_VERSION=low
-    - php: 5.6
+    - php: 7.1
       env: DB=pgsql PACKAGE_VERSION=low
-    - php: 5.6
+    - php: 7.1
       env: DB=sqlite PACKAGE_VERSION=low
 
 before_script:

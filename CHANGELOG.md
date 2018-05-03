@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.4 (unreleased)
+----------------
+
+* Drop support for PHP 5.* and 7.0
+
 1.3.2
 -----
 
