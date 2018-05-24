@@ -111,7 +111,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private $loggedIn = false;
 
     /**
-     * @var SimpleCredentials
+     * @var SimpleCredentials | null
      */
     private $credentials;
 
@@ -2017,7 +2017,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->nodeProcessor = new NodeProcessor(
-            $this->credentials->getUserID(),
+            $this->credentials ? $this->credentials->getUserID() : '',
             $this->getNamespacesObject(),
             $this->getAutoLastModified()
         );
