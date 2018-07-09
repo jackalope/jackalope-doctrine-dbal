@@ -56,7 +56,7 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 Note that you need at least version 5.1.5 of MySQL, otherwise you will get ``SQLSTATE[42000]: Syntax error or access violation: 1305 FUNCTION cmf-app.EXTRACTVALUE does not exist``
 
 ```sh
-$ mysqladmin -u root -p  create jackalope
+$ mysqladmin -u root -p  create database jackalope
 $ echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 ```
 ### PostgreSQL
