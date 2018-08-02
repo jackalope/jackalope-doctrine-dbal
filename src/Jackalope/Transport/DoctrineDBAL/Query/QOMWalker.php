@@ -419,8 +419,9 @@ class QOMWalker
     {
         $rightAlias = $this->getTableAlias($condition->getChildSelectorName());
         $leftAlias = $this->getTableAlias($condition->getParentSelectorName());
+        $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return "($rightAlias.path LIKE CONCAT($leftAlias.path, '/%') AND $rightAlias.depth = $leftAlias.depth + 1) ";
+        return "($rightAlias.path LIKE " . $concatExpression . " AND $rightAlias.depth = $leftAlias.depth + 1) ";
     }
 
     /**
@@ -432,8 +433,9 @@ class QOMWalker
     {
         $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
         $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
+        $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return "$rightAlias.path LIKE CONCAT($leftAlias.path, '/%') ";
+        return "$rightAlias.path LIKE " . $concatExpression . " ";
     }
 
     /**
