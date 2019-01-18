@@ -203,7 +203,7 @@ class CachedClient extends Client
             $this->caches['meta']->save($cacheKey, $result);
         }
 
-        return $result;
+        return (array) $result;
     }
 
     /**
