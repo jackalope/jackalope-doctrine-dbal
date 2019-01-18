@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.3.3
+-----
+
+* Use platform expression for concatenating
+* Fix return type of CachedClient::getNamespaces
+
 1.3.2
 -----
 
