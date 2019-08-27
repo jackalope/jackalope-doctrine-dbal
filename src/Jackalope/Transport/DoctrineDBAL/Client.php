@@ -6,64 +6,64 @@ use ArrayObject;
 use Closure;
 use DateTime;
 use DateTimeZone;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use DOMDocument;
 use DOMElement;
 use DOMXPath;
 use Exception;
 use InvalidArgumentException;
+use Jackalope\FactoryInterface;
+use Jackalope\Node;
+use Jackalope\NodeType\NodeProcessor;
+use Jackalope\NodeType\NodeTypeDefinition;
+use Jackalope\NodeType\NodeTypeManager;
+use Jackalope\NotImplementedException;
+use Jackalope\Property;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
+use Jackalope\Query\Query;
+use Jackalope\Transport\BaseTransport;
+use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
+use Jackalope\Transport\MoveNodeOperation;
+use Jackalope\Transport\NodeTypeManagementInterface;
+use Jackalope\Transport\QueryInterface as QueryTransport;
+use Jackalope\Transport\StandardNodeTypes;
+use Jackalope\Transport\TransactionInterface;
+use Jackalope\Transport\WorkspaceManagementInterface;
+use Jackalope\Transport\WritingInterface;
 use PDO;
 use PDOException;
 use PHPCR\AccessDeniedException;
+use PHPCR\CredentialsInterface;
+use PHPCR\ItemExistsException;
+use PHPCR\ItemNotFoundException;
 use PHPCR\LoginException;
+use PHPCR\NamespaceException;
+use PHPCR\NamespaceRegistryInterface as NS;
+use PHPCR\NodeType\ConstraintViolationException;
 use PHPCR\NodeType\NodeDefinitionInterface;
 use PHPCR\NodeType\NodeTypeExistsException;
 use PHPCR\NodeType\NoSuchNodeTypeException;
 use PHPCR\NodeType\PropertyDefinitionInterface;
-use PHPCR\Query\QOM\QueryObjectModelConstantsInterface as QOM;
-use PHPCR\RepositoryInterface;
-use PHPCR\NamespaceRegistryInterface as NS;
-use PHPCR\CredentialsInterface;
+use PHPCR\NoSuchWorkspaceException;
+use PHPCR\PathNotFoundException;
 use PHPCR\PropertyType;
+use PHPCR\Query\InvalidQueryException;
+use PHPCR\Query\QOM\QueryObjectModelConstantsInterface as QOM;
 use PHPCR\Query\QOM\QueryObjectModelInterface;
 use PHPCR\Query\QOM\SelectorInterface;
 use PHPCR\Query\QueryInterface;
-use PHPCR\RepositoryException;
-use PHPCR\NamespaceException;
-use PHPCR\NoSuchWorkspaceException;
-use PHPCR\ItemExistsException;
-use PHPCR\ItemNotFoundException;
 use PHPCR\ReferentialIntegrityException;
+use PHPCR\RepositoryException;
+use PHPCR\RepositoryInterface;
 use PHPCR\SimpleCredentials;
-use PHPCR\PathNotFoundException;
-use PHPCR\Query\InvalidQueryException;
-use PHPCR\NodeType\ConstraintViolationException;
 use PHPCR\UnsupportedRepositoryOperationException;
-use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
-use PHPCR\Util\ValueConverter;
-use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\PathHelper;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DBALException;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Jackalope\Node;
-use Jackalope\Property;
-use Jackalope\Query\Query;
-use Jackalope\Transport\MoveNodeOperation;
-use Jackalope\Transport\BaseTransport;
-use Jackalope\Transport\QueryInterface as QueryTransport;
-use Jackalope\Transport\WritingInterface;
-use Jackalope\Transport\WorkspaceManagementInterface;
-use Jackalope\Transport\NodeTypeManagementInterface;
-use Jackalope\Transport\TransactionInterface;
-use Jackalope\Transport\StandardNodeTypes;
-use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
-use Jackalope\NodeType\NodeTypeManager;
-use Jackalope\NodeType\NodeTypeDefinition;
-use Jackalope\FactoryInterface;
-use Jackalope\NotImplementedException;
-use Jackalope\NodeType\NodeProcessor;
+use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
+use PHPCR\Util\UUIDHelper;
+use PHPCR\Util\ValueConverter;
 use stdClass;
 
 /**
@@ -164,11 +164,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private $coreNamespaces = [
         NS::PREFIX_EMPTY => NS::NAMESPACE_EMPTY,
-        NS::PREFIX_JCR   => NS::NAMESPACE_JCR,
-        NS::PREFIX_NT    => NS::NAMESPACE_NT,
-        NS::PREFIX_MIX   => NS::NAMESPACE_MIX,
-        NS::PREFIX_XML   => NS::NAMESPACE_XML,
-        NS::PREFIX_SV    => NS::NAMESPACE_SV,
+        NS::PREFIX_JCR => NS::NAMESPACE_JCR,
+        NS::PREFIX_NT => NS::NAMESPACE_NT,
+        NS::PREFIX_MIX => NS::NAMESPACE_MIX,
+        NS::PREFIX_XML => NS::NAMESPACE_XML,
+        NS::PREFIX_SV => NS::NAMESPACE_SV,
     ];
 
     /**
@@ -212,11 +212,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @var string
      */
-    private $caseSensitiveEncoding;
+    private $caseSensitiveEncoding = null;
 
     /**
      * @param FactoryInterface $factory
-     * @param Connection       $conn
+     * @param Connection $conn
      */
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
@@ -234,47 +234,54 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function registerSqliteFunctions(PDO $sqliteConnection)
     {
-        $sqliteConnection->sqliteCreateFunction('EXTRACTVALUE', function ($string, $expression) {
-            if (null === $string) {
-                return null;
-            }
-
-            $dom = new DOMDocument('1.0', 'UTF-8');
-            $dom->loadXML($string);
-            $xpath = new DOMXPath($dom);
-            $list = $xpath->evaluate($expression);
-
-            if (!is_object($list)) {
-                return $list;
-            }
-
-            // @TODO: don't know if there are expressions returning more then one row
-            if ($list->length > 0) {
-                // @TODO: why it can happen that we do not have a type? https://github.com/phpcr/phpcr-api-tests/pull/132
-                $type = is_object($list->item(0)->parentNode->attributes->getNamedItem('type'))
-                    ? $list->item(0)->parentNode->attributes->getNamedItem('type')->value
-                    : null;
-                $content = $list->item(0)->textContent;
-
-                switch ($type) {
-                    case 'long':
-                        return (int) $content;
-                        break;
-                    case 'double':
-                        return (double) $content;
-                        break;
-                    default:
-                        return $content;
+        $sqliteConnection->sqliteCreateFunction(
+            'EXTRACTVALUE',
+            function ($string, $expression) {
+                if (null === $string) {
+                    return null;
                 }
+
+                $dom = new DOMDocument('1.0', 'UTF-8');
+                $dom->loadXML($string);
+                $xpath = new DOMXPath($dom);
+                $list = $xpath->evaluate($expression);
+
+                if (!is_object($list)) {
+                    return $list;
+                }
+
+                // @TODO: don't know if there are expressions returning more then one row
+                if ($list->length > 0) {
+                    // @TODO: why it can happen that we do not have a type? https://github.com/phpcr/phpcr-api-tests/pull/132
+                    $type = is_object($list->item(0)->parentNode->attributes->getNamedItem('type')) ? $list->item(
+                        0
+                    )->parentNode->attributes->getNamedItem('type')->value : null;
+                    $content = $list->item(0)->textContent;
+
+                    switch ($type) {
+                        case 'long':
+                            return (int)$content;
+                            break;
+                        case 'double':
+                            return (double)$content;
+                            break;
+                        default:
+                            return $content;
+                    }
+                }
+
+                // @TODO: don't know if return value is right
+                return null;
+            },
+            2
+        );
+
+        $sqliteConnection->sqliteCreateFunction(
+            'CONCAT',
+            function () {
+                return implode('', func_get_args());
             }
-
-            // @TODO: don't know if return value is right
-            return null;
-        }, 2);
-
-        $sqliteConnection->sqliteCreateFunction('CONCAT', function () {
-            return implode('', func_get_args());
-        });
+        );
 
         return $this;
     }
@@ -343,22 +350,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->insert('phpcr_workspaces', ['name' => $name]);
         } catch (Exception $e) {
-            throw new RepositoryException("Couldn't create Workspace '$name': ".$e->getMessage(), 0, $e);
+            throw new RepositoryException("Couldn't create Workspace '$name': " . $e->getMessage(), 0, $e);
         }
 
-        $this->getConnection()->insert('phpcr_nodes', [
-            'path'          => '/',
-            'parent'        => '',
-            'workspace_name'=> $name,
-            'identifier'    => $this->generateUuid(),
-            'type'          => 'nt:unstructured',
-            'local_name'    => '',
-            'namespace'     => '',
-            'props' => '<?xml version="1.0" encoding="UTF-8"?>
-<sv:node xmlns:'.NS::PREFIX_MIX.'="'.NS::NAMESPACE_MIX.'" xmlns:'.NS::PREFIX_NT.'="'.NS::NAMESPACE_NT.'" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:'.NS::PREFIX_JCR.'="'.NS::NAMESPACE_JCR.'" xmlns:'.NS::PREFIX_SV.'="'.NS::NAMESPACE_SV.'" xmlns:rep="internal" />',
-            // TODO compute proper value
-            'depth'         => 0,
-        ]);
+        $this->getConnection()->insert(
+            'phpcr_nodes',
+            [
+                'path' => '/',
+                'parent' => '',
+                'workspace_name' => $name,
+                'identifier' => $this->generateUuid(),
+                'type' => 'nt:unstructured',
+                'local_name' => '',
+                'namespace' => '',
+                'props' => '<?xml version="1.0" encoding="UTF-8"?>
+<sv:node xmlns:' . NS::PREFIX_MIX . '="' . NS::NAMESPACE_MIX . '" xmlns:' . NS::PREFIX_NT . '="' . NS::NAMESPACE_NT . '" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:' . NS::PREFIX_JCR . '="' . NS::NAMESPACE_JCR . '" xmlns:' . NS::PREFIX_SV . '="' . NS::NAMESPACE_SV . '" xmlns:rep="internal" />',
+                // TODO compute proper value
+                'depth' => 0,
+            ]
+        );
     }
 
     /**
@@ -373,19 +383,21 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->delete('phpcr_workspaces', ['name' => $name]);
         } catch (Exception $e) {
-            throw new RepositoryException("Couldn't delete workspace '$name': " .$e->getMessage(), 0, $e);
+            throw new RepositoryException("Couldn't delete workspace '$name': " . $e->getMessage(), 0, $e);
         }
 
         try {
             $this->getConnection()->delete('phpcr_nodes', ['workspace_name' => $name]);
         } catch (Exception $e) {
-            throw new RepositoryException("Couldn't delete nodes in workspace '$name': ".$e->getMessage(), 0, $e);
+            throw new RepositoryException("Couldn't delete nodes in workspace '$name': " . $e->getMessage(), 0, $e);
         }
 
         try {
             $this->getConnection()->delete('phpcr_binarydata', ['workspace_name' => $name]);
         } catch (Exception $e) {
-            throw new RepositoryException("Couldn't delete binary data in workspace '$name': ".$e->getMessage(), 0, $e);
+            throw new RepositoryException(
+                "Couldn't delete binary data in workspace '$name': " . $e->getMessage(), 0, $e
+            );
         }
     }
 
@@ -460,14 +472,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function getCaseSensitiveEncoding()
     {
-        if (!$this->caseSensitiveEncoding) {
-            $params = $this->conn->getParams();
-            $charset = isset($params['charset']) ? $params['charset'] : 'utf8';
-
-            return $this->caseSensitiveEncoding = $charset === 'binary' ? $charset : $charset . '_bin';
+        if (null !== $this->caseSensitiveEncoding) {
+            return $this->caseSensitiveEncoding;
         }
 
-        return $this->caseSensitiveEncoding;
+        $params = $this->conn->getParams();
+        $charset = isset($params['charset']) ? $params['charset'] : 'utf8';
+        if (isset($params['defaultTableOptions']) && isset($params['defaultTableOptions']['collate'])) {
+            return $this->caseSensitiveEncoding = $params['defaultTableOptions']['collate'];
+        }
+
+        return $this->caseSensitiveEncoding = $charset === 'binary' ? $charset : $charset . '_bin';
     }
 
     protected function workspaceExists($workspaceName)
@@ -478,13 +493,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         } catch (Exception $e) {
             if ($e instanceof DBALException || $e instanceof PDOException) {
                 if (1045 === $e->getCode()) {
-                    throw new LoginException('Access denied with your credentials: '.$e->getMessage());
+                    throw new LoginException('Access denied with your credentials: ' . $e->getMessage());
                 }
                 if ('42S02' === $e->getCode()) {
-                    throw new RepositoryException('You did not properly set up the database for the repository. See README.md for more information. Message from backend: '.$e->getMessage());
+                    throw new RepositoryException(
+                        'You did not properly set up the database for the repository. See README.md for more information. Message from backend: ' . $e->getMessage(
+                        )
+                    );
                 }
 
-                throw new RepositoryException('Unexpected error talking to the backend: '.$e->getMessage(), 0, $e);
+                throw new RepositoryException('Unexpected error talking to the backend: ' . $e->getMessage(), 0, $e);
             }
 
             throw $e;
@@ -525,7 +543,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         return [
             RepositoryInterface::IDENTIFIER_STABILITY => RepositoryInterface::IDENTIFIER_STABILITY_INDEFINITE_DURATION,
-            RepositoryInterface::REP_NAME_DESC  => 'jackalope_doctrine_dbal',
+            RepositoryInterface::REP_NAME_DESC => 'jackalope_doctrine_dbal',
             RepositoryInterface::REP_VENDOR_DESC => 'Jackalope Community',
             RepositoryInterface::REP_VENDOR_URL_DESC => 'http://github.com/jackalope',
             RepositoryInterface::REP_VERSION_DESC => '1.1.0-DEV',
@@ -587,7 +605,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function getNamespaces()
     {
-        return (array) $this->getNamespacesObject();
+        return (array)$this->getNamespacesObject();
     }
 
     /**
@@ -600,7 +618,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (null === $this->namespaces) {
             $query = 'SELECT prefix, uri FROM phpcr_namespaces';
             $result = $this->getConnection()->query($query);
-            $namespaces = (array) $result->fetchAll(\PDO::FETCH_KEY_PAIR);
+            $namespaces = (array)$result->fetchAll(\PDO::FETCH_KEY_PAIR);
             $namespaces += $this->coreNamespaces;
 
             $this->setNamespaces($namespaces);
@@ -721,7 +739,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             ];
 
             $xpath = new DOMXpath($stringDom);
-            $referenceEls = $xpath->query('.//sv:property[@sv:type="reference" or @sv:type="Reference" or @sv:type="weakreference" or @sv:type="WeakReference"]');
+            $referenceEls = $xpath->query(
+                './/sv:property[@sv:type="reference" or @sv:type="Reference" or @sv:type="weakreference" or @sv:type="WeakReference"]'
+            );
 
             $references = [];
             foreach ($referenceEls as $referenceEl) {
@@ -756,13 +776,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $newUuid = $this->nodeIdentifiers[$newPath];
             $uuidMap[$originalUuid] = $newUuid;
 
-            $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.
-                '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
+            $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)' . '   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
 
             try {
                 $this->getConnection()->executeUpdate($query, [$newNodeId, $this->workspaceName, $row['id']]);
             } catch (DBALException $e) {
-                throw new RepositoryException("Unexpected exception while copying node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
+                throw new RepositoryException(
+                    "Unexpected exception while copying node from $srcAbsPath to $dstAbsPath",
+                    $e->getCode(),
+                    $e
+                );
             }
         }
 
@@ -805,12 +828,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Actually write the node into the database
      *
-     * @param string     $uuid      node uuid
-     * @param string     $path      absolute path of the node
-     * @param string     $type      node type name
-     * @param boolean    $isNewNode new nodes to insert (true) or existing node to update (false)
+     * @param string $uuid node uuid
+     * @param string $path absolute path of the node
+     * @param string $type node type name
+     * @param boolean $isNewNode new nodes to insert (true) or existing node to update (false)
      * @param Property[] $props
-     * @param array      $propsData
+     * @param array $propsData
      *
      * @return boolean|string
      *
@@ -837,34 +860,39 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $qb = $this->getConnection()->createQueryBuilder();
 
-            $qb->select(':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :numerical_props, :depth, COALESCE(MAX(n.sort_order), 0) + 1')
-                ->from('phpcr_nodes', 'n')
-                ->where('n.parent = :parent_a');
+            $qb->select(
+                ':identifier, :type, :path, :local_name, :namespace, :parent, :workspace_name, :props, :numerical_props, :depth, COALESCE(MAX(n.sort_order), 0) + 1'
+            )->from('phpcr_nodes', 'n')->where('n.parent = :parent_a');
 
             $sql = $qb->getSQL();
 
             try {
                 $insert = "INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, numerical_props, depth, sort_order) " . $sql;
 
-                $this->getConnection()->executeUpdate($insert, $data = [
-                    'identifier'      => $uuid,
-                    'type'            => $type,
-                    'path'            => $path,
-                    'local_name'      => $localName,
-                    'namespace'       => $namespace,
-                    'parent'          => PathHelper::getParentPath($path),
-                    'workspace_name'  => $this->workspaceName,
-                    'props'           => $propsData['stringDom']->saveXML(),
-                    'numerical_props' => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
-                    'depth'           => PathHelper::getPathDepth($path),
-                    'parent_a'        => PathHelper::getParentPath($path),
-                ]);
+                $this->getConnection()->executeUpdate(
+                    $insert,
+                    $data = [
+                        'identifier' => $uuid,
+                        'type' => $type,
+                        'path' => $path,
+                        'local_name' => $localName,
+                        'namespace' => $namespace,
+                        'parent' => PathHelper::getParentPath($path),
+                        'workspace_name' => $this->workspaceName,
+                        'props' => $propsData['stringDom']->saveXML(),
+                        'numerical_props' => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
+                        'depth' => PathHelper::getPathDepth($path),
+                        'parent_a' => PathHelper::getParentPath($path),
+                    ]
+                );
             } catch (Exception $e) {
                 if ($e instanceof PDOException || $e instanceof DBALException) {
                     if (strpos($e->getMessage(), 'SQLSTATE[23') !== false) {
                         throw new ItemExistsException('Item ' . $path . ' already exists in the database');
                     } else {
-                        throw new RepositoryException('Unknown database error while inserting item ' . $path . ': '.$e->getMessage(), 0, $e);
+                        throw new RepositoryException(
+                            'Unknown database error while inserting item ' . $path . ': ' . $e->getMessage(), 0, $e
+                        );
                     }
                 } else {
                     throw $e;
@@ -878,9 +906,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 throw new RepositoryException("nodeId for $path not found");
             }
 
-            $this->getConnection()->update('phpcr_nodes', [
-                    'props'            => $propsData['stringDom']->saveXML(),
-                    'numerical_props'  => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
+            $this->getConnection()->update(
+                'phpcr_nodes',
+                [
+                    'props' => $propsData['stringDom']->saveXML(),
+                    'numerical_props' => $propsData['numericalDom'] ? $propsData['numericalDom']->saveXML() : null,
                 ],
                 ['id' => $nodeId]
             );
@@ -907,9 +937,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($binaryValues as $idx => $data) {
                 // TODO verify in which cases we can just update
                 $params = [
-                    'node_id'       => $nodeId,
+                    'node_id' => $nodeId,
                     'property_name' => $propertyName,
-                    'workspace_name'  => $this->workspaceName,
+                    'workspace_name' => $this->workspaceName,
                 ];
 
                 $this->getConnection()->delete('phpcr_binarydata', $params);
@@ -957,10 +987,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $targetId = $this->getSystemIdForNode($value);
                         if (false === $targetId) {
                             if (PropertyType::REFERENCE === $data['type']) {
-                                throw new ReferentialIntegrityException(sprintf(
-                                    'Trying to store reference to non-existant node with path "%s" in node "%s" "%s"',
-                                    $value, $references['path'], $name
-                                ));
+                                throw new ReferentialIntegrityException(
+                                    sprintf(
+                                        'Trying to store reference to non-existant node with path "%s" in node "%s" "%s"',
+                                        $value,
+                                        $references['path'],
+                                        $name
+                                    )
+                                );
                             }
 
                             continue;
@@ -995,7 +1029,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $query = "DELETE FROM phpcr_nodes_references WHERE source_id IN (?)";
                 $this->executeChunkedUpdate($query, $params);
             } catch (DBALException $e) {
-                throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
+                throw new RepositoryException(
+                    'Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e
+                );
             }
 
             // ensure that there are no PropertyType::REFERENCE pointing to nodes that will be deleted
@@ -1025,7 +1061,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     }
                 }
 
-                throw new ReferentialIntegrityException("Cannot delete '".implode("', '", $paths)."': A reference points to this node or a subnode");
+                throw new ReferentialIntegrityException(
+                    "Cannot delete '" . implode("', '", $paths) . "': A reference points to this node or a subnode"
+                );
             }
 
             // clean up all references
@@ -1035,7 +1073,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $this->executeChunkedUpdate($query, $params);
                 }
             } catch (DBALException $e) {
-                throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
+                throw new RepositoryException(
+                    'Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e
+                );
             }
         }
     }
@@ -1075,7 +1115,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function xmlToColumns($xml, $propertyNames)
     {
-        $data = new stdClass;
+        $data = new stdClass();
         $dom = new DOMDocument('1.0');
         $dom->loadXML($xml);
         $dom->formatOutput = true;
@@ -1121,13 +1161,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $values[] = $valueNode->nodeValue;
                     break;
                 case PropertyType::BOOLEAN:
-                    $values[] = (bool) $valueNode->nodeValue;
+                    $values[] = (bool)$valueNode->nodeValue;
                     break;
                 case PropertyType::LONG:
-                    $values[] = (int) $valueNode->nodeValue;
+                    $values[] = (int)$valueNode->nodeValue;
                     break;
                 case PropertyType::BINARY:
-                    $values[] = (int) $valueNode->nodeValue;
+                    $values[] = (int)$valueNode->nodeValue;
                     break;
                 case PropertyType::DATE:
                     $date = $valueNode->nodeValue;
@@ -1140,7 +1180,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $values[] = $date;
                     break;
                 case PropertyType::DOUBLE:
-                    $values[] = (double) $valueNode->nodeValue;
+                    $values[] = (double)$valueNode->nodeValue;
                     break;
                 default:
                     throw new InvalidArgumentException("Type with constant $type not found.");
@@ -1161,7 +1201,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Seperate properties array into an xml and binary data.
      *
-     * @param array   $properties
+     * @param array $properties
      *
      * @return array (
      *     'stringDom' => $stringDom,
@@ -1211,7 +1251,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $targetDoms[] = 'numericalDom';
                     break;
                 case PropertyType::BOOLEAN:
-                    $values = array_map('intval', (array) $property->getBoolean());
+                    $values = array_map('intval', (array)$property->getBoolean());
                     break;
                 case PropertyType::LONG:
                     $values = $property->getLong();
@@ -1220,7 +1260,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 case PropertyType::BINARY:
                     if ($property->isNew() || $property->isModified()) {
                         $values = [];
-                        foreach ((array) $property->getValueForStorage() as $stream) {
+                        foreach ((array)$property->getValueForStorage() as $stream) {
                             if (null === $stream) {
                                 $binary = '';
                             } else {
@@ -1243,7 +1283,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     if ($values instanceof DateTime) {
                         $values = [$values];
                     }
-                    foreach ((array) $values as $key => $date) {
+                    foreach ((array)$values as $key => $date) {
                         if ($date instanceof DateTime) {
                             // do not modify the instance which is associated with the node.
                             $date = clone $date;
@@ -1260,7 +1300,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     $targetDoms[] = 'numericalDom';
                     break;
                 default:
-                    throw new RepositoryException('unknown type '.$property->getType());
+                    throw new RepositoryException('unknown type ' . $property->getType());
             }
 
             foreach ($targetDoms as $targetDom) {
@@ -1268,7 +1308,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'name' => $property->getName(),
                     'type' => PropertyType::nameFromValue($property->getType()),
                     'multiple' => $property->isMultiple(),
-                    'lengths' => (array) $property->getLength(),
+                    'lengths' => (array)$property->getLength(),
                     'values' => $values,
                 ];
             }
@@ -1296,8 +1336,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $propertyNode->setAttribute('sv:name', $property['name']);
                 $propertyNode->setAttribute('sv:type', $property['type']);
                 $propertyNode->setAttribute('sv:multi-valued', $property['multiple'] ? '1' : '0');
-                $lengths = (array) $property['lengths'];
-                foreach ((array) $property['values'] as $key => $value) {
+                $lengths = (array)$property['lengths'];
+                foreach ((array)$property['values'] as $key => $value) {
                     $element = $propertyNode->appendChild($dom->createElement('sv:value'));
                     $element->appendChild($dom->createTextNode($value));
                     if (isset($lengths[$key])) {
@@ -1365,7 +1405,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $stmt = $this->getConnection()->executeQuery($query, $values);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (empty($rows)) {
-            throw new ItemNotFoundException("Item $path not found in workspace ".$this->workspaceName);
+            throw new ItemNotFoundException("Item $path not found in workspace " . $this->workspaceName);
         }
 
         $nestedNodes = $this->getNodesData($rows);
@@ -1381,9 +1421,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Attach a node at a subpath under the ancestor node.
      *
-     * @param stdClass  $ancestor  The root node
-     * @param stdClass  $node      The node to add
-     * @param array     $nodeNames Breadcrumb of child nodes from parentNode to the node itself
+     * @param stdClass $ancestor The root node
+     * @param stdClass $node The node to add
+     * @param array $nodeNames Breadcrumb of child nodes from parentNode to the node itself
      */
     private function nestNode($ancestor, $node, array $nodeNames)
     {
@@ -1463,7 +1503,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach (array_keys($data) as $path) {
             // If the node is referenceable, return jcr:uuid.
             if (isset($data[$path]->{'jcr:mixinTypes'})) {
-                foreach ((array) $data[$path]->{'jcr:mixinTypes'} as $mixin) {
+                foreach ((array)$data[$path]->{'jcr:mixinTypes'} as $mixin) {
                     if ($this->nodeTypeManager->getNodeType($mixin)->isNodeType('mix:referenceable')) {
                         $data[$path]->{'jcr:uuid'} = $this->nodeIdentifiers[$path];
                         break;
@@ -1505,10 +1545,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $i = 0;
             foreach ($paths as $path) {
-                $params[':path'.$i] = $path;
-                $params[':pathd'.$i] = rtrim($path, '/') . '/%';
-                $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path'.$i.' AND workspace_name = :workspace';
-                $query .= '(path LIKE :pathd'.$i.' OR path = :path'.$i.') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
+                $params[':path' . $i] = $path;
+                $params[':pathd' . $i] = rtrim($path, '/') . '/%';
+                $subquery = 'SELECT depth FROM phpcr_nodes WHERE path = :path' . $i . ' AND workspace_name = :workspace';
+                $query .= '(path LIKE :pathd' . $i . ' OR path = :path' . $i . ') AND depth <= ((' . $subquery . ') + :fetchDepth) OR ';
                 $i++;
             }
         } else {
@@ -1517,8 +1557,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $i = 0;
             foreach ($paths as $path) {
-                $params[':path'.$i] = $path;
-                $query .= 'path = :path'.$i.' OR ';
+                $params[':path' . $i] = $path;
+                $query .= 'path = :path' . $i . ' OR ';
                 $i++;
             }
         }
@@ -1541,20 +1581,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Determine if a path exists already.
      *
-     * @param string $path          Path of the node
+     * @param string $path Path of the node
      * @param string $workspaceName To overwrite the current workspace
      *
      * @return bool
      */
     private function pathExists($path, $workspaceName = null)
     {
-        return (boolean) $this->getSystemIdForNode($path, $workspaceName);
+        return (boolean)$this->getSystemIdForNode($path, $workspaceName);
     }
 
     /**
      * Get the database primary key for node.
      *
-     * @param string $identifier    Path of the identifier
+     * @param string $identifier Path of the identifier
      * @param string $workspaceName To overwrite the current workspace
      *
      * @return bool|string The database id
@@ -1569,7 +1609,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
         } else {
             if ($this->getConnection()->getDriver() instanceof \Doctrine\DBAL\Driver\PDOMySql\Driver) {
-                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE ' . $this->getCaseSensitiveEncoding() .' = ? AND workspace_name = ?';
+                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE ' . $this->getCaseSensitiveEncoding(
+                    ) . ' = ? AND workspace_name = ?';
             } else {
                 $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
             }
@@ -1590,7 +1631,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = 'SELECT * FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
         $row = $this->getConnection()->fetchAssoc($query, [$uuid, $this->workspaceName]);
         if (!$row) {
-            throw new ItemNotFoundException("Item $uuid not found in workspace ".$this->workspaceName);
+            throw new ItemNotFoundException("Item $uuid not found in workspace " . $this->workspaceName);
         }
 
         $path = $row['path'];
@@ -1665,7 +1706,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $query = "SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?";
         $path = $this->getConnection()->fetchColumn($query, [$uuid, $this->workspaceName]);
         if (!$path) {
-            throw new ItemNotFoundException("no item found with uuid ".$uuid);
+            throw new ItemNotFoundException("no item found with uuid " . $uuid);
         }
 
         return $path;
@@ -1714,10 +1755,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         if (!$this->pathExists($path)) {
-            throw new ItemNotFoundException("No node found at ".$path);
+            throw new ItemNotFoundException("No node found at " . $path);
         }
 
-        $params = [$path, $path."/%", $this->workspaceName];
+        $params = [$path, $path . "/%", $this->workspaceName];
 
         // TODO on RDBMS that support deferred FKs we could skip this step
         $query = 'SELECT id, path FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
@@ -1788,7 +1829,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodeId = $this->getSystemIdForNode($nodePath);
         if (!$nodeId) {
             // no we really don't know that path
-            throw new ItemNotFoundException("No item found at ".$path);
+            throw new ItemNotFoundException("No item found at " . $path);
         }
 
         $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
@@ -1812,7 +1853,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                             $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
                             $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
                         } catch (DBALException $e) {
-                            throw new RepositoryException('Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e);
+                            throw new RepositoryException(
+                                'Unexpected exception while cleaning up deleted nodes',
+                                $e->getCode(),
+                                $e
+                            );
                         }
                     }
                 }
@@ -1821,7 +1866,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
         }
 
-        if (! $found) {
+        if (!$found) {
             throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
         }
 
@@ -1880,15 +1925,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         if ($this->getSystemIdForNode($dstAbsPath)) {
-            throw new ItemExistsException("Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists.");
+            throw new ItemExistsException(
+                "Cannot move '$srcAbsPath' to '$dstAbsPath' because destination node already exists."
+            );
         }
 
         if (!$this->getSystemIdForNode(PathHelper::getParentPath($dstAbsPath))) {
             throw new PathNotFoundException("Parent of the destination path '" . $dstAbsPath . "' has to exist.");
         }
 
-        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? '
-            . $this->getConnection()->getDatabasePlatform()->getForUpdateSQL();
+        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $this->getConnection(
+            )->getDatabasePlatform()->getForUpdateSQL();
         $stmt = $this->getConnection()->executeQuery($query, [$srcAbsPath . '/%', $srcAbsPath, $this->workspaceName]);
 
         /*
@@ -1902,12 +1949,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
          * http://stackoverflow.com/questions/8619421/correct-syntax-for-doctrine2s-query-builder-substring-helper-method
          */
 
-        $query               = "UPDATE phpcr_nodes SET ";
-        $updatePathCase      = "path = CASE ";
-        $updateParentCase    = "parent = CASE ";
+        $query = "UPDATE phpcr_nodes SET ";
+        $updatePathCase = "path = CASE ";
+        $updateParentCase = "parent = CASE ";
         $updateLocalNameCase = "local_name = CASE ";
         $updateSortOrderCase = "sort_order = CASE ";
-        $updateDepthCase     = "depth = CASE ";
+        $updateDepthCase = "depth = CASE ";
 
         // TODO: Find a better way to do this
         // Calculate CAST type for CASE statement
@@ -1926,14 +1973,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $values = $ids = [];
         $srcAbsPathPattern = '/^' . preg_quote($srcAbsPath, '/') . '/';
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $values[':id' . $i]     = $row['id'];
-            $values[':path' . $i]   = preg_replace($srcAbsPathPattern, $dstAbsPath, $row['path'], 1);
+            $values[':id' . $i] = $row['id'];
+            $values[':path' . $i] = preg_replace($srcAbsPathPattern, $dstAbsPath, $row['path'], 1);
             $values[':parent' . $i] = PathHelper::getParentPath($values[':path' . $i]);
-            $values[':depth' . $i]  = PathHelper::getPathDepth($values[':path' . $i]);
+            $values[':depth' . $i] = PathHelper::getPathDepth($values[':path' . $i]);
 
-            $updatePathCase   .= "WHEN id = :id$i THEN :path$i ";
+            $updatePathCase .= "WHEN id = :id$i THEN :path$i ";
             $updateParentCase .= "WHEN id = :id$i THEN :parent$i ";
-            $updateDepthCase  .= "WHEN id = :id$i THEN CAST(:depth$i AS $intType) ";
+            $updateDepthCase .= "WHEN id = :id$i THEN CAST(:depth$i AS $intType) ";
 
             if ($srcAbsPath === $row['path']) {
                 $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
@@ -1962,7 +2009,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->executeUpdate($query, $values);
         } catch (DBALException $e) {
-            throw new RepositoryException("Unexpected exception while moving node from $srcAbsPath to $dstAbsPath", $e->getCode(), $e);
+            throw new RepositoryException(
+                "Unexpected exception while moving node from $srcAbsPath to $dstAbsPath",
+                $e->getCode(),
+                $e
+            );
         }
 
         $this->cleanIdentifierCache($srcAbsPath);
@@ -2017,9 +2068,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->nodeProcessor = new NodeProcessor(
-            $this->credentials->getUserID(),
-            $this->getNamespacesObject(),
-            $this->getAutoLastModified()
+            $this->credentials->getUserID(), $this->getNamespacesObject(), $this->getAutoLastModified()
         );
 
         return $this->nodeProcessor;
@@ -2055,7 +2104,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Make sure we have a uuid and a primaryType, then sync data into the database
      *
-     * @param string     $path       the path to store the node at
+     * @param string $path the path to store the node at
      * @param Property[] $properties the properties of this node
      *
      * @return boolean true on success
@@ -2075,7 +2124,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Determine a UUID for the node at this path with these properties
      *
-     * @param string     $path
+     * @param string $path
      * @param Property[] $properties
      *
      * @return string a unique id
@@ -2105,7 +2154,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         if ($nodeTypes) {
             $nodeTypes = array_flip($nodeTypes);
-            return array_values(array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($userTypes, $nodeTypes));
+            return array_values(
+                array_intersect_key($standardTypes, $nodeTypes) + array_intersect_key($userTypes, $nodeTypes)
+            );
         }
 
         return array_values($standardTypes + $userTypes);
@@ -2144,8 +2195,7 @@ LEFT JOIN
 phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type_id
 ';
 
-        $statement = $this->getConnection()
-            ->prepare($query);
+        $statement = $this->getConnection()->prepare($query);
 
         $statement->execute();
 
@@ -2154,31 +2204,31 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
             if (!isset($result[$nodeName])) {
                 $result[$nodeName] = [
-                    'name'                        => $nodeName,
-                    'isAbstract'                  => (bool) $row['node_abstract'],
-                    'isMixin'                     => (bool) $row['node_mixin'],
-                    'isQueryable'                 => (bool) $row['node_queryable'],
-                    'hasOrderableChildNodes'      => (bool) $row['node_has_orderable_child_nodes'],
-                    'primaryItemName'             => $row['node_primary_item_name'],
-                    'declaredSuperTypeNames'      => array_filter(explode(' ', $row['declared_super_type_names'])),
+                    'name' => $nodeName,
+                    'isAbstract' => (bool)$row['node_abstract'],
+                    'isMixin' => (bool)$row['node_mixin'],
+                    'isQueryable' => (bool)$row['node_queryable'],
+                    'hasOrderableChildNodes' => (bool)$row['node_has_orderable_child_nodes'],
+                    'primaryItemName' => $row['node_primary_item_name'],
+                    'declaredSuperTypeNames' => array_filter(explode(' ', $row['declared_super_type_names'])),
                     'declaredPropertyDefinitions' => [],
-                    'declaredNodeDefinitions'     => [],
+                    'declaredNodeDefinitions' => [],
                 ];
             }
 
             if (($propertyName = $row['property_name']) !== null) {
                 $result[$nodeName]['declaredPropertyDefinitions'][] = [
-                    'declaringNodeType'    => $nodeName,
-                    'name'                 => $propertyName,
-                    'isAutoCreated'        => (bool) $row['property_auto_created'],
-                    'isMandatory'          => (bool) $row['property_mandatory'],
-                    'isProtected'          => (bool) $row['property_protected'],
-                    'onParentVersion'      => (bool) $row['property_on_parent_version'],
-                    'requiredType'         => (int)  $row['property_required_type'],
-                    'multiple'             => (bool) $row['property_multiple'],
-                    'isFulltextSearchable' => (bool) $row['property_fulltext_searchable'],
-                    'isQueryOrderable'     => (bool) $row['property_query_orderable'],
-                    'queryOperators'       => [
+                    'declaringNodeType' => $nodeName,
+                    'name' => $propertyName,
+                    'isAutoCreated' => (bool)$row['property_auto_created'],
+                    'isMandatory' => (bool)$row['property_mandatory'],
+                    'isProtected' => (bool)$row['property_protected'],
+                    'onParentVersion' => (bool)$row['property_on_parent_version'],
+                    'requiredType' => (int)$row['property_required_type'],
+                    'multiple' => (bool)$row['property_multiple'],
+                    'isFulltextSearchable' => (bool)$row['property_fulltext_searchable'],
+                    'isQueryOrderable' => (bool)$row['property_query_orderable'],
+                    'queryOperators' => [
                         QOM::JCR_OPERATOR_EQUAL_TO,
                         QOM::JCR_OPERATOR_NOT_EQUAL_TO,
                         QOM::JCR_OPERATOR_GREATER_THAN,
@@ -2193,14 +2243,14 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
             if (($childName = $row['child_name']) !== null) {
                 $result[$nodeName]['declaredNodeDefinitions'][] = [
-                    'declaringNodeType'        => $nodeName,
-                    'name'                     => $childName,
-                    'isAutoCreated'            => (bool) $row['child_auto_created'],
-                    'isMandatory'              => (bool) $row['child_mandatory'],
-                    'isProtected'              => (bool) $row['child_protected'],
-                    'onParentVersion'          => (bool) $row['child_on_parent_version'],
-                    'allowsSameNameSiblings'   => false,
-                    'defaultPrimaryTypeName'   => $row['child_default_type'],
+                    'declaringNodeType' => $nodeName,
+                    'name' => $childName,
+                    'isAutoCreated' => (bool)$row['child_auto_created'],
+                    'isMandatory' => (bool)$row['child_mandatory'],
+                    'isProtected' => (bool)$row['child_protected'],
+                    'onParentVersion' => (bool)$row['child_on_parent_version'],
+                    'allowsSameNameSiblings' => false,
+                    'defaultPrimaryTypeName' => $row['child_default_type'],
                     'requiredPrimaryTypeNames' => array_filter(explode(' ', $row['child_primary_types']))
                 ];
             }
@@ -2256,36 +2306,44 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             if ($propDefs = $type->getDeclaredPropertyDefinitions()) {
                 foreach ($propDefs as $propertyDef) {
                     /* @var $propertyDef PropertyDefinitionInterface */
-                    $this->getConnection()->insert('phpcr_type_props', [
-                        'node_type_id' => $nodeTypeId,
-                        'name' => $propertyDef->getName(),
-                        'protected' => $propertyDef->isProtected() ? 1 : 0,
-                        'mandatory' => $propertyDef->isMandatory() ? 1 : 0,
-                        'auto_created' => $propertyDef->isAutoCreated() ? 1 : 0,
-                        'on_parent_version' => $propertyDef->getOnParentVersion(),
-                        'multiple' => $propertyDef->isMultiple() ? 1 : 0,
-                        'fulltext_searchable' => $propertyDef->isFullTextSearchable() ? 1 : 0,
-                        'query_orderable' => $propertyDef->isQueryOrderable() ? 1 : 0,
-                        'required_type' => $propertyDef->getRequiredType(),
-                        'query_operators' => 0, // transform to bitmask
-                        'default_value' => $propertyDef->getDefaultValues() ? current($propertyDef->getDefaultValues()) : null,
-                    ]);
+                    $this->getConnection()->insert(
+                        'phpcr_type_props',
+                        [
+                            'node_type_id' => $nodeTypeId,
+                            'name' => $propertyDef->getName(),
+                            'protected' => $propertyDef->isProtected() ? 1 : 0,
+                            'mandatory' => $propertyDef->isMandatory() ? 1 : 0,
+                            'auto_created' => $propertyDef->isAutoCreated() ? 1 : 0,
+                            'on_parent_version' => $propertyDef->getOnParentVersion(),
+                            'multiple' => $propertyDef->isMultiple() ? 1 : 0,
+                            'fulltext_searchable' => $propertyDef->isFullTextSearchable() ? 1 : 0,
+                            'query_orderable' => $propertyDef->isQueryOrderable() ? 1 : 0,
+                            'required_type' => $propertyDef->getRequiredType(),
+                            'query_operators' => 0, // transform to bitmask
+                            'default_value' => $propertyDef->getDefaultValues() ? current(
+                                $propertyDef->getDefaultValues()
+                            ) : null,
+                        ]
+                    );
                 }
             }
 
             if ($childDefs = $type->getDeclaredChildNodeDefinitions()) {
                 foreach ($childDefs as $childDef) {
                     /* @var $childDef NodeDefinitionInterface */
-                    $this->getConnection()->insert('phpcr_type_childs', [
-                        'node_type_id' => $nodeTypeId,
-                        'name' => $childDef->getName(),
-                        'protected' => $childDef->isProtected() ? 1 : 0,
-                        'mandatory' => $childDef->isMandatory() ? 1 : 0,
-                        'auto_created' => $childDef->isAutoCreated() ? 1 : 0,
-                        'on_parent_version' => $childDef->getOnParentVersion(),
-                        'primary_types' => implode(' ', $childDef->getRequiredPrimaryTypeNames() ?: []),
-                        'default_type' => $childDef->getDefaultPrimaryTypeName(),
-                    ]);
+                    $this->getConnection()->insert(
+                        'phpcr_type_childs',
+                        [
+                            'node_type_id' => $nodeTypeId,
+                            'name' => $childDef->getName(),
+                            'protected' => $childDef->isProtected() ? 1 : 0,
+                            'mandatory' => $childDef->isMandatory() ? 1 : 0,
+                            'auto_created' => $childDef->isAutoCreated() ? 1 : 0,
+                            'on_parent_version' => $childDef->getOnParentVersion(),
+                            'primary_types' => implode(' ', $childDef->getRequiredPrimaryTypeNames() ?: []),
+                            'default_type' => $childDef->getDefaultPrimaryTypeName(),
+                        ]
+                    );
                 }
             }
         }
@@ -2355,7 +2413,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
             // TODO use self::getProperty()->isMultiple() once implemented
             $node = $this->getNode($nodePath);
-            if (!is_array($node->{':'.$propertyName})) {
+            if (!is_array($node->{':' . $propertyName})) {
                 return reset($streams);
             }
         }
@@ -2387,7 +2445,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                 $qom->setLimit($query->getLimit());
                 $qom->setOffset($query->getOffset());
             } catch (Exception $e) {
-                throw new InvalidQueryException('Invalid query: '.$query->getStatement(), null, $e);
+                throw new InvalidQueryException('Invalid query: ' . $query->getStatement(), null, $e);
             }
         } else {
             $qom = $query;
@@ -2406,18 +2464,30 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
             /** @var SelectorInterface $selector */
             foreach ($selectors as $selector) {
-                $selectorName   = $selector->getSelectorName() ?: $selector->getNodeTypeName();
-                $columnPrefix   = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
+                $selectorName = $selector->getSelectorName() ?: $selector->getNodeTypeName();
+                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName] . '_' : $selectorAliases[''] . '_';
 
                 if ($primaryType === $selector->getNodeTypeName()) {
-                    $result[] = ['dcr:name' => 'jcr:path', 'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName];
+                    $result[] = [
+                        'dcr:name' => 'jcr:path',
+                        'dcr:value' => $row[$columnPrefix . 'path'],
+                        'dcr:selectorName' => $selectorName
+                    ];
                 }
 
-                $result[] = ['dcr:name' => 'jcr:path' , 'dcr:value' => $row[$columnPrefix . 'path'], 'dcr:selectorName' => $selectorName];
-                $result[] = ['dcr:name' => 'jcr:score', 'dcr:value' => 0                           , 'dcr:selectorName' => $selectorName];
+                $result[] = [
+                    'dcr:name' => 'jcr:path',
+                    'dcr:value' => $row[$columnPrefix . 'path'],
+                    'dcr:selectorName' => $selectorName
+                ];
+                $result[] = ['dcr:name' => 'jcr:score', 'dcr:value' => 0, 'dcr:selectorName' => $selectorName];
                 if (0 === count($qom->getColumns())) {
                     $selectorPrefix = null !== $selector->getSelectorName() ? $selectorName . '.' : '';
-                    $result[] = ['dcr:name' => $selectorPrefix . 'jcr:primaryType', 'dcr:value' => $primaryType, 'dcr:selectorName' => $selectorName];
+                    $result[] = [
+                        'dcr:name' => $selectorPrefix . 'jcr:primaryType',
+                        'dcr:value' => $primaryType,
+                        'dcr:selectorName' => $selectorName
+                    ];
                 }
 
                 if (isset($row[$columnPrefix . 'props'])) {
@@ -2436,7 +2506,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                         }
                     }
 
-                    $properties[$selectorName] = (array) $this->xmlToColumns(
+                    $properties[$selectorName] = (array)$this->xmlToColumns(
                         $row[$columnPrefix . 'props'],
                         $propertyNames
                     );
@@ -2463,24 +2533,25 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
 
                 if (in_array($column->getColumnName(), $reservedNames)) {
-                    throw new InvalidQueryException(sprintf(
-                        'Cannot reserved name "%s". Reserved names are "%s"',
-                        $column->getColumnName(), implode('", "', $reservedNames)
-                    ));
+                    throw new InvalidQueryException(
+                        sprintf(
+                            'Cannot reserved name "%s". Reserved names are "%s"',
+                            $column->getColumnName(),
+                            implode('", "', $reservedNames)
+                        )
+                    );
                 }
 
-                $dcrValue = 'jcr:uuid' === $columnName
-                    ? $row[$columnPrefix . 'identifier']
-                    : (isset($properties[$selectorName][$columnName]) ? $properties[$selectorName][$columnName] : '')
-                ;
+                $dcrValue = 'jcr:uuid' === $columnName ? $row[$columnPrefix . 'identifier'] : (isset($properties[$selectorName][$columnName]) ? $properties[$selectorName][$columnName] : '');
 
                 if (isset($standardColumns[$selectorName][$columnName])) {
                     unset($standardColumns[$selectorName][$columnName]);
                 }
 
                 $result[] = [
-                    'dcr:name' => $column->getColumnName() === $columnName && isset($properties[$selectorName][$columnName])
-                        ? $selectorName.'.'.$columnName : $column->getColumnName(),
+                    'dcr:name' => $column->getColumnName(
+                    ) === $columnName && isset($properties[$selectorName][$columnName]) ? $selectorName . '.' . $columnName : $column->getColumnName(
+                    ),
                     'dcr:value' => $dcrValue,
                     'dcr:selectorName' => $selectorName ?: $primaryType,
                 ];
@@ -2489,7 +2560,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             foreach ($standardColumns as $selectorName => $columns) {
                 foreach ($columns as $columnName => $value) {
                     $result[] = [
-                        'dcr:name' => $primaryType.'.'.$columnName,
+                        'dcr:name' => $primaryType . '.' . $columnName,
                         'dcr:value' => $value,
                         'dcr:selectorName' => $selectorName,
                     ];
@@ -2549,7 +2620,9 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             }
 
             if (isset($this->coreNamespaces[$prefix])) {
-                throw new NamespaceException("Cannot overwrite JCR core namespace prefix '$prefix' to a new uri '$uri'.");
+                throw new NamespaceException(
+                    "Cannot overwrite JCR core namespace prefix '$prefix' to a new uri '$uri'."
+                );
             }
         }
 
@@ -2558,10 +2631,13 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         $this->getConnection()->delete('phpcr_namespaces', ['prefix' => $prefix]);
         $this->getConnection()->delete('phpcr_namespaces', ['uri' => $uri]);
 
-        $this->getConnection()->insert('phpcr_namespaces', [
-            'prefix' => $prefix,
-            'uri' => $uri,
-        ]);
+        $this->getConnection()->insert(
+            'phpcr_namespaces',
+            [
+                'prefix' => $prefix,
+                'uri' => $uri,
+            ]
+        );
 
         if (!empty($this->namespaces)) {
             $this->namespaces[$prefix] = $uri;
@@ -2603,9 +2679,9 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     }
 
     /**
-     * @param string  $path           the path for which we need the references
-     * @param string  $name           the name of the referencing properties or null for all
-     * @param boolean $weakReference  whether to get weak or strong references
+     * @param string $path the path for which we need the references
+     * @param string $name the name of the referencing properties or null for all
+     * @param boolean $weakReference whether to get weak or strong references
      *
      * @return array list of paths to nodes that reference $path
      */
@@ -2619,7 +2695,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                INNER JOIN $table r ON n.id = r.source_id
                WHERE r.target_id = ?";
         if (null !== $name) {
-            $query.= " AND source_property_name = ?";
+            $query .= " AND source_property_name = ?";
             $params[] = $name;
         }
 
@@ -2643,7 +2719,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             $this->getConnection()->beginTransaction();
             $this->inTransaction = true;
         } catch (Exception $e) {
-            throw new RepositoryException('Begin transaction failed: '.$e->getMessage());
+            throw new RepositoryException('Begin transaction failed: ' . $e->getMessage());
         }
     }
 
@@ -2751,7 +2827,13 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         // we can ignore the operations returned, there will be no additions because of property updates
         $this->getNodeProcessor()->process($node);
 
-        $this->syncNode($node->getIdentifier(), $node->getPath(), $node->getPrimaryNodeType(), false, $node->getProperties());
+        $this->syncNode(
+            $node->getIdentifier(),
+            $node->getPath(),
+            $node->getPrimaryNodeType(),
+            false,
+            $node->getProperties()
+        );
 
         return true;
     }
