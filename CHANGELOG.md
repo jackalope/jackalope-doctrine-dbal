@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.3.4
+-----
+
+* Use `defaultTableOptions` to detect collate of database connection, if available
+
 1.3.3
 -----
 
