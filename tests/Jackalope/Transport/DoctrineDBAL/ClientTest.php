@@ -5,6 +5,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 use DateTime;
 use DOMDocument;
 use DOMXPath;
+use Jackalope\NodeType\NodeTypeTemplate;
 use Jackalope\Test\FunctionalTestCase;
 use PDO;
 use PHPCR\PropertyType;
@@ -576,5 +577,57 @@ class ClientTest extends FunctionalTestCase
         $after = $date->format('c');
 
         $this->assertEquals($before, $after);
+    }
+
+    public function testNestedJoinForDifferentDocumentTypes()
+    {
+        $ntm = $this->session->getWorkspace()->getNodeTypeManager();
+        $template = $ntm->createNodeTypeTemplate();
+        $template->setName('test');
+        $template->setDeclaredSuperTypeNames(['nt:unstructured']);
+        $ntm->registerNodeType($template, true);
+
+        $root = $this->session->getNode('/');
+        $documentNode = $root->addNode('document', 'test');
+        $category = $root->addNode('category');
+        $category->addMixin('mix:referenceable');
+        $this->session->save();
+        $category = $this->session->getNode('/category');
+        $documentChild = $documentNode->addNode('document_child', 'nt:unstructured');
+        $documentChild->setProperty('title', 'someChild');
+        $documentChild->setProperty('locale', 'en');
+        $category->setProperty('title', 'someCategory');
+        $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
+        $this->session->save();
+
+
+
+        $qm = $this->session->getWorkspace()->getQueryManager();
+        $qom = $qm->getQOMFactory();
+        $documentSelector = $qom->selector('d', 'test');
+        $categorySelector = $qom->selector('c', 'nt:unstructured');
+        $documentChildSelector = $qom->selector('dt', 'nt:base');
+        $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd', 'category',
+            'c', 'jcr:uuid'
+        ));
+        $childTitleProp = $qom->propertyValue('dt', 'title');
+        $childTitleVal = $qom->literal($documentChild->getProperty('title')->getValue());
+        $titleConstraint = $qom->comparison($childTitleProp, $qom::JCR_OPERATOR_EQUAL_TO, $childTitleVal);
+
+        $from = $qom->join($join, $documentChildSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->childNodeJoinCondition(
+            'dt',
+            'd'
+        ));
+        $localeConstraint = $qom->comparison(
+            $qom->propertyValue('dt', 'locale'),
+            $qom::JCR_OPERATOR_EQUAL_TO,
+            $qom->literal($documentChild->getProperty('locale')->getValue())
+        );
+        $where = $qom->andConstraint($titleConstraint, $localeConstraint);
+
+        $result = $qom->createQuery($from, $where)->execute();
+
+        $this->assertCount(1, $result);
     }
 }

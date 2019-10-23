@@ -315,6 +315,41 @@ class QOMWalker
         throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
 
+
+    /**
+     * @param QOM\JoinConditionInterface $right
+     *
+     * @return string the alias on the left side of a join
+     *
+     * @throws BadMethodCallException if the provided JoinCondition has no valid way of getting the left selector
+     */
+    private function getLeftJoinSelector(QOM\JoinConditionInterface $left)
+    {
+        if ($left instanceof QOM\ChildNodeJoinConditionInterface) {
+            return $left->getChildSelectorName();
+        } elseif ($left instanceof QOM\DescendantNodeJoinConditionInterface) {
+            return $left->getAncestorSelectorName();
+        } elseif ($left instanceof QOM\SameNodeJoinConditionInterface || $left instanceof QOM\EquiJoinConditionInterface) {
+            return $left->getSelector1Name();
+        }
+        throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+    }
+
+    /**
+     * find the most left join in a tree
+     *
+     * @param QOM\JoinInterface $source
+     *
+     * @return QOM\JoinInterface
+     */
+    private function getLeftMostJoin(QOM\JoinInterface $source)
+    {
+        if ($source->getLeft() instanceof QOM\JoinInterface) {
+            return $this->getLeftMostJoin($source->getLeft());
+        }
+        return $source;
+    }
+
     /**
      * @param QOM\JoinInterface $source
      * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
@@ -338,10 +373,11 @@ class QOMWalker
             $sql = "FROM phpcr_nodes $leftAlias ";
         } else {
             $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
-            $leftAlias = $this->getTableAlias($this->getRightJoinSelector($source->getLeft()->getJoinCondition()));
-            while (!$left instanceof QOM\SelectorInterface) {
-                $left = $left->getLeft();
-            }
+            $leftMostJoin = $this->getLeftMostJoin($source);
+            $leftAlias = $this->getTableAlias(
+                $this->getLeftJoinSelector($leftMostJoin->getJoinCondition())
+            );
+            $left = $leftMostJoin->getLeft();
         }
         $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
