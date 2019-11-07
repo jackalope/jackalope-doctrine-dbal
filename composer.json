@@ -19,7 +19,7 @@
         "doctrine/dbal": "^2.4.5",
         "phpcr/phpcr": "~2.1.2",
         "phpcr/phpcr-utils": "^1.3.0",
-        "jackalope/jackalope": "^1.3.4"
+        "jackalope/jackalope": "dev-property_lazy_loading"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.3.0"
@@ -44,5 +44,11 @@
         "branch-alias": {
             "dev-master": "1.3-dev"
         }
-    }
+    },
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "git@github.com:danrot/jackalope.git"
+        }
+    ]
 }
