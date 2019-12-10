@@ -192,6 +192,9 @@ class DBUnitFixtureXML extends XMLDocument
             $name       = '';
             $namespace  = '';
         }
+        if (isset($this->namespaces[$namespace])) {
+            $namespace = $this->namespaces[$namespace];
+        }
 
         $this->addRow('phpcr_nodes', [
             'id'            => $id,
