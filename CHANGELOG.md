@@ -1,11 +1,16 @@
 Changelog
 =========
 
-1.3.5
+1.3.6
 -----
 
 * Fix multiple nested joins
 * Fix ordering of namespaced children
+
+1.3.5
+-----
+
+* [query builder] fix nested joins where clause generation
 
 1.3.4
 -----
