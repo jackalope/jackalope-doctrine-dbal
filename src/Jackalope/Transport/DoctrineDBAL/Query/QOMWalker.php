@@ -427,20 +427,17 @@ class QOMWalker
         if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
             return $this->walkChildNodeJoinCondition($condition);
         }
-
         if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
             return $this->walkDescendantNodeJoinCondition($condition);
         }
-
         if ($condition instanceof QOM\EquiJoinConditionInterface) {
             if ($left instanceof QOM\SelectorInterface) {
                 $selectorName = $left->getSelectorName();
             } else {
-                $selectorName = $this->getRightJoinSelector($left->getJoinCondition());
+                $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
             }
             return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
         }
-
         if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
             throw new NotImplementedException('SameNodeJoinCondtion');
         }
