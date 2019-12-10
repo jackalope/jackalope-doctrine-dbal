@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.3.5
+-----
+
+* Fix multiple nested joins
+* Fix ordering of namespaced children
+
 1.3.4
 -----
 
