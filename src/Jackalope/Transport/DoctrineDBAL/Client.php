@@ -2038,7 +2038,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $i = 0;
 
         foreach ($node->getNodeNames() as $name) {
-            $values[':name' . $i] = $name;
+            $values[':name' . $i] = implode(':', array_filter($this->getJcrName($name)));
             $values[':order' . $i] = $i; // use our counter to avoid gaps
             $sql .= " WHEN :name$i THEN :order$i";
             $i++;
