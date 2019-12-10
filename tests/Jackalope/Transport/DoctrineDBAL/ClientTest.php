@@ -626,7 +626,57 @@ class ClientTest extends FunctionalTestCase
         );
         $where = $qom->andConstraint($titleConstraint, $localeConstraint);
 
-        $result = $qom->createQuery($from, $where)->execute();
+        $queryObjectModel = $qom->createQuery($from, $where);
+        $result = $queryObjectModel->execute();
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testMultiJoiningReferencedDocuments()
+    {
+        $ntm = $this->session->getWorkspace()->getNodeTypeManager();
+        $template = $ntm->createNodeTypeTemplate();
+        $template->setName('test');
+        $template->setDeclaredSuperTypeNames(['nt:unstructured']);
+        $ntm->registerNodeType($template, true);
+
+        $root = $this->session->getNode('/');
+        $documentNode = $root->addNode('document', 'test');
+
+        $category = $root->addNode('category');
+        $category->addMixin('mix:referenceable');
+
+        $group = $root->addNode('group');
+        $group->addMixin('mix:referenceable');
+
+        $this->session->save();
+        $category = $this->session->getNode('/category');
+        $category->setProperty('title', 'someCategory');
+        $group = $this->session->getNode('/group');
+        $group->setProperty('title', 'someGroup');
+
+        $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
+        $documentNode->setProperty('group', $group->getProperty('jcr:uuid'), 'WeakReference');
+        $this->session->save();
+
+        $qm = $this->session->getWorkspace()->getQueryManager();
+        $qom = $qm->getQOMFactory();
+        $documentSelector = $qom->selector('d', 'test');
+        $categorySelector = $qom->selector('c', 'nt:unstructured');
+        $groupSelector = $qom->selector('g', 'nt:unstructured');
+        $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd', 'category',
+            'c', 'jcr:uuid'
+        ));
+
+
+        $from = $qom->join($join, $groupSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd', 'group',
+            'g', 'jcr:uuid'
+        ));
+
+        $queryObjectModel = $qom->createQuery($from);
+        $result = $queryObjectModel->execute();
 
         $this->assertCount(1, $result);
     }
