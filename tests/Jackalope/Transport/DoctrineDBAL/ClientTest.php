@@ -194,6 +194,7 @@ class ClientTest extends FunctionalTestCase
         $article = $root->addNode('article');
         $article->setProperty('test', $string);
         $this->session->save();
+        $this->addToAssertionCount(1);
     }
 
     public function provideTestOutOfRangeCharacters()
@@ -232,6 +233,8 @@ class ClientTest extends FunctionalTestCase
         NodeHelper::purgeWorkspace($this->session);
 
         $this->session->save();
+
+        $this->addToAssertionCount(1);
     }
 
     public function testPropertyLengthAttribute()
@@ -353,6 +356,8 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
         $this->session->move('/topic', '/Topic');
         $this->session->save();
+
+        $this->addToAssertionCount(1);
     }
 
     public function testStoreTypes()

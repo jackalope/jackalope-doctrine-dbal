@@ -2,8 +2,9 @@
 
 namespace Jackalope\Test\Tester;
 
-use PHPUnit_Extensions_Database_DB_IDatabaseConnection;
-use PHPUnit_Extensions_Database_Operation_Factory;
+use PHPUnit\DbUnit\Database\Connection;
+use PHPUnit\DbUnit\Operation\Factory;
+use PHPUnit\DbUnit\Operation_Factory;
 
 /**
  * PostgreSQL specific tester class.
@@ -12,14 +13,14 @@ use PHPUnit_Extensions_Database_Operation_Factory;
  */
 class Pgsql extends Generic
 {
-    public function __construct(PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection, $fixturePath)
+    public function __construct(Connection $connection, $fixturePath)
     {
         parent::__construct($connection, $fixturePath);
 
-        $this->setUpOperation = PHPUnit_Extensions_Database_Operation_Factory::CLEAN_INSERT(true);
+        $this->setUpOperation = Factory::CLEAN_INSERT(true);
     }
 
-    public function onSetUp()
+    public function onSetUp(): void
     {
         parent::onSetUp();
 
