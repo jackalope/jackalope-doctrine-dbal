@@ -1,8 +1,8 @@
 Changelog
 =========
 
-1.4.0 (unreleased)
-------------------
+1.4.0
+-----
 
 * Support PHP 7.4, raise lowest version to 7.1
 
