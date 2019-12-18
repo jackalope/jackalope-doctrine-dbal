@@ -42,17 +42,10 @@ class InitDoctrineDbalCommandTest extends TestCase
 
     public function setUp()
     {
-        $this->connection = $this->getMockBuilder(Connection::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->connection = $this->createMock(Connection::class);
+        $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
 
-        $this->schemaManager = $this->getMockBuilder(AbstractSchemaManager::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $this->platform = $this->getMockBuilder(MySqlPlatform::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->platform = $this->createMock(MySqlPlatform::class);
 
         $this->connection
             ->expects($this->any())
@@ -68,6 +61,11 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->expects($this->any())
             ->method('getSchemaManager')
             ->will($this->returnValue($this->schemaManager));
+
+        $this->platform
+            ->expects($this->any())
+            ->method('getCreateTableSQL')
+            ->will($this->returnValue([]));
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),

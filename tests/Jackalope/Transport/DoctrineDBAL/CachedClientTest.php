@@ -6,17 +6,18 @@ use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Jackalope\Factory;
 use Jackalope\Test\FunctionalTestCase;
+use PHPUnit\Framework\MockObject\MockObject;
 
 class CachedClientTest extends FunctionalTestCase
 {
-    /** @var \PHPUnit_Framework_MockObject_MockObject */
+    /**
+     * @var ArrayCache|MockObject
+     */
     private $cacheMock;
 
     protected function getClient(Connection $conn)
     {
-        $this->cacheMock = $this->getMockBuilder(ArrayCache::class)
-            ->getMock()
-        ;
+        $this->cacheMock = $this->createMock(ArrayCache::class);
 
         return new CachedClient(new Factory(), $conn, ['nodes' => $this->cacheMock, 'meta' => $this->cacheMock]);
     }

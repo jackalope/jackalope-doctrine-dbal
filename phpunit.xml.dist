@@ -6,7 +6,6 @@
          convertWarningsToExceptions="true"
          processIsolation="false"
          stopOnFailure="false"
-         syntaxCheck="true"
          bootstrap="tests/bootstrap.php">
     <php>
         <ini name="memory_limit" value="512M"/>

@@ -4,19 +4,19 @@ namespace Jackalope\Test\Tester;
 
 use ImplementationLoader;
 use PHPCR\Test\FixtureLoaderInterface;
-use PHPUnit_Extensions_Database_AbstractTester;
-use PHPUnit_Extensions_Database_DataSet_XmlDataSet;
-use PHPUnit_Extensions_Database_DB_IDatabaseConnection;
+use PHPUnit\DbUnit\AbstractTester;
+use PHPUnit\DbUnit\Database\Connection;
+use PHPUnit\DbUnit\DataSet\XmlDataSet;
 
 /**
  * Generic tester class.
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
-class Generic extends PHPUnit_Extensions_Database_AbstractTester implements FixtureLoaderInterface
+class Generic extends AbstractTester implements FixtureLoaderInterface
 {
     /**
-     * @var \PHPUnit_Extensions_Database_DB_IDatabaseConnection
+     * @var Connection
      */
     protected $connection;
 
@@ -28,10 +28,9 @@ class Generic extends PHPUnit_Extensions_Database_AbstractTester implements Fixt
     /**
      * Creates a new default database tester using the given connection.
      *
-     * @param PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection
-     * @param string                                              $fixturePath
+     * @param string $fixturePath
      */
-    public function __construct(PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection, $fixturePath)
+    public function __construct(Connection $connection, $fixturePath)
     {
         parent::__construct();
 
@@ -42,7 +41,7 @@ class Generic extends PHPUnit_Extensions_Database_AbstractTester implements Fixt
     /**
      * Returns the test database connection.
      *
-     * @return PHPUnit_Extensions_Database_DB_IDatabaseConnection
+     * @return Connection
      */
     public function getConnection()
     {
@@ -52,14 +51,14 @@ class Generic extends PHPUnit_Extensions_Database_AbstractTester implements Fixt
     public function import($fixtureName, $workspace = null)
     {
         $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . $fixtureName . '.xml';
-        $this->setDataSet(new PHPUnit_Extensions_Database_DataSet_XmlDataSet($fixture));
+        $this->setDataSet(new XmlDataSet($fixture));
 
         if ($workspace) {
             $dataSet = $this->getDataSet();
 
             // TODO: ugly hack, since we only really ever load a 2nd fixture in combination with '10_Writing/copy.xml'
             $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . '10_Writing/copy.xml';
-            $this->setDataSet(new PHPUnit_Extensions_Database_DataSet_XmlDataSet($fixture));
+            $this->setDataSet(new XmlDataSet($fixture));
 
             $loader = ImplementationLoader::getInstance();
             $workspaceName = $loader->getOtherWorkspaceName();
