@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.4.1
+-----
+
+* Fix moving nodes that are not in the default namespace
+
 1.4.0
 -----
 
