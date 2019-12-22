@@ -1983,7 +1983,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $updateDepthCase .= "WHEN id = :id$i THEN CAST(:depth$i AS $intType) ";
 
             if ($srcAbsPath === $row['path']) {
-                $values[':localname' . $i] = PathHelper::getNodeName($values[':path' . $i]);
+                list($namespace, $localName) = $this->getJcrName($values[':path' . $i]);
+                $values[':localname' . $i] = $localName;
 
                 $updateLocalNameCase .= "WHEN id = :id$i THEN :localname$i ";
                 $updateSortOrderCase .= "WHEN id = :id$i THEN (SELECT * FROM ( SELECT MAX(x.sort_order) + 1 FROM phpcr_nodes x WHERE x.parent = :parent$i) y) ";

@@ -348,6 +348,39 @@ class ClientTest extends FunctionalTestCase
         }
     }
 
+    public function testMoveNamespacedNodes()
+    {
+        $root = $this->session->getNode('/');
+        $topic1 = $root->addNode('jcr:topic1');
+        $topic1->addNode('jcr:thisisanewnode');
+        $topic1->addNode('jcr:topic1Child');
+
+        $this->session->save();
+        $this->session->move('/jcr:topic1', '/jcr:topic2');
+
+        $this->session->save();
+
+        $conn = $this->getConnection();
+        $qb = $conn->createQueryBuilder();
+
+        $qb->select('local_name')
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path')->andWhere('n.local_name = :local_name');
+
+        $query = $qb->getSql();
+
+        $expectedData = [
+            '/jcr:topic2' => 'topic2',
+            '/jcr:topic2/jcr:thisisanewnode' => 'thisisanewnode',
+            '/jcr:topic2/jcr:topic1Child' => 'topic1Child'
+        ];
+        foreach ($expectedData as $path => $localName) {
+            $stmnt = $this->conn->executeQuery($query, ['path' => $path, 'local_name' => $localName]);
+            $row = $stmnt->fetch();
+            $this->assertNotFalse($row, $path . ' with local_name' . $localName . ' does not exist in database');
+        }
+    }
+
     public function testCaseInsensativeRename()
     {
         $root = $this->session->getNode('/');
