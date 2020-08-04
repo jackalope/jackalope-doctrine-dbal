@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.5.0
+-----
+
+* Fix add primary keys to all tables (https://www.percona.com/doc/percona-xtradb-cluster/LATEST/features/pxc-strict-mode.html#tables-without-primary-keys)
+
 1.4.1
 -----
 
