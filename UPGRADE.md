@@ -1,6 +1,14 @@
 Upgrade
 =======
 
+1.5
+---
+
+- The following change needs to be made to your database: 
+
+  `ALTER TABLE phpcr_type_childs ADD COLUMN `id` INT(11) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;` 
+  
+
 1.2
 ---
 

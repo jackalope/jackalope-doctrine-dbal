@@ -198,6 +198,7 @@ class RepositorySchema extends Schema
     protected function addTypeChildsTable()
     {
         $childTypes = $this->createTable('phpcr_type_childs');
+        $childTypes->addColumn('id', 'integer', ['autoincrement' => true]);
         $childTypes->addColumn('node_type_id', 'integer');
         $childTypes->addColumn('name', 'string');
         $childTypes->addColumn('protected', 'boolean');
@@ -206,6 +207,7 @@ class RepositorySchema extends Schema
         $childTypes->addColumn('on_parent_version', 'integer');
         $childTypes->addColumn('primary_types', 'string');
         $childTypes->addColumn('default_type', 'string', ['notnull' => false]);
+        $childTypes->setPrimaryKey(['id']);
     }
 
     public function reset()
@@ -241,7 +243,7 @@ class RepositorySchema extends Schema
         )) {
             return $currentMaxLength;
         }
-        
+
         return $this->maxIndexLength;
     }
 
