@@ -15,20 +15,20 @@
         }
     ],
     "require": {
-        "php": "^7.1",
+        "php": "^7.1 || ^8.0",
         "ext-pdo": "*",
         "doctrine/dbal": "^2.9.3",
         "phpcr/phpcr": "~2.1.5",
         "phpcr/phpcr-utils": "^1.4.1",
-        "jackalope/jackalope": "^1.3.8"
+        "jackalope/jackalope": "dev-phpunit-9@dev"
     },
     "provide": {
         "jackalope/jackalope-transport": "1.3.0"
     },
     "require-dev": {
         "psr/log": "^1.0",
-        "phpcr/phpcr-api-tests": "2.1.20",
-        "phpunit/phpunit": "^7.5.18",
+        "phpcr/phpcr-api-tests": "dev-allow-php8@dev",
+        "phpunit/phpunit": "^7.5.18 || ^8.0 || ^9.0",
         "phpunit/dbunit": "^4.0"
     },
     "autoload": {

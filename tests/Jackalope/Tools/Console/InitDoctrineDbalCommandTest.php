@@ -40,7 +40,7 @@ class InitDoctrineDbalCommandTest extends TestCase
      */
     protected $application;
 
-    public function setUp()
+    public function setUp(): void
     {
         $this->connection = $this->createMock(Connection::class);
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
@@ -48,24 +48,20 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->platform = $this->createMock(MySqlPlatform::class);
 
         $this->connection
-            ->expects($this->any())
             ->method('getDatabasePlatform')
-            ->will($this->returnValue($this->platform));
+            ->willReturn($this->platform);
 
         $this->schemaManager
-            ->expects($this->any())
             ->method('createSchemaConfig')
-            ->will($this->returnValue(null));
+            ->willReturn(null);
 
         $this->connection
-            ->expects($this->any())
             ->method('getSchemaManager')
-            ->will($this->returnValue($this->schemaManager));
+            ->willReturn($this->schemaManager);
 
         $this->platform
-            ->expects($this->any())
             ->method('getCreateTableSQL')
-            ->will($this->returnValue([]));
+            ->willReturn([]);
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
@@ -87,7 +83,7 @@ class InitDoctrineDbalCommandTest extends TestCase
      *
      * @return CommandTester
      */
-    protected function executeCommand($name, $args, $status = 0)
+    protected function executeCommand($name, $args, $status = 0): CommandTester
     {
         $command = $this->application->find($name);
         $commandTester = new CommandTester($command);
@@ -99,7 +95,7 @@ class InitDoctrineDbalCommandTest extends TestCase
         return $commandTester;
     }
 
-    public function testCommand()
+    public function testCommand(): void
     {
         $this->executeCommand('jackalope:init:dbal', [], 2);
         $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true], 0);
