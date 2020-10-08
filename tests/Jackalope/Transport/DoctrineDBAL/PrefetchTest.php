@@ -8,7 +8,7 @@ class PrefetchTest extends FunctionalTestCase
 {
     protected $conn;
 
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -21,7 +21,7 @@ class PrefetchTest extends FunctionalTestCase
         $this->session->save();
     }
 
-    public function testGetNode()
+    public function testGetNode(): void
     {
         $this->transport->setFetchDepth(1);
 
@@ -30,7 +30,7 @@ class PrefetchTest extends FunctionalTestCase
         $this->assertNode($raw, 'a');
     }
 
-    public function testGetNodes()
+    public function testGetNodes(): void
     {
         $this->transport->setFetchDepth(1);
 
@@ -55,7 +55,7 @@ class PrefetchTest extends FunctionalTestCase
         $this->assertChildNode($list['/node-b/child-b'], 'b', 'b');
     }
 
-    protected function assertNode($raw)
+    protected function assertNode($raw): void
     {
         $this->assertInstanceOf('\stdClass', $raw);
 
@@ -66,7 +66,7 @@ class PrefetchTest extends FunctionalTestCase
         $this->assertObjectHasAttribute($name, $raw);
     }
 
-    protected function assertChildNode($raw, $parent, $child)
+    protected function assertChildNode($raw, $parent, $child): void
     {
         $this->assertInstanceOf('\stdClass', $raw);
 

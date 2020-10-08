@@ -35,7 +35,7 @@ class QOMWalkerTest extends TestCase
      */
     private $defaultColumns = '*';
 
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -49,9 +49,8 @@ class QOMWalkerTest extends TestCase
         ;
 
         $this->nodeTypeManager
-            ->expects($this->any())
             ->method('hasNodeType')
-            ->will($this->returnValue(true))
+            ->willReturn(true)
         ;
 
         $this->factory = new QueryObjectModelFactory(new Factory);
@@ -59,9 +58,13 @@ class QOMWalkerTest extends TestCase
         $this->defaultColumns = 'n0.path AS n0_path, n0.identifier AS n0_identifier, n0.props AS n0_props';
     }
 
-    public function testDefaultQuery()
+    public function testDefaultQuery(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery($this->factory->selector('nt:unstructured', 'nt:unstructured'), null, [], []);
         list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
@@ -69,9 +72,13 @@ class QOMWalkerTest extends TestCase
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured')", $this->defaultColumns), $sql);
     }
 
-    public function testQueryWithPathComparisonConstraint()
+    public function testQueryWithPathComparisonConstraint(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -84,9 +91,13 @@ class QOMWalkerTest extends TestCase
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path = '/'", $this->defaultColumns), $sql);
     }
 
-    public function testQueryWithPropertyComparisonConstraint()
+    public function testQueryWithPropertyComparisonConstraint(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -102,9 +113,13 @@ class QOMWalkerTest extends TestCase
         );
     }
 
-    public function testQueryWithPropertyComparisonConstraintNumericLiteral()
+    public function testQueryWithPropertyComparisonConstraintNumericLiteral(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery(
             $this->factory->selector('a', 'nt:unstructured'),
@@ -117,9 +132,13 @@ class QOMWalkerTest extends TestCase
         $this->assertContains('> 100', $sql);
     }
 
-    public function testQueryWithAndConstraint()
+    public function testQueryWithAndConstraint(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -135,9 +154,13 @@ class QOMWalkerTest extends TestCase
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' AND n0.path = '/')", $this->defaultColumns), $sql);
     }
 
-    public function testQueryWithOrConstraint()
+    public function testQueryWithOrConstraint(): void
     {
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager
+            ->expects($this->once())
+            ->method('getSubtypes')
+            ->willReturn([])
+        ;
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
