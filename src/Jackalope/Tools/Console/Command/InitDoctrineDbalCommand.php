@@ -41,19 +41,26 @@ class InitDoctrineDbalCommand extends Command
             ->setDescription('Prepare the database for Jackalope Doctrine-Dbal.')
             ->setDefinition([
                 new InputOption(
-                    'force', null, InputOption::VALUE_NONE,
+                    'force',
+                    null,
+                    InputOption::VALUE_NONE,
                     'Set this parameter to execute this action'
                 ),
                 new InputOption(
-                    'dump-sql', null, InputOption::VALUE_NONE,
+                    'dump-sql',
+                    null,
+                    InputOption::VALUE_NONE,
                     'Instead of try to apply generated SQLs to the database, output them.'
                 ),
                 new InputOption(
-                    'drop', null, InputOption::VALUE_NONE,
+                    'drop',
+                    null,
+                    InputOption::VALUE_NONE,
                     'Drop any existing tables before trying to create the new tables.'
                 )
             ])
-            ->setHelp(<<<EOT
+            ->setHelp(
+                <<<EOT
 Prepare the database for Jackalope Doctrine-DBAL transport.
 Processes the schema and either creates it directly in the database or generate the SQL output.
 EOT

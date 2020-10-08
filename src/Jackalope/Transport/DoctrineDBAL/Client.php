@@ -396,7 +396,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->getConnection()->delete('phpcr_binarydata', ['workspace_name' => $name]);
         } catch (Exception $e) {
             throw new RepositoryException(
-                "Couldn't delete binary data in workspace '$name': " . $e->getMessage(), 0, $e
+                "Couldn't delete binary data in workspace '$name': " . $e->getMessage(),
+                0,
+                $e
             );
         }
     }
@@ -891,7 +893,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         throw new ItemExistsException('Item ' . $path . ' already exists in the database');
                     } else {
                         throw new RepositoryException(
-                            'Unknown database error while inserting item ' . $path . ': ' . $e->getMessage(), 0, $e
+                            'Unknown database error while inserting item ' . $path . ': ' . $e->getMessage(),
+                            0,
+                            $e
                         );
                     }
                 } else {
@@ -1030,7 +1034,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $this->executeChunkedUpdate($query, $params);
             } catch (DBALException $e) {
                 throw new RepositoryException(
-                    'Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e
+                    'Unexpected exception while cleaning up deleted nodes',
+                    $e->getCode(),
+                    $e
                 );
             }
 
@@ -1074,7 +1080,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
             } catch (DBALException $e) {
                 throw new RepositoryException(
-                    'Unexpected exception while cleaning up deleted nodes', $e->getCode(), $e
+                    'Unexpected exception while cleaning up deleted nodes',
+                    $e->getCode(),
+                    $e
                 );
             }
         }
@@ -1240,6 +1248,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         'type' => $property->getType(),
                         'values' => $property->isMultiple() ? $property->getString() : [$property->getString()],
                     ];
+                    // no break
                 case PropertyType::NAME:
                 case PropertyType::URI:
                 case PropertyType::PATH:
@@ -2069,7 +2078,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->nodeProcessor = new NodeProcessor(
-            $this->credentials->getUserID(), $this->getNamespacesObject(), $this->getAutoLastModified()
+            $this->credentials->getUserID(),
+            $this->getNamespacesObject(),
+            $this->getAutoLastModified()
         );
 
         return $this->nodeProcessor;

@@ -96,7 +96,8 @@ class QOMWalkerTest extends TestCase
         );
         list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains('//sv:property[@sv:name="jcr:createdBy"]/sv:value',
+        $this->assertContains(
+            '//sv:property[@sv:name="jcr:createdBy"]/sv:value',
             $sql
         );
     }

@@ -646,8 +646,10 @@ class ClientTest extends FunctionalTestCase
         $categorySelector = $qom->selector('c', 'nt:unstructured');
         $documentChildSelector = $qom->selector('dt', 'nt:base');
         $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
-            'd', 'category',
-            'c', 'jcr:uuid'
+            'd',
+            'category',
+            'c',
+            'jcr:uuid'
         ));
         $childTitleProp = $qom->propertyValue('dt', 'title');
         $childTitleVal = $qom->literal($documentChild->getProperty('title')->getValue());
@@ -703,14 +705,18 @@ class ClientTest extends FunctionalTestCase
         $categorySelector = $qom->selector('c', 'nt:unstructured');
         $groupSelector = $qom->selector('g', 'nt:unstructured');
         $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
-            'd', 'category',
-            'c', 'jcr:uuid'
+            'd',
+            'category',
+            'c',
+            'jcr:uuid'
         ));
 
 
         $from = $qom->join($join, $groupSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
-            'd', 'group',
-            'g', 'jcr:uuid'
+            'd',
+            'group',
+            'g',
+            'jcr:uuid'
         ));
 
         $queryObjectModel = $qom->createQuery($from);
