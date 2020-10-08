@@ -871,7 +871,8 @@ class QOMWalker
 
                 $numericalSelector = $this->sqlXpathExtractValue($alias, $property, 'numerical_props');
 
-                $sql = sprintf('CAST(%s AS DECIMAL) %s, %s',
+                $sql = sprintf(
+                    'CAST(%s AS DECIMAL) %s, %s',
                     $numericalSelector,
                     $direction,
                     $sql
