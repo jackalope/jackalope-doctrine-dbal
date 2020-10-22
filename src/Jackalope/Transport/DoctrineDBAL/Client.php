@@ -2700,6 +2700,11 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     private function getNodeReferences($path, $name = null, $weakReference = false)
     {
         $targetId = $this->getSystemIdForNode($path);
+
+        if (false === $targetId) {
+            return [];
+        }
+
         $params = [$targetId];
 
         $table = $weakReference ? $this->referenceTables[PropertyType::WEAKREFERENCE] : $this->referenceTables[PropertyType::REFERENCE];
