@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.5.1
+-----
+
+* Early return in getNodeReferences if system id for path is not found.
+
 1.5.0
 -----
 
