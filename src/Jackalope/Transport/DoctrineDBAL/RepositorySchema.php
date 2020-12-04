@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
@@ -216,14 +217,16 @@ class RepositorySchema extends Schema
             throw new RepositoryException('Do not use RepositorySchema::reset when not instantiated with a connection');
         }
 
-        $this->connection->getWrappedConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
         foreach ($this->toDropSql($this->connection->getDatabasePlatform()) as $sql) {
-            $this->connection->exec($sql);
+            try {
+                $this->connection->executeStatement($sql);
+            } catch (Exception $exception) {
+                // do nothing
+            }
         }
 
-        $this->connection->getWrappedConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         foreach ($this->toSql($this->connection->getDatabasePlatform()) as $sql) {
-            $this->connection->exec($sql);
+            $this->connection->executeStatement($sql);
         }
     }
 

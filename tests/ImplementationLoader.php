@@ -1,5 +1,8 @@
 <?php
 
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Jackalope\Test\Tester\Generic;
 use Doctrine\DBAL\Connection;
 use Doctrine\Common\Cache\ArrayCache;
@@ -7,12 +10,13 @@ use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\RepositoryFactoryDoctrineDBAL;
 use Jackalope\Session;
+use Jackalope\Test\Tester\Mysql;
+use Jackalope\Test\Tester\Pgsql;
 use Jackalope\Transport\DoctrineDBAL\Client;
 use Jackalope\Transport\Logging\Psr3Logger;
 use PHPCR\RepositoryException;
 use PHPCR\SimpleCredentials;
 use PHPCR\Test\AbstractLoader;
-use PHPUnit\DbUnit\Database\DefaultConnection;
 use Psr\Log\NullLogger;
 
 /**
@@ -192,15 +196,21 @@ class ImplementationLoader extends AbstractLoader
 
     public function getFixtureLoader()
     {
-        $testerClass = '\\Jackalope\\Test\\Tester\\' . ucfirst(strtolower($this->connection->getWrappedConnection()->getAttribute(PDO::ATTR_DRIVER_NAME)));
-        if (!class_exists($testerClass)) {
-            // load Generic Tester if no database specific Tester class found
-            $testerClass = Generic::class;
+        $platform = $this->connection->getDatabasePlatform();
+        switch ($platform) {
+            case $platform instanceof MySQLPlatform:
+                $testerClass = Mysql::class;
+                break;
+
+            case ($platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform):
+                $testerClass = Pgsql::class;
+                break;
+
+            default:
+                $testerClass = Generic::class;
+                break;
         }
 
-        return new $testerClass(
-            new DefaultConnection($this->connection->getWrappedConnection(), 'tests'),
-            $this->fixturePath
-        );
+        return new $testerClass($this->connection, $this->fixturePath);
     }
 }

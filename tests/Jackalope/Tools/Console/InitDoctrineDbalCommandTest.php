@@ -1,8 +1,9 @@
 <?php
 
-namespace Jackalope\Tools\Console\Command;
+namespace Jackalope\Tools\Console;
 
-use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Jackalope\Tools\Console\Command\InitDoctrineDbalCommand;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use PDOException;
 use PHPUnit\Framework\TestCase;
@@ -45,7 +46,7 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->connection = $this->createMock(Connection::class);
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
 
-        $this->platform = $this->createMock(MySqlPlatform::class);
+        $this->platform = $this->createMock(MySQLPlatform::class);
 
         $this->connection
             ->method('getDatabasePlatform')
@@ -90,6 +91,7 @@ class InitDoctrineDbalCommandTest extends TestCase
         $args = array_merge([
             'command' => $command->getName(),
         ], $args);
+
         $this->assertEquals($status, $commandTester->execute($args));
 
         return $commandTester;
@@ -105,9 +107,8 @@ class InitDoctrineDbalCommandTest extends TestCase
 
         // Unfortunately PDO doesn't follow internals and uses a non integer error code, which cannot be manually created
         $this->connection
-            ->expects($this->any())
-            ->method('exec')
-            ->will($this->throwException(new MockPDOException('', '42S01')))
+            ->method('executeStatement')
+            ->will(self::throwException(new MockPDOException('', '42S01')))
         ;
 
         $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 1);

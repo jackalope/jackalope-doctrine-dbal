@@ -10,7 +10,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\DBALException;
+use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
@@ -100,19 +100,12 @@ EOT
                         if (true === $input->getOption('dump-sql')) {
                             $output->writeln($sql);
                         } else {
-                            $connection->exec($sql);
+                            $connection->executeStatement($sql);
                         }
                     }
                 } catch (TableNotFoundException $e) {
                     if (false === $input->getOption('force')) {
                         throw $e;
-                    }
-                    // remove this once we require Doctrine DBAL 2.5+
-                } catch (DBALException $e) {
-                    if (false === $input->getOption('force')) {
-                        throw $e;
-                    } else {
-                        $output->writeln($e->getMessage());
                     }
                 }
             }
@@ -121,7 +114,7 @@ EOT
                 if (true === $input->getOption('dump-sql')) {
                     $output->writeln($sql);
                 } else {
-                    $connection->exec($sql);
+                    $connection->executeStatement($sql);
                 }
             }
         } catch (PDOException $e) {
