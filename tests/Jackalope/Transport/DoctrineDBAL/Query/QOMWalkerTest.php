@@ -2,6 +2,8 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Jackalope\NodeType\NodeTypeManager;
 use Jackalope\Test\TestCase;
 use Jackalope\Query\QOM\Length;
@@ -67,7 +69,7 @@ class QOMWalkerTest extends TestCase
         ;
 
         $query = $this->factory->createQuery($this->factory->selector('nt:unstructured', 'nt:unstructured'), null, [], []);
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured')", $this->defaultColumns), $sql);
     }
@@ -86,7 +88,7 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path = '/'", $this->defaultColumns), $sql);
     }
@@ -94,7 +96,7 @@ class QOMWalkerTest extends TestCase
     public function testQueryWithPropertyComparisonConstraint(): void
     {
         $this->nodeTypeManager
-            ->expects($this->once())
+            ->expects(self::once())
             ->method('getSubtypes')
             ->willReturn([])
         ;
@@ -105,9 +107,10 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains(
+        [, , $sql] = $this->walker->walkQOMQuery($query);
+
+        self::assertStringContainsString(
             '//sv:property[@sv:name="jcr:createdBy"]/sv:value',
             $sql
         );
@@ -116,7 +119,7 @@ class QOMWalkerTest extends TestCase
     public function testQueryWithPropertyComparisonConstraintNumericLiteral(): void
     {
         $this->nodeTypeManager
-            ->expects($this->once())
+            ->expects(self::once())
             ->method('getSubtypes')
             ->willReturn([])
         ;
@@ -127,9 +130,9 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [, , $sql] = $this->walker->walkQOMQuery($query);
 
-        $this->assertContains('> 100', $sql);
+        self::assertStringContainsString('> 100', $sql);
     }
 
     public function testQueryWithAndConstraint(): void
@@ -149,7 +152,7 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' AND n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -171,7 +174,7 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND (n0.path = '/' OR n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -188,7 +191,7 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND NOT (n0.path = '/')", $this->defaultColumns), $sql);
     }
@@ -221,7 +224,7 @@ class QOMWalkerTest extends TestCase
             [],
             []
         );
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path $op '/'", $this->defaultColumns), $sql);
     }
@@ -237,7 +240,7 @@ class QOMWalkerTest extends TestCase
             []
         );
 
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') ORDER BY n0.path ASC", $this->defaultColumns),
@@ -247,9 +250,9 @@ class QOMWalkerTest extends TestCase
 
     public function testQueryWithOrderings()
     {
-        $driver = $this->conn->getDriver()->getName();
+        $platform = $this->conn->getDatabasePlatform();
 
-        $this->nodeTypeManager->expects($this->once())->method('getSubtypes')->will($this->returnValue([]));
+        $this->nodeTypeManager->expects(self::once())->method('getSubtypes')->willReturn([]);
 
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
@@ -260,13 +263,13 @@ class QOMWalkerTest extends TestCase
 
         $res = $this->walker->walkQOMQuery($query);
 
-
-        switch ($driver) {
-            case 'pdo_pgsql':
+        switch ($platform) {
+            case ($platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform):
                 $ordering =
                     "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, " .
                    "(xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text ASC";
                 break;
+
             default:
                 $ordering =
                     "CAST(EXTRACTVALUE(n0.numerical_props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') AS DECIMAL) ASC, " .
@@ -274,7 +277,7 @@ class QOMWalkerTest extends TestCase
         }
 
 
-        $this->assertEquals(
+        self::assertEquals(
             sprintf(
                 implode(' ', [
                     "SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ?",
@@ -297,7 +300,7 @@ class QOMWalkerTest extends TestCase
             $this->factory->descendantNode('nt:unstructured', '/')
         );
 
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/%%'", $this->defaultColumns),
@@ -309,7 +312,7 @@ class QOMWalkerTest extends TestCase
             $this->factory->descendantNode('nt:unstructured', '/some/node')
         );
 
-        list($selectors, $selectorAliases, $sql) = $this->walker->walkQOMQuery($query);
+        [$selectors, $selectorAliases, $sql] = $this->walker->walkQOMQuery($query);
 
         $this->assertEquals(
             sprintf("SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ? AND n0.type IN ('nt:unstructured') AND n0.path LIKE '/some/node/%%'", $this->defaultColumns),
@@ -320,7 +323,14 @@ class QOMWalkerTest extends TestCase
     public function testWalkOperand()
     {
         $operand = new Length(new PropertyValue('foo', 'bar'));
-        $this->assertRegExp('/\/\/sv:property\[@sv:name="bar"\]\/sv:value\[1\]\/@length/', $this->walker->walkOperand($operand));
+        $pattern = '/\/\/sv:property\[@sv:name="bar"\]\/sv:value\[1\]\/@length/';
+        $value = $this->walker->walkOperand($operand);
+
+        if (method_exists(self::class, 'assertMatchesRegularExpression')) {
+            self::assertMatchesRegularExpression($pattern, $value);
+        } else {
+            self::assertRegExp($pattern, $value);
+        }
     }
 
     public function testDescendantQueryTrailingSlash()

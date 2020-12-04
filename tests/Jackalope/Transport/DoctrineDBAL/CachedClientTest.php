@@ -25,8 +25,7 @@ class CachedClientTest extends FunctionalTestCase
     public function testArrayObjectIsConvertedToArray()
     {
         $namespaces = $this->transport->getNamespaces();
-
-        $this->assertInternalType('array', $namespaces);
+        self::assertIsArray($namespaces);
     }
 
     /**
@@ -34,12 +33,15 @@ class CachedClientTest extends FunctionalTestCase
      */
     public function testDefaultKeySanitizer()
     {
+        $first = true;
         $this->cacheMock
-            ->expects($this->at(0))
             ->method('fetch')
-            ->with(
-                $this->equalTo('nodetypes:_a:0:{}')
-            );
+            ->with(self::callback(function ($arg) use (&$first) {
+                self::assertEquals($first ? 'nodetypes:_a:0:{}' : 'node_types', $arg);
+                $first = false;
+
+                return true;
+            }));
 
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
@@ -55,12 +57,15 @@ class CachedClientTest extends FunctionalTestCase
             return strrev($cacheKey);
         });
 
+        $first = true;
         $this->cacheMock
-            ->expects($this->at(0))
             ->method('fetch')
-            ->with(
-                $this->equalTo('}{:0:a :sepytedon')
-            );
+            ->with(self::callback(function ($arg) use (&$first) {
+                self::assertEquals($first ? '}{:0:a :sepytedon' : 'sepyt_edon', $arg);
+                $first = false;
+
+                return true;
+            }));
 
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;

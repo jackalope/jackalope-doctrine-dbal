@@ -5,6 +5,9 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 use BadMethodCallException;
 use DateTime;
 use DateTimeZone;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Schema\Schema;
 use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
@@ -18,8 +21,6 @@ use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Platforms\MySqlPlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 /**
@@ -158,7 +159,7 @@ class QOMWalker
         $offset = $qom->getOffset();
 
         if (null !== $offset && null === $limit
-            && ($this->platform instanceof MySqlPlatform || $this->platform instanceof SqlitePlatform)
+            && ($this->platform instanceof MySQLPlatform || $this->platform instanceof SqlitePlatform)
         ) {
             $limit = PHP_INT_MAX;
         }
@@ -720,7 +721,7 @@ class QOMWalker
         $property = $propertyOperand->getPropertyName();
 
 
-        if ($this->platform instanceof MySqlPlatform && '=' === $operator) {
+        if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
             return sprintf(
                 '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name="%s"]/sv:value\'), " ", ","))',
                 $literalOperand->getLiteralValue(),
@@ -918,11 +919,11 @@ class QOMWalker
      */
     private function sqlXpathValueExists($alias, $property)
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
 
@@ -943,11 +944,11 @@ class QOMWalker
      */
     private function sqlXpathExtractValue($alias, $property, $column = 'props')
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
 
@@ -960,7 +961,7 @@ class QOMWalker
 
     private function sqlXpathExtractNumValue($alias, $property)
     {
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
         }
 
@@ -969,11 +970,11 @@ class QOMWalker
 
     private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return sprintf("CAST((xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
 
@@ -999,11 +1000,11 @@ class QOMWalker
     {
         $expression = null;
 
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
-        } elseif ($this->platform instanceof PostgreSqlPlatform) {
+        } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";

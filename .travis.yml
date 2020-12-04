@@ -1,13 +1,10 @@
 language: php
 
 php:
-  - 7.1
-  - 7.2
   - 7.3
   - 7.4
+  - 8.0
   - nightly
-
-sudo: false
 
 env:
   - DB=mysql
@@ -25,11 +22,11 @@ cache:
 
 matrix:
   include:
-    - php: 7.1
+    - php: 7.3
       env: DB=mysql COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
-    - php: 7.1
+    - php: 7.3
       env: DB=pgsql COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
-    - php: 7.1
+    - php: 7.3
       env: DB=sqlite COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
 
 before_script:
