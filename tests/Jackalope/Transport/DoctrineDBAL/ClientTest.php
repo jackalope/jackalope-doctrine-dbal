@@ -310,13 +310,13 @@ class ClientTest extends FunctionalTestCase
         $method = $class->getMethod('generateUuid');
         $method->setAccessible(true);
 
-        $this->assertInternalType('string', $method->invoke($this->transport));
+        self::assertIsString($method->invoke($this->transport));
 
         $this->transport->setUuidGenerator(function () {
             return 'like-a-uuid';
         });
 
-        $this->assertEquals('like-a-uuid', $method->invoke($this->transport));
+        self::assertEquals('like-a-uuid', $method->invoke($this->transport));
     }
 
     public function testMoveAndReplace()

@@ -13,6 +13,8 @@ use DOMNode;
  */
 abstract class XMLDocument extends DOMDocument
 {
+    use XMLDocumentTrait;
+
     /**
      * file path
      *
@@ -120,7 +122,7 @@ abstract class XMLDocument extends DOMDocument
      *
      * @return XMLDocument
      */
-    public function save($file = null)
+    private function doSave($file = null)
     {
         if (isset($file)) {
             $this->file = $file;

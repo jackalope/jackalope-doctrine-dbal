@@ -38,9 +38,9 @@ class CachedClient extends Client
     {
         parent::__construct($factory, $conn);
 
-        $caches['meta'] = isset($caches['meta']) ? $caches['meta'] : new ArrayCache();
+        $caches['meta'] = $caches['meta'] ?? new ArrayCache();
         $this->caches = $caches;
-        $this->keySanitizer = function ($cacheKey) {
+        $this->keySanitizer = static function ($cacheKey) {
             return str_replace(' ', '_', $cacheKey);
         };
     }

@@ -2,18 +2,17 @@
 
 namespace Jackalope\Test\Tester;
 
+use Doctrine\DBAL\Connection;
 use ImplementationLoader;
 use PHPCR\Test\FixtureLoaderInterface;
-use PHPUnit\DbUnit\AbstractTester;
-use PHPUnit\DbUnit\Database\Connection;
-use PHPUnit\DbUnit\DataSet\XmlDataSet;
+use function implode;
 
 /**
  * Generic tester class.
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
  */
-class Generic extends AbstractTester implements FixtureLoaderInterface
+class Generic implements FixtureLoaderInterface
 {
     /**
      * @var Connection
@@ -26,14 +25,17 @@ class Generic extends AbstractTester implements FixtureLoaderInterface
     protected $fixturePath;
 
     /**
+     * @var XmlDataSet
+     */
+    private $dataSet;
+
+    /**
      * Creates a new default database tester using the given connection.
      *
      * @param string $fixturePath
      */
     public function __construct(Connection $connection, $fixturePath)
     {
-        parent::__construct();
-
         $this->connection   = $connection;
         $this->fixturePath  = $fixturePath;
     }
@@ -51,32 +53,48 @@ class Generic extends AbstractTester implements FixtureLoaderInterface
     public function import($fixtureName, $workspace = null)
     {
         $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . $fixtureName . '.xml';
-        $this->setDataSet(new XmlDataSet($fixture));
+        $this->dataSet = new XmlDataSet($fixture);
 
         if ($workspace) {
-            $dataSet = $this->getDataSet();
+            $dataSet = $this->dataSet;
 
             // TODO: ugly hack, since we only really ever load a 2nd fixture in combination with '10_Writing/copy.xml'
             $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . '10_Writing/copy.xml';
-            $this->setDataSet(new XmlDataSet($fixture));
+            $this->dataSet = new XmlDataSet($fixture);
 
             $loader = ImplementationLoader::getInstance();
             $workspaceName = $loader->getOtherWorkspaceName();
 
-            $this->dataSet->getTable('phpcr_workspaces')->addRow(['name' => $workspaceName]);
+            $this->dataSet->addRow('phpcr_workspaces', ['name' => $workspaceName]);
 
             foreach (['phpcr_nodes', 'phpcr_binarydata'] as $tableName) {
-                $table = $dataSet->getTable($tableName);
-                $targetTable = $this->dataSet->getTable($tableName);
+                $table = $dataSet->getRows($tableName);
 
-                for ($i = 0; $i < $table->getRowCount(); $i++) {
-                    $row = $table->getRow($i);
+                foreach ($table as $row) {
                     $row['workspace_name'] = $workspaceName;
-                    $targetTable->addRow($row);
+                    $this->dataSet->addRow($tableName, $row);
                 }
             }
         }
 
         $this->onSetUp();
+    }
+
+    public function onSetUp(): void
+    {
+        $platform = $this->connection->getDatabasePlatform();
+        foreach ($this->dataSet->getTables() as $table) {
+            $this->connection->executeStatement($platform->getTruncateTableSQL($table->getName(), true));
+        }
+
+        foreach ($this->dataSet->getTables() as $table) {
+            foreach ($this->dataSet->getRows($table->getName()) as $row) {
+                $sql = 'INSERT INTO '.$platform->quoteIdentifier($table->getName()).
+                    ' ('.implode(',', array_keys($row)).') VALUES ('.
+                    implode(',', array_fill(0, count($row), '?')).')';
+
+                $this->connection->executeStatement($sql, array_values($row));
+            }
+        }
     }
 }
