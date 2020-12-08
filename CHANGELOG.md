@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.6.0
+-----
+
+* Support PHP 8 and Doctrine DBAL 3
+* Dropped support for PHP < 7.3
+
 1.5.1
 -----
 
