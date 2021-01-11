@@ -5,6 +5,9 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 use BadMethodCallException;
 use DateTime;
 use DateTimeZone;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Schema\Schema;
 use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
@@ -18,8 +21,6 @@ use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Platforms\MySqlPlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 /**
@@ -158,7 +159,7 @@ class QOMWalker
         $offset = $qom->getOffset();
 
         if (null !== $offset && null === $limit
-            && ($this->platform instanceof MySqlPlatform || $this->platform instanceof SqlitePlatform)
+            && ($this->platform instanceof MySQLPlatform || $this->platform instanceof SqlitePlatform)
         ) {
             $limit = PHP_INT_MAX;
         }
@@ -315,6 +316,41 @@ class QOMWalker
         throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
 
+
+    /**
+     * @param QOM\JoinConditionInterface $right
+     *
+     * @return string the alias on the left side of a join
+     *
+     * @throws BadMethodCallException if the provided JoinCondition has no valid way of getting the left selector
+     */
+    private function getLeftJoinSelector(QOM\JoinConditionInterface $left)
+    {
+        if ($left instanceof QOM\ChildNodeJoinConditionInterface) {
+            return $left->getChildSelectorName();
+        } elseif ($left instanceof QOM\DescendantNodeJoinConditionInterface) {
+            return $left->getAncestorSelectorName();
+        } elseif ($left instanceof QOM\SameNodeJoinConditionInterface || $left instanceof QOM\EquiJoinConditionInterface) {
+            return $left->getSelector1Name();
+        }
+        throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+    }
+
+    /**
+     * find the most left join in a tree
+     *
+     * @param QOM\JoinInterface $source
+     *
+     * @return QOM\JoinInterface
+     */
+    private function getLeftMostJoin(QOM\JoinInterface $source)
+    {
+        if ($source->getLeft() instanceof QOM\JoinInterface) {
+            return $this->getLeftMostJoin($source->getLeft());
+        }
+        return $source;
+    }
+
     /**
      * @param QOM\JoinInterface $source
      * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
@@ -338,10 +374,11 @@ class QOMWalker
             $sql = "FROM phpcr_nodes $leftAlias ";
         } else {
             $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
-            $leftAlias = $this->getTableAlias($this->getRightJoinSelector($source->getLeft()->getJoinCondition()));
-            while (!$left instanceof QOM\SelectorInterface) {
-                $left = $left->getLeft();
-            }
+            $leftMostJoin = $this->getLeftMostJoin($source);
+            $leftAlias = $this->getTableAlias(
+                $this->getLeftJoinSelector($leftMostJoin->getJoinCondition())
+            );
+            $left = $leftMostJoin->getLeft();
         }
         $rightAlias = $this->getTableAlias($source->getRight()->getSelectorName());
         $nodeTypeClause = $this->sqlNodeTypeClause($rightAlias, $source->getRight());
@@ -391,20 +428,17 @@ class QOMWalker
         if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
             return $this->walkChildNodeJoinCondition($condition);
         }
-
         if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
             return $this->walkDescendantNodeJoinCondition($condition);
         }
-
         if ($condition instanceof QOM\EquiJoinConditionInterface) {
             if ($left instanceof QOM\SelectorInterface) {
                 $selectorName = $left->getSelectorName();
             } else {
-                $selectorName = $this->getRightJoinSelector($left->getJoinCondition());
+                $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
             }
             return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
         }
-
         if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
             throw new NotImplementedException('SameNodeJoinCondtion');
         }
@@ -419,8 +453,9 @@ class QOMWalker
     {
         $rightAlias = $this->getTableAlias($condition->getChildSelectorName());
         $leftAlias = $this->getTableAlias($condition->getParentSelectorName());
+        $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return "($rightAlias.path LIKE CONCAT($leftAlias.path, '/%') AND $rightAlias.depth = $leftAlias.depth + 1) ";
+        return "($rightAlias.path LIKE " . $concatExpression . " AND $rightAlias.depth = $leftAlias.depth + 1) ";
     }
 
     /**
@@ -432,8 +467,9 @@ class QOMWalker
     {
         $rightAlias = $this->getTableAlias($condition->getDescendantSelectorName());
         $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
+        $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return "$rightAlias.path LIKE CONCAT($leftAlias.path, '/%') ";
+        return "$rightAlias.path LIKE " . $concatExpression . " ";
     }
 
     /**
@@ -685,7 +721,7 @@ class QOMWalker
         $property = $propertyOperand->getPropertyName();
 
 
-        if ($this->platform instanceof MySqlPlatform && '=' === $operator) {
+        if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
             return sprintf(
                 '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name="%s"]/sv:value\'), " ", ","))',
                 $literalOperand->getLiteralValue(),
@@ -836,7 +872,8 @@ class QOMWalker
 
                 $numericalSelector = $this->sqlXpathExtractValue($alias, $property, 'numerical_props');
 
-                $sql = sprintf('CAST(%s AS DECIMAL) %s, %s',
+                $sql = sprintf(
+                    'CAST(%s AS DECIMAL) %s, %s',
                     $numericalSelector,
                     $direction,
                     $sql
@@ -882,11 +919,11 @@ class QOMWalker
      */
     private function sqlXpathValueExists($alias, $property)
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
 
@@ -907,11 +944,11 @@ class QOMWalker
      */
     private function sqlXpathExtractValue($alias, $property, $column = 'props')
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
 
@@ -924,7 +961,7 @@ class QOMWalker
 
     private function sqlXpathExtractNumValue($alias, $property)
     {
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
         }
 
@@ -933,11 +970,11 @@ class QOMWalker
 
     private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)
     {
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
         }
 
-        if ($this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             return sprintf("CAST((xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
 
@@ -963,11 +1000,11 @@ class QOMWalker
     {
         $expression = null;
 
-        if ($this->platform instanceof MySqlPlatform) {
+        if ($this->platform instanceof MySQLPlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
-        } elseif ($this->platform instanceof PostgreSqlPlatform) {
+        } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
             $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";

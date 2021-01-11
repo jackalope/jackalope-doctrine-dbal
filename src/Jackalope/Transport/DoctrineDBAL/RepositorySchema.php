@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
@@ -198,6 +199,7 @@ class RepositorySchema extends Schema
     protected function addTypeChildsTable()
     {
         $childTypes = $this->createTable('phpcr_type_childs');
+        $childTypes->addColumn('id', 'integer', ['autoincrement' => true]);
         $childTypes->addColumn('node_type_id', 'integer');
         $childTypes->addColumn('name', 'string');
         $childTypes->addColumn('protected', 'boolean');
@@ -206,6 +208,7 @@ class RepositorySchema extends Schema
         $childTypes->addColumn('on_parent_version', 'integer');
         $childTypes->addColumn('primary_types', 'string');
         $childTypes->addColumn('default_type', 'string', ['notnull' => false]);
+        $childTypes->setPrimaryKey(['id']);
     }
 
     public function reset()
@@ -214,14 +217,16 @@ class RepositorySchema extends Schema
             throw new RepositoryException('Do not use RepositorySchema::reset when not instantiated with a connection');
         }
 
-        $this->connection->getWrappedConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_SILENT);
         foreach ($this->toDropSql($this->connection->getDatabasePlatform()) as $sql) {
-            $this->connection->exec($sql);
+            try {
+                $this->connection->executeStatement($sql);
+            } catch (Exception $exception) {
+                // do nothing
+            }
         }
 
-        $this->connection->getWrappedConnection()->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         foreach ($this->toSql($this->connection->getDatabasePlatform()) as $sql) {
-            $this->connection->exec($sql);
+            $this->connection->executeStatement($sql);
         }
     }
 
@@ -241,7 +246,7 @@ class RepositorySchema extends Schema
         )) {
             return $currentMaxLength;
         }
-        
+
         return $this->maxIndexLength;
     }
 

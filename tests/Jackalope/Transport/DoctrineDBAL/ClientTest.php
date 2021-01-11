@@ -5,6 +5,7 @@ namespace Jackalope\Transport\DoctrineDBAL;
 use DateTime;
 use DOMDocument;
 use DOMXPath;
+use Jackalope\NodeType\NodeTypeTemplate;
 use Jackalope\Test\FunctionalTestCase;
 use PDO;
 use PHPCR\PropertyType;
@@ -193,6 +194,7 @@ class ClientTest extends FunctionalTestCase
         $article = $root->addNode('article');
         $article->setProperty('test', $string);
         $this->session->save();
+        $this->addToAssertionCount(1);
     }
 
     public function provideTestOutOfRangeCharacters()
@@ -231,6 +233,8 @@ class ClientTest extends FunctionalTestCase
         NodeHelper::purgeWorkspace($this->session);
 
         $this->session->save();
+
+        $this->addToAssertionCount(1);
     }
 
     public function testPropertyLengthAttribute()
@@ -306,13 +310,13 @@ class ClientTest extends FunctionalTestCase
         $method = $class->getMethod('generateUuid');
         $method->setAccessible(true);
 
-        $this->assertInternalType('string', $method->invoke($this->transport));
+        self::assertIsString($method->invoke($this->transport));
 
         $this->transport->setUuidGenerator(function () {
             return 'like-a-uuid';
         });
 
-        $this->assertEquals('like-a-uuid', $method->invoke($this->transport));
+        self::assertEquals('like-a-uuid', $method->invoke($this->transport));
     }
 
     public function testMoveAndReplace()
@@ -344,6 +348,39 @@ class ClientTest extends FunctionalTestCase
         }
     }
 
+    public function testMoveNamespacedNodes()
+    {
+        $root = $this->session->getNode('/');
+        $topic1 = $root->addNode('jcr:topic1');
+        $topic1->addNode('jcr:thisisanewnode');
+        $topic1->addNode('jcr:topic1Child');
+
+        $this->session->save();
+        $this->session->move('/jcr:topic1', '/jcr:topic2');
+
+        $this->session->save();
+
+        $conn = $this->getConnection();
+        $qb = $conn->createQueryBuilder();
+
+        $qb->select('local_name')
+            ->from('phpcr_nodes', 'n')
+            ->where('n.path = :path')->andWhere('n.local_name = :local_name');
+
+        $query = $qb->getSql();
+
+        $expectedData = [
+            '/jcr:topic2' => 'topic2',
+            '/jcr:topic2/jcr:thisisanewnode' => 'thisisanewnode',
+            '/jcr:topic2/jcr:topic1Child' => 'topic1Child'
+        ];
+        foreach ($expectedData as $path => $localName) {
+            $stmnt = $this->conn->executeQuery($query, ['path' => $path, 'local_name' => $localName]);
+            $row = $stmnt->fetch();
+            $this->assertNotFalse($row, $path . ' with local_name' . $localName . ' does not exist in database');
+        }
+    }
+
     public function testCaseInsensativeRename()
     {
         $root = $this->session->getNode('/');
@@ -352,6 +389,8 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
         $this->session->move('/topic', '/Topic');
         $this->session->save();
+
+        $this->addToAssertionCount(1);
     }
 
     public function testStoreTypes()
@@ -576,5 +615,113 @@ class ClientTest extends FunctionalTestCase
         $after = $date->format('c');
 
         $this->assertEquals($before, $after);
+    }
+
+    public function testNestedJoinForDifferentDocumentTypes()
+    {
+        $ntm = $this->session->getWorkspace()->getNodeTypeManager();
+        $template = $ntm->createNodeTypeTemplate();
+        $template->setName('test');
+        $template->setDeclaredSuperTypeNames(['nt:unstructured']);
+        $ntm->registerNodeType($template, true);
+
+        $root = $this->session->getNode('/');
+        $documentNode = $root->addNode('document', 'test');
+        $category = $root->addNode('category');
+        $category->addMixin('mix:referenceable');
+        $this->session->save();
+        $category = $this->session->getNode('/category');
+        $documentChild = $documentNode->addNode('document_child', 'nt:unstructured');
+        $documentChild->setProperty('title', 'someChild');
+        $documentChild->setProperty('locale', 'en');
+        $category->setProperty('title', 'someCategory');
+        $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
+        $this->session->save();
+
+
+
+        $qm = $this->session->getWorkspace()->getQueryManager();
+        $qom = $qm->getQOMFactory();
+        $documentSelector = $qom->selector('d', 'test');
+        $categorySelector = $qom->selector('c', 'nt:unstructured');
+        $documentChildSelector = $qom->selector('dt', 'nt:base');
+        $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd',
+            'category',
+            'c',
+            'jcr:uuid'
+        ));
+        $childTitleProp = $qom->propertyValue('dt', 'title');
+        $childTitleVal = $qom->literal($documentChild->getProperty('title')->getValue());
+        $titleConstraint = $qom->comparison($childTitleProp, $qom::JCR_OPERATOR_EQUAL_TO, $childTitleVal);
+
+        $from = $qom->join($join, $documentChildSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->childNodeJoinCondition(
+            'dt',
+            'd'
+        ));
+        $localeConstraint = $qom->comparison(
+            $qom->propertyValue('dt', 'locale'),
+            $qom::JCR_OPERATOR_EQUAL_TO,
+            $qom->literal($documentChild->getProperty('locale')->getValue())
+        );
+        $where = $qom->andConstraint($titleConstraint, $localeConstraint);
+
+        $queryObjectModel = $qom->createQuery($from, $where);
+        $result = $queryObjectModel->execute();
+
+        $this->assertCount(1, $result);
+    }
+
+    public function testMultiJoiningReferencedDocuments()
+    {
+        $ntm = $this->session->getWorkspace()->getNodeTypeManager();
+        $template = $ntm->createNodeTypeTemplate();
+        $template->setName('test');
+        $template->setDeclaredSuperTypeNames(['nt:unstructured']);
+        $ntm->registerNodeType($template, true);
+
+        $root = $this->session->getNode('/');
+        $documentNode = $root->addNode('document', 'test');
+
+        $category = $root->addNode('category');
+        $category->addMixin('mix:referenceable');
+
+        $group = $root->addNode('group');
+        $group->addMixin('mix:referenceable');
+
+        $this->session->save();
+        $category = $this->session->getNode('/category');
+        $category->setProperty('title', 'someCategory');
+        $group = $this->session->getNode('/group');
+        $group->setProperty('title', 'someGroup');
+
+        $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
+        $documentNode->setProperty('group', $group->getProperty('jcr:uuid'), 'WeakReference');
+        $this->session->save();
+
+        $qm = $this->session->getWorkspace()->getQueryManager();
+        $qom = $qm->getQOMFactory();
+        $documentSelector = $qom->selector('d', 'test');
+        $categorySelector = $qom->selector('c', 'nt:unstructured');
+        $groupSelector = $qom->selector('g', 'nt:unstructured');
+        $join = $qom->join($documentSelector, $categorySelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd',
+            'category',
+            'c',
+            'jcr:uuid'
+        ));
+
+
+        $from = $qom->join($join, $groupSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
+            'd',
+            'group',
+            'g',
+            'jcr:uuid'
+        ));
+
+        $queryObjectModel = $qom->createQuery($from);
+        $result = $queryObjectModel->execute();
+
+        $this->assertCount(1, $result);
     }
 }

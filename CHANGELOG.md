@@ -1,6 +1,54 @@
 Changelog
 =========
 
+1.6.0
+-----
+
+* Support PHP 8 and Doctrine DBAL 3
+* Dropped support for PHP < 7.3
+
+1.5.1
+-----
+
+* Early return in getNodeReferences if system id for path is not found.
+
+1.5.0
+-----
+
+* Fix add primary keys to all tables (https://www.percona.com/doc/percona-xtradb-cluster/LATEST/features/pxc-strict-mode.html#tables-without-primary-keys)
+
+1.4.1
+-----
+
+* Fix moving nodes that are not in the default namespace
+
+1.4.0
+-----
+
+* Support PHP 7.4, raise lowest version to 7.1
+
+1.3.6
+-----
+
+* Fix multiple nested joins
+* Fix ordering of namespaced children
+
+1.3.5
+-----
+
+* [query builder] fix nested joins where clause generation
+
+1.3.4
+-----
+
+* Use `defaultTableOptions` to detect collate of database connection, if available
+
+1.3.3
+-----
+
+* Use platform expression for concatenating
+* Fix return type of CachedClient::getNamespaces
+
 1.3.2
 -----
 

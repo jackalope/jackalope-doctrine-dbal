@@ -1,20 +1,19 @@
 language: php
 
-sudo: false
-
 php:
-  - 5.6
-  - 7.0
-  - 7.1
-  - 7.2
-  - hhvm
+  - 7.3
+  - 7.4
+  - 8.0
+  - nightly
 
 env:
-  - DB=mysql PACKAGE_VERSION=high
-  - DB=pgsql PACKAGE_VERSION=high
-  - DB=sqlite PACKAGE_VERSION=high
+  - DB=mysql
+  - DB=pgsql
+  - DB=sqlite
 
-sudo: false
+services:
+  - mysql
+  - postgresql
 
 cache:
   directories:
@@ -22,24 +21,19 @@ cache:
     - $HOME/.composer/cache
 
 matrix:
-  allow_failures:
-    - php: hhvm
-    # hhvm will fail until libxml support is added https://github.com/facebook/hhvm/issues/1194
   include:
-    - php: 5.6
-      env: DB=mysql PACKAGE_VERSION=low
-    - php: 5.6
-      env: DB=pgsql PACKAGE_VERSION=low
-    - php: 5.6
-      env: DB=sqlite PACKAGE_VERSION=low
+    - php: 7.3
+      env: DB=mysql COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
+    - php: 7.3
+      env: DB=pgsql COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
+    - php: 7.3
+      env: DB=sqlite COMPOSER_OPTIONS=--prefer-lowest --prefer-stable
 
 before_script:
-  - composer selfupdate
   - rm -f ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/xdebug.ini
-  - if [[ "$PACKAGE_VERSION" == "high" ]]; then composer update --prefer-dist --no-interaction; fi
-  - if [[ "$PACKAGE_VERSION" == "low" ]]; then composer update --prefer-lowest --prefer-dist --no-interaction; fi
-  - if [[ "$DB" == "mysql" ]]; then mysql -e "create database phpcr_tests;"; fi
-  - if [[ "$DB" == "pgsql" ]]; then psql -c "create database phpcr_tests;" -U postgres; fi
+  - composer update --prefer-dist --no-interaction ${COMPOSER_OPTIONS}
+  - if [[ "$DB" == "mysql" ]]; then mysql -h127.0.0.1 -e "create database phpcr_tests;"; fi
+  - if [[ "$DB" == "pgsql" ]]; then psql -h127.0.0.1 -c "create database phpcr_tests;" -U postgres; fi
   - php tests/generate_phpunit_config.php $DB
 
 script: php vendor/bin/phpunit -c $DB.phpunit.xml

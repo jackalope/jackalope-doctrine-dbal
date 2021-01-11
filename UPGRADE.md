@@ -1,6 +1,14 @@
 Upgrade
 =======
 
+1.5
+---
+
+- If you want to start using Percona in strict mode, or use the Percona cluster, add a primary key to the phpcr_type_childs:
+
+  `ALTER TABLE phpcr_type_childs ADD COLUMN `id` INT(11) UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;` 
+  
+
 1.2
 ---
 

@@ -160,8 +160,8 @@ class DBUnitFixtureXML extends XMLDocument
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
-        foreach ($this->namespaces as $namespace => $uri) {
-            $phpcrNode->setAttribute('xmlns:' . $namespace, $uri);
+        foreach ($this->namespaces as $namespacePrefix => $uri) {
+            $phpcrNode->setAttribute('xmlns:' . $namespacePrefix, $uri);
         }
         $dom->appendChild($phpcrNode);
 
@@ -179,13 +179,15 @@ class DBUnitFixtureXML extends XMLDocument
 
         list($parentPath, $childPath) = $this->getPath($node);
 
-        $namespace  = '';
+        $namespacePrefix  = '';
         $name       = $node->getAttributeNS($this->namespaces['sv'], 'name');
         if (count($parts = explode(':', $name, 2)) === 2) {
-            list($namespace, $name) = $parts;
+            list($namespacePrefix, $name) = $parts;
         }
 
-        if ($namespace === 'jcr' && $name === 'root') {
+        $namespace = isset($this->namespaces[$namespacePrefix]) ? $this->namespaces[$namespacePrefix] : '';
+
+        if ($namespacePrefix === 'jcr' && $name === 'root') {
             $id         = 1;
             $childPath  = '/';
             $parentPath = '';

@@ -1,8 +1,9 @@
 <?php
 
-namespace Jackalope\Tools\Console\Command;
+namespace Jackalope\Tools\Console;
 
-use Doctrine\DBAL\Platforms\MySqlPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Jackalope\Tools\Console\Command\InitDoctrineDbalCommand;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use PDOException;
 use PHPUnit\Framework\TestCase;
@@ -40,34 +41,28 @@ class InitDoctrineDbalCommandTest extends TestCase
      */
     protected $application;
 
-    public function setUp()
+    public function setUp(): void
     {
-        $this->connection = $this->getMockBuilder(Connection::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->connection = $this->createMock(Connection::class);
+        $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
 
-        $this->schemaManager = $this->getMockBuilder(AbstractSchemaManager::class)
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $this->platform = $this->getMockBuilder(MySqlPlatform::class)
-            ->disableOriginalConstructor()
-            ->getMock();
+        $this->platform = $this->createMock(MySQLPlatform::class);
 
         $this->connection
-            ->expects($this->any())
             ->method('getDatabasePlatform')
-            ->will($this->returnValue($this->platform));
+            ->willReturn($this->platform);
 
         $this->schemaManager
-            ->expects($this->any())
             ->method('createSchemaConfig')
-            ->will($this->returnValue(null));
+            ->willReturn(null);
 
         $this->connection
-            ->expects($this->any())
             ->method('getSchemaManager')
-            ->will($this->returnValue($this->schemaManager));
+            ->willReturn($this->schemaManager);
+
+        $this->platform
+            ->method('getCreateTableSQL')
+            ->willReturn([]);
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
@@ -89,19 +84,20 @@ class InitDoctrineDbalCommandTest extends TestCase
      *
      * @return CommandTester
      */
-    protected function executeCommand($name, $args, $status = 0)
+    protected function executeCommand($name, $args, $status = 0): CommandTester
     {
         $command = $this->application->find($name);
         $commandTester = new CommandTester($command);
         $args = array_merge([
             'command' => $command->getName(),
         ], $args);
+
         $this->assertEquals($status, $commandTester->execute($args));
 
         return $commandTester;
     }
 
-    public function testCommand()
+    public function testCommand(): void
     {
         $this->executeCommand('jackalope:init:dbal', [], 2);
         $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true], 0);
@@ -111,9 +107,8 @@ class InitDoctrineDbalCommandTest extends TestCase
 
         // Unfortunately PDO doesn't follow internals and uses a non integer error code, which cannot be manually created
         $this->connection
-            ->expects($this->any())
-            ->method('exec')
-            ->will($this->throwException(new MockPDOException('', '42S01')))
+            ->method('executeStatement')
+            ->will(self::throwException(new MockPDOException('', '42S01')))
         ;
 
         $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 1);

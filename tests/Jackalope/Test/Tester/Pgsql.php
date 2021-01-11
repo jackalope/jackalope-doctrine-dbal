@@ -2,9 +2,6 @@
 
 namespace Jackalope\Test\Tester;
 
-use PHPUnit_Extensions_Database_DB_IDatabaseConnection;
-use PHPUnit_Extensions_Database_Operation_Factory;
-
 /**
  * PostgreSQL specific tester class.
  *
@@ -12,22 +9,16 @@ use PHPUnit_Extensions_Database_Operation_Factory;
  */
 class Pgsql extends Generic
 {
-    public function __construct(PHPUnit_Extensions_Database_DB_IDatabaseConnection $connection, $fixturePath)
-    {
-        parent::__construct($connection, $fixturePath);
-
-        $this->setUpOperation = PHPUnit_Extensions_Database_Operation_Factory::CLEAN_INSERT(true);
-    }
-
-    public function onSetUp()
+    public function onSetUp(): void
     {
         parent::onSetUp();
 
-        $pdo = $this->getConnection()->getConnection();
+        $result = $this->connection->executeQuery("SELECT table_name, column_name FROM information_schema.columns WHERE column_default LIKE 'nextval%';");
+
         // update next serial/autoincrement value to max
-        foreach ($pdo->query("SELECT table_name, column_name FROM information_schema.columns WHERE column_default LIKE 'nextval%';")->fetchAll(\PDO::FETCH_ASSOC) as $info) {
+        foreach ($result->fetchAllAssociative() as $info) {
             $query = "SELECT setval((SELECT pg_get_serial_sequence('" . $info['table_name'] . "', '" . $info['column_name'] . "') as sequence), (SELECT max(" . $info['column_name'] . ") FROM " . $info['table_name'] . "));";
-            $pdo->query($query);
+            $this->connection->executeStatement($query);
         }
     }
 }

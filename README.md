@@ -25,7 +25,7 @@ This code is dual licensed under the MIT license and the Apache License Version
 
 # Preconditions
 
-* php >= 5.6
+* PHP ^7.1
 * One of the following databases, including the PDO extension for it:
     * MySQL >= 5.1.5 (we need the ExtractValue function)
     * PostgreSQL
@@ -35,16 +35,12 @@ This code is dual licensed under the MIT license and the Apache License Version
 # Installation
 
 The recommended way to install jackalope is through [composer](http://getcomposer.org/).
-You can of course do without, but then you will need to resolve the dependencies
-manually.
 
 ```sh
 $ mkdir my-project
 $ cd my-project
-$ curl -s http://getcomposer.org/installer | php
-$ ./composer.phar init
-$ ./composer.phar require jackalope/jackalope-doctrine-dbal
-$ ./composer.phar install
+$ composer init
+$ composer require jackalope/jackalope-doctrine-dbal
 ```
 
 ## Create a repository
@@ -56,7 +52,7 @@ Set up a new database supported by Doctrine DBAL. You can use your favorite GUI 
 Note that you need at least version 5.1.5 of MySQL, otherwise you will get ``SQLSTATE[42000]: Syntax error or access violation: 1305 FUNCTION cmf-app.EXTRACTVALUE does not exist``
 
 ```sh
-$ mysqladmin -u root -p  create jackalope
+$ mysqladmin -u root -p  create database jackalope
 $ echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 ```
 ### PostgreSQL
@@ -67,7 +63,8 @@ $ psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
 ```
 
 ### SQLite
-    Database is created automatically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Database name is not needed.
+   
+Database is created automatically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Database name is not needed.
 
 For further details, please see the [Doctrine configuration page](http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details).
 

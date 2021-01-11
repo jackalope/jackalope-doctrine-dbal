@@ -1,4 +1,5 @@
 cli-config.php
+.phpunit.result.cache
 
 test-reports
 .buildpath

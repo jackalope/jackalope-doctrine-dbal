@@ -32,7 +32,7 @@ class FunctionalTestCase extends TestCase
      */
     protected $session;
 
-    public function setUp()
+    public function setUp(): void
     {
         parent::setUp();
 
@@ -54,7 +54,7 @@ class FunctionalTestCase extends TestCase
         $this->session = $this->repository->login(new SimpleCredentials('user', 'passwd'), $GLOBALS['phpcr.workspace']);
     }
 
-    protected function loadFixtures(Connection $conn)
+    protected function loadFixtures(Connection $conn): void
     {
         $options = ['disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform];
         $schema = new RepositorySchema($options, $conn);
