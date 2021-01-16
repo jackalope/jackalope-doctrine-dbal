@@ -12,7 +12,7 @@ $config = [
     'mysql'  => [
         'phpcr.doctrine.dbal.driver'    => 'pdo_mysql',
         'phpcr.doctrine.dbal.host'      => 'localhost',
-        'phpcr.doctrine.dbal.username'  => 'travis',
+        'phpcr.doctrine.dbal.username'  => 'root',
         'phpcr.doctrine.dbal.password'  => '',
         'phpcr.doctrine.dbal.dbname'    => 'phpcr_tests',
     ],
@@ -20,7 +20,7 @@ $config = [
         'phpcr.doctrine.dbal.driver'    => 'pdo_pgsql',
         'phpcr.doctrine.dbal.host'      => 'localhost',
         'phpcr.doctrine.dbal.username'  => 'postgres',
-        'phpcr.doctrine.dbal.password'  => '',
+        'phpcr.doctrine.dbal.password'  => 'postgres',
         'phpcr.doctrine.dbal.dbname'    => 'phpcr_tests',
     ],
     'sqlite' => [
