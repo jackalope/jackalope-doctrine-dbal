@@ -40,7 +40,7 @@ jobs:
                       db: mysql
                     - php-version: '7.3'
                       dependencies: lowest
-                      db: sqlite
+                      db: psql
 
         services:
             mysql:
@@ -74,7 +74,7 @@ jobs:
               uses: ramsey/composer-install@v1
               with:
                   dependency-versions: ${{ matrix.dependencies }}
-                  composer-options: --prefer-dist --no-suggest
+                  composer-options: --prefer-dist
 
             - name: Prepare test config
               run: |
