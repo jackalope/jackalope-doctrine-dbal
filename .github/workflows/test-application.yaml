@@ -35,7 +35,6 @@ jobs:
                     - php-version: '7.3'
                       dependencies: lowest
                       db: sqlite
-                      extensions: "pdo, pdo_sqlite"
                     - php-version: '7.3'
                       dependencies: lowest
                       db: mysql
@@ -69,7 +68,7 @@ jobs:
               uses: shivammathur/setup-php@v2
               with:
                   php-version: ${{ matrix.php-version }}
-                  extensions: "${{ matrix.extension }}"
+                  extensions: "pdo, pdo_sqlite, mysqli, pdo_mysql"
                   tools: 'composer:v2'
 
             - name: Install dependencies with Composer
