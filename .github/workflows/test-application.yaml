@@ -59,7 +59,9 @@ jobs:
                     POSTGRES_PASSWORD: postgres
                 ports:
                     - 5432:5432
-                options: --health-cmd "pg_isready" --health-interval 10s --health-timeout 5s --health-retries 5
+                options: >-
+                    --health-cmd "pg_isready" --health-interval 10s --health-timeout 5s --health-retries 5
+                    -e POSTGRES_DB=phpcr_tests
 
         steps:
             - name: Checkout project
