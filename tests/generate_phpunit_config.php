@@ -13,6 +13,7 @@ $config = [
         'phpcr.doctrine.dbal.driver'    => 'pdo_mysql',
         'phpcr.doctrine.dbal.host'      => 'localhost',
         'phpcr.doctrine.dbal.username'  => 'root',
+        'phpcr.doctrine.dbal.password'  => 'root',
         'phpcr.doctrine.dbal.dbname'    => 'phpcr_tests',
     ],
     'pgsql'  => [
