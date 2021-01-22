@@ -1,0 +1,89 @@
+name: Test application
+
+on:
+    pull_request:
+    push:
+        branches:
+            - 'master'
+            - '[0-9]+.x'
+            - '[0-9]+.[0-9]+'
+            - '[0-9]+.[0-9]+.x'
+
+jobs:
+    test:
+        name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
+        runs-on: ubuntu-20.04
+
+        env:
+            SYMFONY_DEPRECATIONS_HELPER: ${{ matrix.symfony-deprecation-helper }}
+
+        strategy:
+            fail-fast: false
+
+            matrix:
+                php-version:
+                    - 7.3
+                    - 7.4
+                    - 8.0
+                db:
+                    - mysql
+                    - pgsql
+                    - sqlite
+                dependencies:
+                    - highest
+                include:
+                    - php-version: '7.3'
+                      dependencies: lowest
+                      db: sqlite
+                    - php-version: '7.3'
+                      dependencies: lowest
+                      db: mysql
+                    - php-version: '7.3'
+                      dependencies: lowest
+                      db: pgsql
+
+        services:
+            mysql:
+                image: mysql:5.7
+                env:
+                    MYSQL_ROOT_PASSWORD: root
+                    MYSQL_DATABASE: phpcr_tests
+                options: >-
+                    --health-cmd "mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
+                ports:
+                    - 3306:3306
+
+            postgres:
+                image: postgres:13
+                env:
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: phpcr_tests
+                ports:
+                    - 5432:5432
+                options: >-
+                    --health-cmd "pg_isready" --health-interval 10s --health-timeout 5s --health-retries 5
+
+        steps:
+            - name: Checkout project
+              uses: actions/checkout@v2
+
+            - name: Install and configure PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ matrix.php-version }}
+                  extensions: "pdo, pdo_sqlite, pdo_mysql, mysql, pdo_pgsql"
+                  tools: 'composer:v2'
+
+            - name: Install dependencies with Composer
+              uses: ramsey/composer-install@v1
+              with:
+                  dependency-versions: ${{ matrix.dependencies }}
+                  composer-options: --prefer-dist
+
+            - name: Prepare test config
+              run: |
+                  php tests/generate_phpunit_config.php ${{ matrix.db }}
+
+            - name: Execute test cases
+              run: |
+                  vendor/bin/phpunit -c ${{ matrix.db }}.phpunit.xml

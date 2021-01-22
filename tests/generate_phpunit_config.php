@@ -11,16 +11,16 @@ $source = __DIR__ . '/../phpunit.xml.dist';
 $config = [
     'mysql'  => [
         'phpcr.doctrine.dbal.driver'    => 'pdo_mysql',
-        'phpcr.doctrine.dbal.host'      => 'localhost',
-        'phpcr.doctrine.dbal.username'  => 'travis',
-        'phpcr.doctrine.dbal.password'  => '',
+        'phpcr.doctrine.dbal.host'      => '127.0.0.1',
+        'phpcr.doctrine.dbal.username'  => 'root',
+        'phpcr.doctrine.dbal.password'  => 'root',
         'phpcr.doctrine.dbal.dbname'    => 'phpcr_tests',
     ],
     'pgsql'  => [
         'phpcr.doctrine.dbal.driver'    => 'pdo_pgsql',
         'phpcr.doctrine.dbal.host'      => 'localhost',
         'phpcr.doctrine.dbal.username'  => 'postgres',
-        'phpcr.doctrine.dbal.password'  => '',
+        'phpcr.doctrine.dbal.password'  => 'postgres',
         'phpcr.doctrine.dbal.dbname'    => 'phpcr_tests',
     ],
     'sqlite' => [
