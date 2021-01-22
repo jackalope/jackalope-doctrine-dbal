@@ -47,9 +47,9 @@ jobs:
                 image: mysql:5.7
 
                 options: >-
-                    --health-cmd "mysqladmin ping --health-interval=10s --health-timeout=5s --health-retries=5"
+                    --health-cmd "mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
                     -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
-                    -e MYSQL_DATABASE=doctrine_tests
+                    -e MYSQL_DATABASE=phpcr_tests
                 ports:
                     - 3306:3306
 
@@ -59,7 +59,7 @@ jobs:
                     POSTGRES_PASSWORD: postgres
                 ports:
                     - 5432:5432
-                options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+                options: --health-cmd "pg_isready" --health-interval 10s --health-timeout 5s --health-retries 5
 
         steps:
             - name: Checkout project
