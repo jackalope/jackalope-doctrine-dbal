@@ -40,7 +40,7 @@ jobs:
                       db: mysql
                     - php-version: '7.3'
                       dependencies: lowest
-                      db: psql
+                      db: pgsql
 
         services:
             mysql:
