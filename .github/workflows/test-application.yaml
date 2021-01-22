@@ -11,7 +11,7 @@ on:
 
 jobs:
     test:
-        name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }}, Dependencies ${{ matrix.dependencies }}'
+        name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
         runs-on: ubuntu-20.04
 
         env:
