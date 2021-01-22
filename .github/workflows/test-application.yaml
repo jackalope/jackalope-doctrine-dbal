@@ -45,16 +45,17 @@ jobs:
         services:
             mysql:
                 image: mysql:5.7
-                env:
-                    MYSQL_ROOT_PASSWORD: root
+
+                options: >-
+                    --health-cmd "mysqladmin ping --health-interval=10s --health-timeout=5s --health-retries=5"
+                    -e MYSQL_ALLOW_EMPTY_PASSWORD=yes
+                    -e MYSQL_DATABASE=doctrine_tests
                 ports:
                     - 3306:3306
-                options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
 
             postgres:
                 image: postgres:12.5
                 env:
-                    POSTGRES_USER: postgres
                     POSTGRES_PASSWORD: postgres
                 ports:
                     - 5432:5432
