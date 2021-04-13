@@ -1,6 +1,6 @@
 # Jackalope Doctrine-DBAL
 
-[![Build Status](https://secure.travis-ci.org/jackalope/jackalope-doctrine-dbal.png?branch=master)](http://travis-ci.org/jackalope/jackalope-doctrine-dbal)
+[![Build Status](https://github.com/jackalope/jackalope-doctrine-dbal/actions/workflows/test-application.yaml/badge.svg?branch=master)](https://github.com/jackalope/jackalope-doctrine-dbal/actions/workflows/test-application.yaml)
 [![Latest Stable Version](https://poser.pugx.org/jackalope/jackalope-doctrine-dbal/version.png)](https://packagist.org/packages/jackalope/jackalope-doctrine-dbal)
 [![Total Downloads](https://poser.pugx.org/jackalope/jackalope-doctrine-dbal/d/total.png)](https://packagist.org/packages/jackalope/jackalope-doctrine-dbal)
 
