@@ -598,7 +598,7 @@ class CachedClient extends Client
         $cacheKey = "query: {$query->getStatement()}, {$query->getLimit()}, {$query->getOffset()}, {$query->getLanguage()}, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if ($result = $this->caches['query']->fetch($cacheKey)) {
+        if (false !== ($result = $this->caches['query']->fetch($cacheKey))) {
             return $result;
         }
 
