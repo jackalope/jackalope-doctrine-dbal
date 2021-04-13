@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.6.1
+-----
+
+* Fixed query cache to not treat `0` or `null` as cache misses.
+
 1.6.0
 -----
 
