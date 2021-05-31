@@ -1121,20 +1121,97 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function xmlToColumns($xml, $propertyNames)
     {
         $data = new stdClass();
-        $dom = new DOMDocument('1.0');
-        $dom->loadXML($xml);
-        $dom->formatOutput = true;
-        $xpath = new DOMXPath($dom);
 
-        foreach ($propertyNames as $propertyName) {
-            $els = $xpath->query(sprintf('.//sv:property[@sv:name="%s"]', $propertyName));
-            if ($els->length === 0) {
-                continue;
+        $lastPropertyName = null;
+        $lastPropertyType = null;
+        $lastPropertyMultiValued = null;
+        $currentTag = null;
+        $currentValues = [];
+        $currentValue = null;
+
+        $parser = xml_parser_create();
+        xml_set_element_handler(
+            $parser,
+            function ($parser, $name, $attrs) use ($propertyNames, &$lastPropertyName, &$lastPropertyType, &$lastPropertyMultiValued, &$currentTag) {
+                $currentTag = $name;
+
+                if ($name === 'SV:PROPERTY') {
+                    if (!\in_array($attrs['SV:NAME'], $propertyNames)) {
+                        return;
+                    }
+                    $lastPropertyName = $attrs['SV:NAME'];
+                    $lastPropertyType = PropertyType::valueFromName($attrs['SV:TYPE']);
+                    $lastPropertyMultiValued = $attrs['SV:MULTI-VALUED'];
+                }
+            },
+            function ($parser, $name) use (&$data, &$lastPropertyName, &$lastPropertyType, &$lastPropertyMultiValued, &$currentTag, &$currentValues, &$currentValue) {
+                if ($name === 'SV:PROPERTY' && $lastPropertyName) {
+                    switch ($lastPropertyType) {
+                        case PropertyType::BINARY:
+                            $data->{':' . $lastPropertyName} = $lastPropertyMultiValued ? $currentValues : $currentValues[0];
+                            break;
+                        default:
+                            $data->{$lastPropertyName} = $lastPropertyMultiValued ? $currentValues : $currentValues[0];
+                            $data->{':' . $lastPropertyName} = $lastPropertyType;
+                            break;
+                    }
+
+                    $currentValues = [];
+                    $lastPropertyName = null;
+                    $lastPropertyType = null;
+                    $lastPropertyMultiValued = null;
+                } elseif ($name === 'SV:VALUE' && $lastPropertyName) {
+                    switch ($lastPropertyType) {
+                        case PropertyType::NAME:
+                        case PropertyType::URI:
+                        case PropertyType::WEAKREFERENCE:
+                        case PropertyType::REFERENCE:
+                        case PropertyType::PATH:
+                        case PropertyType::DECIMAL:
+                        case PropertyType::STRING:
+                            $currentValues[] = $currentValue;
+                            break;
+                        case PropertyType::BOOLEAN:
+                            $currentValues[] = (bool)$currentValue;
+                            break;
+                        case PropertyType::LONG:
+                            $currentValues[] = (int)$currentValue;
+                            break;
+                        case PropertyType::BINARY:
+                            $currentValues[] = (int)$currentValue;
+                            break;
+                        case PropertyType::DATE:
+                            $date = $currentValue;
+                            if ($date) {
+                                $date = new DateTime($date);
+                                $date->setTimezone(new DateTimeZone(date_default_timezone_get()));
+                                // Jackalope expects a string, might make sense to refactor to allow DateTime instances too
+                                $date = $this->valueConverter->convertType($date, PropertyType::STRING);
+                            }
+                            $currentValues[] = $date;
+                            break;
+                        case PropertyType::DOUBLE:
+                            $currentValues[] = (double)$currentValue;
+                            break;
+                        default:
+                            throw new InvalidArgumentException("Type with constant $type not found.");
+                    }
+                }
+
+                $currentTag = null;
             }
+        );
 
-            $propertyEl = $els->item(0);
-            $this->mapPropertyFromElement($propertyEl, $data);
-        }
+        xml_set_character_data_handler($parser, function ($parser, $data) use (&$currentTag, &$lastPropertyName, &$lastPropertyType, &$currentValue) {
+            if ($currentTag === 'SV:VALUE' && $lastPropertyName) {
+                $currentValue = $data;
+            }
+        });
+
+        xml_parse($parser, $xml, true);
+        xml_parser_free($parser);
+        // avoid memory leaks and unset the parser see: https://www.php.net/manual/de/function.xml-parser-free.php
+        unset($parser);
 
         return $data;
     }
@@ -2187,26 +2264,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $result = [];
 
         $query = '
-SELECT 
-phpcr_type_nodes.name AS node_name, phpcr_type_nodes.is_abstract AS node_abstract, 
-phpcr_type_nodes.is_mixin AS node_mixin, phpcr_type_nodes.queryable AS node_queryable, 
-phpcr_type_nodes.orderable_child_nodes AS node_has_orderable_child_nodes, 
-phpcr_type_nodes.primary_item AS node_primary_item_name, phpcr_type_nodes.supertypes AS declared_super_type_names, 
-phpcr_type_props.name AS property_name, phpcr_type_props.auto_created AS property_auto_created, 
-phpcr_type_props.mandatory AS property_mandatory, phpcr_type_props.protected AS property_protected, 
-phpcr_type_props.on_parent_version AS property_on_parent_version, 
-phpcr_type_props.required_type AS property_required_type, phpcr_type_props.multiple AS property_multiple, 
-phpcr_type_props.fulltext_searchable AS property_fulltext_searchable, 
+SELECT
+phpcr_type_nodes.name AS node_name, phpcr_type_nodes.is_abstract AS node_abstract,
+phpcr_type_nodes.is_mixin AS node_mixin, phpcr_type_nodes.queryable AS node_queryable,
+phpcr_type_nodes.orderable_child_nodes AS node_has_orderable_child_nodes,
+phpcr_type_nodes.primary_item AS node_primary_item_name, phpcr_type_nodes.supertypes AS declared_super_type_names,
+phpcr_type_props.name AS property_name, phpcr_type_props.auto_created AS property_auto_created,
+phpcr_type_props.mandatory AS property_mandatory, phpcr_type_props.protected AS property_protected,
+phpcr_type_props.on_parent_version AS property_on_parent_version,
+phpcr_type_props.required_type AS property_required_type, phpcr_type_props.multiple AS property_multiple,
+phpcr_type_props.fulltext_searchable AS property_fulltext_searchable,
 phpcr_type_props.query_orderable AS property_query_orderable, phpcr_type_props.default_value as property_default_value,
-phpcr_type_childs.name AS child_name, phpcr_type_childs.auto_created AS child_auto_created, 
-phpcr_type_childs.mandatory AS child_mandatory, phpcr_type_childs.protected AS child_protected, 
-phpcr_type_childs.on_parent_version AS child_on_parent_version, phpcr_type_childs.default_type AS child_default_type, 
-phpcr_type_childs.primary_types AS child_primary_types 
-FROM 
-phpcr_type_nodes 
-LEFT JOIN 
-phpcr_type_props ON phpcr_type_nodes.node_type_id = phpcr_type_props.node_type_id 
-LEFT JOIN 
+phpcr_type_childs.name AS child_name, phpcr_type_childs.auto_created AS child_auto_created,
+phpcr_type_childs.mandatory AS child_mandatory, phpcr_type_childs.protected AS child_protected,
+phpcr_type_childs.on_parent_version AS child_on_parent_version, phpcr_type_childs.default_type AS child_default_type,
+phpcr_type_childs.primary_types AS child_primary_types
+FROM
+phpcr_type_nodes
+LEFT JOIN
+phpcr_type_props ON phpcr_type_nodes.node_type_id = phpcr_type_props.node_type_id
+LEFT JOIN
 phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type_id
 ';
 
