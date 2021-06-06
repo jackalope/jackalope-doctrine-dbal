@@ -116,13 +116,35 @@ EOT;
 </sv:node>
 EOT;
 
-        $xmlParser = $this->createXmlToPropsParser($xml);
+        $xmlParser = $this->createXmlToPropsParser($xml, ['block_1_ref', 'block_2_ref', 'block_3_ref', 'external_reference']);
         $data = $xmlParser->parse();
 
         $this->assertSame('1922ec03-b5ed-40cf-856c-ecfb8eac12e2', $data->{'block_1_ref'});
         $this->assertSame('94c9aefe-faaa-4896-816b-5bfc575681f0', $data->{'block_2_ref'});
         $this->assertSame('a8ae4420-095b-4045-8775-b731cbae2fe1', $data->{'block_3_ref'});
         $this->assertSame('842e61c0-09ab-42a9-87c0-308ccc90e6f6', $data->{'external_reference'});
+    }
+
+    public function testParseEncoding(): void
+    {
+        $xml = <<<EOT
+<?xml version="1.0" encoding="UTF-8"?>
+<sv:node
+	xmlns:mix="http://www.jcp.org/jcr/mix/1.0"
+	xmlns:nt="http://www.jcp.org/jcr/nt/1.0"
+	xmlns:xs="http://www.w3.org/2001/XMLSchema"
+	xmlns:jcr="http://www.jcp.org/jcr/1.0"
+	xmlns:sv="http://www.jcp.org/jcr/sv/1.0"
+	xmlns:phpcr="http://www.jcp.org/jcr/phpcr/1.0"
+	xmlns:rep="internal">
+	<sv:property sv:name="ampersand" sv:type="String" sv:multi-valued="0"><sv:value length="13">foo &amp; bar&amp;baz</sv:value></sv:property>
+</sv:node>
+EOT;
+
+        $xmlParser = $this->createXmlToPropsParser($xml, ['ampersand']);
+        $data = $xmlParser->parse();
+
+        $this->assertSame('foo & bar&baz', $data->{'ampersand'});
     }
 
     private function createXmlToPropsParser(string $xml, array $propNames = null): XmlToPropsParser
