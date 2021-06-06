@@ -30,6 +30,7 @@ use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Query\Query;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
+use Jackalope\Transport\DoctrineDBAL\XmlParser\XmlToPropsParser;
 use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
@@ -1096,16 +1097,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function xmlToProps($xml)
     {
-        $data = new stdClass();
+        $xmlParser = new XmlToPropsParser(
+            $xml,
+            $this->valueConverter
+        );
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->loadXML($xml);
-
-        foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-            $this->mapPropertyFromElement($propertyNode, $data);
-        }
-
-        return $data;
+        return $xmlParser->parse();
     }
 
     /**
@@ -1120,100 +1117,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function xmlToColumns($xml, $propertyNames)
     {
-        $data = new stdClass();
-
-        $lastPropertyName = null;
-        $lastPropertyType = null;
-        $lastPropertyMultiValued = null;
-        $currentTag = null;
-        $currentValues = [];
-        $currentValue = null;
-
-        $parser = xml_parser_create();
-        xml_set_element_handler(
-            $parser,
-            function ($parser, $name, $attrs) use ($propertyNames, &$lastPropertyName, &$lastPropertyType, &$lastPropertyMultiValued, &$currentTag) {
-                $currentTag = $name;
-
-                if ($name === 'SV:PROPERTY') {
-                    if (!\in_array($attrs['SV:NAME'], $propertyNames)) {
-                        return;
-                    }
-                    $lastPropertyName = $attrs['SV:NAME'];
-                    $lastPropertyType = PropertyType::valueFromName($attrs['SV:TYPE']);
-                    $lastPropertyMultiValued = $attrs['SV:MULTI-VALUED'];
-                }
-            },
-            function ($parser, $name) use (&$data, &$lastPropertyName, &$lastPropertyType, &$lastPropertyMultiValued, &$currentTag, &$currentValues, &$currentValue) {
-                if ($name === 'SV:PROPERTY' && $lastPropertyName) {
-                    switch ($lastPropertyType) {
-                        case PropertyType::BINARY:
-                            $data->{':' . $lastPropertyName} = $lastPropertyMultiValued ? $currentValues : $currentValues[0];
-                            break;
-                        default:
-                            $data->{$lastPropertyName} = $lastPropertyMultiValued ? $currentValues : $currentValues[0];
-                            $data->{':' . $lastPropertyName} = $lastPropertyType;
-                            break;
-                    }
-
-                    $currentValues = [];
-                    $lastPropertyName = null;
-                    $lastPropertyType = null;
-                    $lastPropertyMultiValued = null;
-                } elseif ($name === 'SV:VALUE' && $lastPropertyName) {
-                    switch ($lastPropertyType) {
-                        case PropertyType::NAME:
-                        case PropertyType::URI:
-                        case PropertyType::WEAKREFERENCE:
-                        case PropertyType::REFERENCE:
-                        case PropertyType::PATH:
-                        case PropertyType::DECIMAL:
-                        case PropertyType::STRING:
-                            $currentValues[] = $currentValue;
-                            break;
-                        case PropertyType::BOOLEAN:
-                            $currentValues[] = (bool)$currentValue;
-                            break;
-                        case PropertyType::LONG:
-                            $currentValues[] = (int)$currentValue;
-                            break;
-                        case PropertyType::BINARY:
-                            $currentValues[] = (int)$currentValue;
-                            break;
-                        case PropertyType::DATE:
-                            $date = $currentValue;
-                            if ($date) {
-                                $date = new DateTime($date);
-                                $date->setTimezone(new DateTimeZone(date_default_timezone_get()));
-                                // Jackalope expects a string, might make sense to refactor to allow DateTime instances too
-                                $date = $this->valueConverter->convertType($date, PropertyType::STRING);
-                            }
-                            $currentValues[] = $date;
-                            break;
-                        case PropertyType::DOUBLE:
-                            $currentValues[] = (double)$currentValue;
-                            break;
-                        default:
-                            throw new InvalidArgumentException("Type with constant $type not found.");
-                    }
-                }
-
-                $currentTag = null;
-            }
+        $xmlParser = new XmlToPropsParser(
+            $xml,
+            $this->valueConverter,
+            $propertyNames
         );
 
-        xml_set_character_data_handler($parser, function ($parser, $data) use (&$currentTag, &$lastPropertyName, &$lastPropertyType, &$currentValue) {
-            if ($currentTag === 'SV:VALUE' && $lastPropertyName) {
-                $currentValue = $data;
-            }
-        });
-
-        xml_parse($parser, $xml, true);
-        xml_parser_free($parser);
-        // avoid memory leaks and unset the parser see: https://www.php.net/manual/de/function.xml-parser-free.php
-        unset($parser);
-
-        return $data;
+        return $xmlParser->parse();
     }
 
     /**
@@ -1223,6 +1133,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param stdClass $data
      *
      * @throws InvalidArgumentException
+     *
+     * @deprecated This method was replaced with the `XmlToPropsParser` for performance reasons.
      */
     protected function mapPropertyFromElement(DOMElement $propertyNode, stdClass $data)
     {
