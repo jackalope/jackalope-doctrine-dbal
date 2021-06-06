@@ -53,7 +53,12 @@ class XmlToPropsParser
     /**
      * @var mixed
      */
-    private $currentValue = null;
+    private $currentValueData = null;
+
+    /**
+     * @var mixed
+     */
+    private $currentPropData = null;
 
     /**
      * @var \stdClass
@@ -125,26 +130,17 @@ class XmlToPropsParser
     {
         $this->currentTag = null;
 
-        if ($name === 'SV:PROPERTY' && $this->lastPropertyName) {
-            switch ($this->lastPropertyType) {
-                case PropertyType::BINARY:
-                    $this->data->{':' . $this->lastPropertyName} = $this->lastPropertyMultiValued ? $this->currentValues : $this->currentValues[0];
-                    break;
-                default:
-                    $this->data->{$this->lastPropertyName} = $this->lastPropertyMultiValued ? $this->currentValues : $this->currentValues[0];
-                    $this->data->{':' . $this->lastPropertyName} = $this->lastPropertyType;
-                    break;
-            }
-
-            $this->currentValues = [];
-            $this->lastPropertyName = null;
-            $this->lastPropertyType = null;
-            $this->lastPropertyMultiValued = null;
-
+        if (!$this->lastPropertyName) {
             return;
         }
 
-        if ($name === 'SV:VALUE' && $this->lastPropertyName) {
+        // it could be that there exist a sv:property node without a sv:value
+        // in this case the value is set on the property data
+        if ($name === 'SV:PROPERTY' && empty($this->currentValues)) {
+            $this->currentValueData = $this->currentPropData;
+        }
+
+        if ($this->currentValueData) {
             switch ($this->lastPropertyType) {
                 case PropertyType::NAME:
                 case PropertyType::URI:
@@ -153,19 +149,19 @@ class XmlToPropsParser
                 case PropertyType::PATH:
                 case PropertyType::DECIMAL:
                 case PropertyType::STRING:
-                    $this->currentValues[] = $this->currentValue;
+                    $this->currentValues[] = $this->currentValueData;
                     break;
                 case PropertyType::BOOLEAN:
-                    $this->currentValues[] = (bool)$this->currentValue;
+                    $this->currentValues[] = (bool)$this->currentValueData;
                     break;
                 case PropertyType::LONG:
-                    $this->currentValues[] = (int)$this->currentValue;
+                    $this->currentValues[] = (int)$this->currentValueData;
                     break;
                 case PropertyType::BINARY:
-                    $this->currentValues[] = (int)$this->currentValue;
+                    $this->currentValues[] = (int)$this->currentValueData;
                     break;
                 case PropertyType::DATE:
-                    $date = $this->currentValue;
+                    $date = $this->currentValueData;
                     if ($date) {
                         $date = new \DateTime($date);
                         $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
@@ -175,18 +171,53 @@ class XmlToPropsParser
                     $this->currentValues[] = $date;
                     break;
                 case PropertyType::DOUBLE:
-                    $this->currentValues[] = (double)$this->currentValue;
+                    $this->currentValues[] = (double)$this->currentValueData;
                     break;
                 default:
                     throw new \InvalidArgumentException("Type with constant $this->lastPropertyType not found.");
             }
+
+            $this->currentValueData = null;
         }
+
+        if ($name !== 'SV:PROPERTY') {
+            return;
+        }
+
+        switch ($this->lastPropertyType) {
+            case PropertyType::BINARY:
+                $this->data->{':' . $this->lastPropertyName} = $this->lastPropertyMultiValued ? $this->currentValues : $this->currentValues[0];
+                break;
+            default:
+                $this->data->{$this->lastPropertyName} = $this->lastPropertyMultiValued ? $this->currentValues : $this->currentValues[0];
+                $this->data->{':' . $this->lastPropertyName} = $this->lastPropertyType;
+                break;
+        }
+
+        $this->currentValueData = null;
+        $this->currentPropData = null;
+        $this->currentValues = [];
+        $this->lastPropertyName = null;
+        $this->lastPropertyType = null;
+        $this->lastPropertyMultiValued = null;
     }
 
     private function dataHandler($parser, $data): void
     {
-        if ($this->currentTag === 'SV:VALUE' && $this->lastPropertyName) {
-            $this->currentValue = $data;
+        if (!$this->lastPropertyName) {
+            return;
+        }
+
+        if ($this->currentTag === 'SV:VALUE') {
+            $this->currentValueData = $data;
+
+            return;
+        }
+
+        if ($this->currentTag === 'SV:PROPERTY') {
+            $this->currentPropData = $data;
+
+            return;
         }
     }
 }
