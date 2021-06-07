@@ -30,6 +30,7 @@ use Jackalope\Query\QOM\QueryObjectModelFactory;
 use Jackalope\Query\Query;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
+use Jackalope\Transport\DoctrineDBAL\XmlParser\XmlToPropsParser;
 use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
@@ -1096,16 +1097,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function xmlToProps($xml)
     {
-        $data = new stdClass();
+        $xmlParser = new XmlToPropsParser(
+            $xml,
+            $this->valueConverter
+        );
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->loadXML($xml);
-
-        foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-            $this->mapPropertyFromElement($propertyNode, $data);
-        }
-
-        return $data;
+        return $xmlParser->parse();
     }
 
     /**
@@ -1120,23 +1117,13 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function xmlToColumns($xml, $propertyNames)
     {
-        $data = new stdClass();
-        $dom = new DOMDocument('1.0');
-        $dom->loadXML($xml);
-        $dom->formatOutput = true;
-        $xpath = new DOMXPath($dom);
+        $xmlParser = new XmlToPropsParser(
+            $xml,
+            $this->valueConverter,
+            $propertyNames
+        );
 
-        foreach ($propertyNames as $propertyName) {
-            $els = $xpath->query(sprintf('.//sv:property[@sv:name="%s"]', $propertyName));
-            if ($els->length === 0) {
-                continue;
-            }
-
-            $propertyEl = $els->item(0);
-            $this->mapPropertyFromElement($propertyEl, $data);
-        }
-
-        return $data;
+        return $xmlParser->parse();
     }
 
     /**
@@ -1146,9 +1133,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @param stdClass $data
      *
      * @throws InvalidArgumentException
+     *
+     * @deprecated This method was replaced with the `XmlToPropsParser` for performance reasons.
      */
     protected function mapPropertyFromElement(DOMElement $propertyNode, stdClass $data)
     {
+        @trigger_error(
+            sprintf('The "%s" method is deprecated since jackalope/jackalope-doctrine-dbal 1.7.', __METHOD__),
+            \E_USER_DEPRECATED
+        );
+
         $name = $propertyNode->getAttribute('sv:name');
 
         $values = [];
@@ -2187,26 +2181,26 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $result = [];
 
         $query = '
-SELECT 
-phpcr_type_nodes.name AS node_name, phpcr_type_nodes.is_abstract AS node_abstract, 
-phpcr_type_nodes.is_mixin AS node_mixin, phpcr_type_nodes.queryable AS node_queryable, 
-phpcr_type_nodes.orderable_child_nodes AS node_has_orderable_child_nodes, 
-phpcr_type_nodes.primary_item AS node_primary_item_name, phpcr_type_nodes.supertypes AS declared_super_type_names, 
-phpcr_type_props.name AS property_name, phpcr_type_props.auto_created AS property_auto_created, 
-phpcr_type_props.mandatory AS property_mandatory, phpcr_type_props.protected AS property_protected, 
-phpcr_type_props.on_parent_version AS property_on_parent_version, 
-phpcr_type_props.required_type AS property_required_type, phpcr_type_props.multiple AS property_multiple, 
-phpcr_type_props.fulltext_searchable AS property_fulltext_searchable, 
+SELECT
+phpcr_type_nodes.name AS node_name, phpcr_type_nodes.is_abstract AS node_abstract,
+phpcr_type_nodes.is_mixin AS node_mixin, phpcr_type_nodes.queryable AS node_queryable,
+phpcr_type_nodes.orderable_child_nodes AS node_has_orderable_child_nodes,
+phpcr_type_nodes.primary_item AS node_primary_item_name, phpcr_type_nodes.supertypes AS declared_super_type_names,
+phpcr_type_props.name AS property_name, phpcr_type_props.auto_created AS property_auto_created,
+phpcr_type_props.mandatory AS property_mandatory, phpcr_type_props.protected AS property_protected,
+phpcr_type_props.on_parent_version AS property_on_parent_version,
+phpcr_type_props.required_type AS property_required_type, phpcr_type_props.multiple AS property_multiple,
+phpcr_type_props.fulltext_searchable AS property_fulltext_searchable,
 phpcr_type_props.query_orderable AS property_query_orderable, phpcr_type_props.default_value as property_default_value,
-phpcr_type_childs.name AS child_name, phpcr_type_childs.auto_created AS child_auto_created, 
-phpcr_type_childs.mandatory AS child_mandatory, phpcr_type_childs.protected AS child_protected, 
-phpcr_type_childs.on_parent_version AS child_on_parent_version, phpcr_type_childs.default_type AS child_default_type, 
-phpcr_type_childs.primary_types AS child_primary_types 
-FROM 
-phpcr_type_nodes 
-LEFT JOIN 
-phpcr_type_props ON phpcr_type_nodes.node_type_id = phpcr_type_props.node_type_id 
-LEFT JOIN 
+phpcr_type_childs.name AS child_name, phpcr_type_childs.auto_created AS child_auto_created,
+phpcr_type_childs.mandatory AS child_mandatory, phpcr_type_childs.protected AS child_protected,
+phpcr_type_childs.on_parent_version AS child_on_parent_version, phpcr_type_childs.default_type AS child_default_type,
+phpcr_type_childs.primary_types AS child_primary_types
+FROM
+phpcr_type_nodes
+LEFT JOIN
+phpcr_type_props ON phpcr_type_nodes.node_type_id = phpcr_type_props.node_type_id
+LEFT JOIN
 phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type_id
 ';
 
