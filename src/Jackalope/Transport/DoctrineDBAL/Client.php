@@ -69,6 +69,7 @@ use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\ValueConverter;
 use stdClass;
+use Symfony\Component\Debug\Exception\FatalThrowableError;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -1138,6 +1139,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function mapPropertyFromElement(DOMElement $propertyNode, stdClass $data)
     {
+        @trigger_error(
+            sprintf('The "%s" method is deprecated since jackalope/jackalope-doctrine-dbal 1.7.', __METHOD__),
+            \E_USER_DEPRECATED
+        );
+
         $name = $propertyNode->getAttribute('sv:name');
 
         $values = [];

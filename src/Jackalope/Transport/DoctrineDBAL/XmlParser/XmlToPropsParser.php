@@ -8,7 +8,7 @@ use PHPCR\Util\ValueConverter;
 /**
  * @internal
  */
-class XmlToPropsParser
+final class XmlToPropsParser
 {
     /**
      * @var string
@@ -23,7 +23,7 @@ class XmlToPropsParser
     /**
      * @var ValueConverter
      */
-    protected $valueConverter;
+    private $valueConverter;
 
     /**
      * @var string|null
