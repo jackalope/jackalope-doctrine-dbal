@@ -69,7 +69,6 @@ use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\ValueConverter;
 use stdClass;
-use Symfony\Component\Debug\Exception\FatalThrowableError;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
