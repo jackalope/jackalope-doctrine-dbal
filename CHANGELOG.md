@@ -5,7 +5,12 @@ Changelog
 -----
 
 * Improve performance for xml parsing by using the PHP ext-xml instead of ext-dom.
-  Jackalope\Transport\DoctrineDBALClient::mapPropertyFromElement is no longer called within the client. If you extended the client and call the method, things will still work as before, but it is recommended to refactor your code to use the XmlToPropsParser. If you overwrote the method behaviour, your changes will no longer happen because the method is not called anymore.
+
+  Jackalope\Transport\DoctrineDBALClient::mapPropertyFromElement is no longer called within the client.
+  If you extended the client and call the method, things will still work as before, but it is recommended to refactor your code to use the XmlToPropsParser.
+
+  If you overwrote the method behaviour, your changes will no longer be applied because the method is not called anymore.
+  We are not aware of any use case to overwrite the method - if you are affected, let us know in a github issue so that we can discuss how the problem can be fixed.
 
 1.6.1
 -----
