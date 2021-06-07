@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.7.0
+-----
+
+* Improve performance for xml parsing.
+
 1.6.1
 -----
 
