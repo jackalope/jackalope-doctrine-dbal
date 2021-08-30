@@ -8,32 +8,30 @@ use PHPUnit\Framework\TestCase;
 
 class RepositoryFactoryDoctrineDBALTest extends TestCase
 {
-    /**
-     * @expectedExceptionMessage missing
-     */
     public function testMissingRequired()
     {
-        $this->expectException(ConfigurationException::class);
-
         $factory = new RepositoryFactoryDoctrineDBAL();
+
+        $this->expectException(ConfigurationException::class);
+        $this->expectExceptionMessage('missing');
+
         $factory->getRepository([]);
     }
 
-    /**
-     * @expectedExceptionMessage unknown
-     */
     public function testExtraParameter()
     {
-        $this->expectException(ConfigurationException::class);
-
         $factory = new RepositoryFactoryDoctrineDBAL();
         $conn = $this->getMockBuilder(Connection::class)
             ->disableOriginalConstructor()
             ->getMock()
         ;
-        $this->assertNull($factory->getRepository([
+
+        $this->expectException(ConfigurationException::class);
+        $this->expectExceptionMessage('unknown');
+
+        $factory->getRepository([
             'jackalope.doctrine_dbal_connection' => $conn,
             'unknown' => 'garbage',
-        ]));
+        ]);
     }
 }

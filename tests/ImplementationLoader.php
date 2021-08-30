@@ -5,7 +5,6 @@ use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Jackalope\Test\Tester\Generic;
 use Doctrine\DBAL\Connection;
-use Doctrine\Common\Cache\ArrayCache;
 use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\RepositoryFactoryDoctrineDBAL;
@@ -18,6 +17,8 @@ use PHPCR\RepositoryException;
 use PHPCR\SimpleCredentials;
 use PHPCR\Test\AbstractLoader;
 use Psr\Log\NullLogger;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 
 /**
  * Implementation loader for jackalope-doctrine-dbal
@@ -126,7 +127,7 @@ class ImplementationLoader extends AbstractLoader
         } else {
             $caches = [];
             foreach (explode(',', $GLOBALS['data_caches']) as $key) {
-                $caches[$key] = new ArrayCache();
+                $caches[$key] = new Psr16Cache(new ArrayAdapter());
             }
         }
 
