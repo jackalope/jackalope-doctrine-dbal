@@ -129,12 +129,7 @@ class QOMWalker
         return $selectorAlias;
     }
 
-    /**
-     * @param QueryObjectModel $qom
-     *
-     * @return string
-     */
-    public function walkQOMQuery(QueryObjectModel $qom)
+    public function walkQOMQuery(QueryObjectModel $qom): array
     {
         $source = $qom->getSource();
         $selectors = $this->validateSource($source);

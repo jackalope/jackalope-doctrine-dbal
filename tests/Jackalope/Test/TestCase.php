@@ -13,7 +13,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected $conn;
 
-    protected function getConnection()
+    protected function getConnection(): Connection
     {
         if ($this->conn === null) {
             // @TODO see https://github.com/jackalope/jackalope-doctrine-dbal/issues/48

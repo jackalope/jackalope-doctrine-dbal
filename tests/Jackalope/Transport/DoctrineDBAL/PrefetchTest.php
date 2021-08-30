@@ -68,7 +68,7 @@ class PrefetchTest extends FunctionalTestCase
 
     protected function assertChildNode($raw, $parent, $child): void
     {
-        $this->assertInstanceOf('\stdClass', $raw);
+        $this->assertInstanceOf(\stdClass::class, $raw);
 
         $this->assertObjectHasAttribute('prop', $raw, "The child $child is missing property 'prop'");
         $this->assertEquals($parent . $child, $raw->prop);
