@@ -102,6 +102,7 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals(4, $row['sort_order']);
 
         $retrieved = $this->session->getNode('/topic');
+        $check = [];
         foreach ($retrieved as $name => $child) {
             $check[] = $name;
         }
@@ -287,6 +288,9 @@ class ClientTest extends FunctionalTestCase
                     break;
                 }
             }
+
+            // we expect to always have some $data
+            \assert(isset($xpath));
 
             $this->assertEquals(1, $propertyElement->length, 'Property ' . $propertyName . ' exists');
 

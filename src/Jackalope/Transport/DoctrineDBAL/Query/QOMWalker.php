@@ -416,26 +416,28 @@ class QOMWalker
      *
      * @return string
      *
-     * @throws NotImplementedException if a SameNodeJoinCondtion is used.
+     * @throws NotImplementedException if a SameNodeJoinCondition is used.
      */
     public function walkJoinCondition($left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
-        if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
-            return $this->walkChildNodeJoinCondition($condition);
-        }
-        if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
-            return $this->walkDescendantNodeJoinCondition($condition);
-        }
-        if ($condition instanceof QOM\EquiJoinConditionInterface) {
-            if ($left instanceof QOM\SelectorInterface) {
-                $selectorName = $left->getSelectorName();
-            } else {
-                $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
-            }
-            return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
-        }
-        if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
-            throw new NotImplementedException('SameNodeJoinCondtion');
+        switch ($condition) {
+            case $condition instanceof QOM\ChildNodeJoinConditionInterface:
+                return $this->walkChildNodeJoinCondition($condition);
+
+            case $condition instanceof QOM\DescendantNodeJoinConditionInterface:
+                return $this->walkDescendantNodeJoinCondition($condition);
+
+            case $condition instanceof QOM\EquiJoinConditionInterface:
+                if ($left instanceof QOM\SelectorInterface) {
+                    $selectorName = $left->getSelectorName();
+                } else {
+                    $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
+                }
+
+                return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
+
+            default:
+                throw new NotImplementedException(get_class($condition));
         }
     }
 

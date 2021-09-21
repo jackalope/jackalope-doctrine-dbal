@@ -40,7 +40,8 @@
     },
     "autoload-dev": {
         "psr-0": {
-            "Jackalope\\": "tests/",
+            "Jackalope\\Test\\": "tests/",
+            "Jackalope\\": "vendor/jackalope/jackalope/tests",
             "PHPCR": "vendor/phpcr/phpcr/tests"
         }
     },

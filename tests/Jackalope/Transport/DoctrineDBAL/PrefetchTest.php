@@ -27,7 +27,7 @@ class PrefetchTest extends FunctionalTestCase
 
         $raw = $this->transport->getNode('/node-a');
 
-        $this->assertNode($raw, 'a');
+        $this->assertNode($raw);
     }
 
     public function testGetNodes(): void
