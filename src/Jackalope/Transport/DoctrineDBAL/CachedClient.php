@@ -308,37 +308,6 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
-     */
-    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
-    {
-        if (empty($this->caches['nodes'])) {
-            return parent::getSystemIdForNodeUuid($uuid, $workspaceName);
-        }
-
-        if (null === $workspaceName) {
-            $workspaceName = $this->workspaceName;
-        }
-
-        $cacheKey = "id: $uuid, ".$workspaceName;
-        $cacheKey = $this->sanitizeKey($cacheKey);
-
-        if (false !== ($result = $this->caches['nodes']->get($cacheKey))) {
-            if ('false' === $result) {
-                return false;
-            }
-
-            return $result;
-        }
-
-        $nodeId = parent::getSystemIdForNodeUuid($uuid, $workspaceName);
-
-        $this->caches['nodes']->set($cacheKey, $nodeId ? $nodeId : 'false');
-
-        return $nodeId;
-    }
-
-    /**
-     * {@inheritDoc}
      *
      * @throws RepositoryException
      */
@@ -526,11 +495,13 @@ class CachedClient extends Client
      */
     public function registerNodeTypes($types, $allowUpdate)
     {
-        parent::registerNodeTypes($types, $allowUpdate);
+        $ret = parent::registerNodeTypes($types, $allowUpdate);
 
         if (!$this->inTransaction) {
             $this->caches['meta']->delete('node_types');
         }
+
+        return $ret;
     }
 
     /**

@@ -1,0 +1,7 @@
+parameters:
+    level: 1
+    paths:
+        - tests
+    ignoreErrors:
+        # BC for legacy version of postgres platform class
+        - '#Class Doctrine\\DBAL\\Platforms\\PostgreSqlPlatform not found.#'

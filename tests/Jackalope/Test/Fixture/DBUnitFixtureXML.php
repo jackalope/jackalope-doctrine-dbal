@@ -174,7 +174,7 @@ class DBUnitFixtureXML extends XMLDocument
                 throw new InvalidArgumentException('"' . $propertyData['type'] . '" is not a valid JCR type.');
             }
 
-            $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom, $phpcrNode));
+            $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom));
         }
 
         list($parentPath, $childPath) = $this->getPath($node);

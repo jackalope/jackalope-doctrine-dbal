@@ -9,6 +9,7 @@ use Jackalope\Repository;
 use Jackalope\Session;
 use Jackalope\Transport\DoctrineDBAL\Client;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
+use Jackalope\Transport\TransportInterface;
 use PHPCR\RepositoryException;
 use PHPCR\SimpleCredentials;
 
@@ -61,11 +62,11 @@ class FunctionalTestCase extends TestCase
         $tables = $schema->getTables();
 
         foreach ($tables as $table) {
-            $conn->exec('DELETE FROM ' . $table->getName());
+            $conn->executeStatement('DELETE FROM ' . $table->getName());
         }
     }
 
-    protected function getClient(Connection $conn)
+    protected function getClient(Connection $conn): TransportInterface
     {
         return new Client(new Factory(), $conn);
     }

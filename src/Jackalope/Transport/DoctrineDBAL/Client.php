@@ -2357,6 +2357,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                 }
             }
         }
+
+        return true;
     }
 
     /**
@@ -2721,6 +2723,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
     /**
      * {@inheritDoc}
+     *
+     * @return ?string Transaction token if available
      */
     public function beginTransaction()
     {

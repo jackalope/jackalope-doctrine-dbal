@@ -28,9 +28,12 @@ class RepositorySchema extends Schema
     private $maxIndexLength = -1;
 
     /**
-     * @param array $options The options could be use to make the table
-     *                               names configurable.
-     * @param Connection $connection
+     * @var array
+     */
+    private $options;
+
+    /**
+     * @param array $options The options could be use to make the table names configurable.
      */
     public function __construct(array $options = [], Connection $connection = null)
     {
