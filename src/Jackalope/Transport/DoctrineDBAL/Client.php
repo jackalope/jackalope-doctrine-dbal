@@ -15,7 +15,6 @@ use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use DOMDocument;
-use DOMElement;
 use DOMXPath;
 use Exception;
 use InvalidArgumentException;
@@ -88,84 +87,49 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * The factory to instantiate objects.
-     *
-     * @var FactoryInterface
      */
-    protected $factory;
+    private FactoryInterface $factory;
 
-    /**
-     * @var ValueConverter
-     */
-    protected $valueConverter;
+    private ValueConverter $valueConverter;
 
-    /**
-     * @var Connection
-     */
-    private $conn;
+    private ?Connection $conn;
 
-    /**
-     * @var Closure
-     */
-    private $uuidGenerator;
+    private Closure $uuidGenerator;
 
-    /**
-     * @var bool
-     */
-    private $loggedIn = false;
+    private bool $loggedIn = false;
 
-    /**
-     * @var SimpleCredentials
-     */
-    private $credentials;
+    private ?SimpleCredentials $credentials;
 
-    /**
-     * @var string
-     */
-    protected $workspaceName;
+    protected string $workspaceName;
 
-    /**
-     * @var array
-     */
-    private $nodeIdentifiers = [];
+    private array $nodeIdentifiers = [];
 
-    /**
-     * @var NodeTypeManager
-     */
-    private $nodeTypeManager;
+    private NodeTypeManager $nodeTypeManager;
 
-    /**
-     * @var bool
-     */
-    protected $inTransaction = false;
+    protected bool $inTransaction = false;
 
     /**
      * Check if an initial request on login should be send to check if repository exists
      * This is according to the JCR specifications and set to true by default.
      *
      * @see setCheckLoginOnServer
-     *
-     * @var bool
      */
-    private $checkLoginOnServer = true;
+    private bool $checkLoginOnServer = true;
 
     /**
      * Using an ArrayObject here so that we can pass this into the NodeProcessor by reference more elegantly.
-     *
-     * @var ArrayObject|null
      */
-    protected $namespaces;
+    protected ?ArrayObject $namespaces = null;
 
     /**
      * @var array|null the namespaces at initial state when making changes to the namespaces, in case of rollback
      */
-    private $originalNamespaces;
+    private ?array $originalNamespaces = null;
 
     /**
      * The core namespaces defined in JCR.
-     *
-     * @var array
      */
-    private $coreNamespaces = [
+    private array $coreNamespaces = [
         NS::PREFIX_EMPTY => NS::NAMESPACE_EMPTY,
         NS::PREFIX_JCR => NS::NAMESPACE_JCR,
         NS::PREFIX_NT => NS::NAMESPACE_NT,
@@ -174,48 +138,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         NS::PREFIX_SV => NS::NAMESPACE_SV,
     ];
 
-    /**
-     * @var string|null
-     */
-    private $sequenceNodeName;
+    private ?string $sequenceNodeName = null;
 
-    /**
-     * @var string|null
-     */
-    private $sequenceTypeName;
+    private ?string $sequenceTypeName = null;
 
-    /**
-     * @var array
-     */
-    private $referencesToUpdate = [];
+    private array $referencesToUpdate = [];
 
-    /**
-     * @var array
-     */
-    private $referenceTables = [
+    private array $referenceTables = [
         PropertyType::REFERENCE => 'phpcr_nodes_references',
         PropertyType::WEAKREFERENCE => 'phpcr_nodes_weakreferences',
     ];
 
-    /**
-     * @var array
-     */
-    private $referencesToDelete = [];
+    private array $referencesToDelete = [];
 
-    /**
-     * @var bool
-     */
-    private $connectionInitialized = false;
+    private bool $connectionInitialized = false;
 
-    /**
-     * @var NodeProcessor
-     */
-    private $nodeProcessor;
+    private NodeProcessor $nodeProcessor;
 
-    /**
-     * @var string
-     */
-    private $caseSensitiveEncoding = null;
+    private ?string $caseSensitiveEncoding = null;
 
     public function __construct(FactoryInterface $factory, Connection $conn)
     {
@@ -293,7 +233,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Set the UUID generator to use. If not set, the phpcr-utils UUIDHelper
      * will be used.
      */
-    public function setUuidGenerator(Closure $generator)
+    public function setUuidGenerator(Closure $generator): void
     {
         $this->uuidGenerator = $generator;
     }
@@ -301,10 +241,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * @return callable a uuid generator function
      */
-    protected function getUuidGenerator()
+    private function getUuidGenerator(): callable
     {
-        if (!$this->uuidGenerator) {
-            $this->uuidGenerator = function () {
+        if (!isset($this->uuidGenerator)) {
+            $this->uuidGenerator = static function (): string {
                 return UUIDHelper::generateUUID();
             };
         }
@@ -312,10 +252,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         return $this->uuidGenerator;
     }
 
-    /**
-     * @return string a universally unique id
-     */
-    protected function generateUuid()
+    private function generateUuid(): string
     {
         // php 5.3 compatibility, no direct execution of this function.
         $g = $this->getUuidGenerator();
@@ -460,29 +397,27 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * Returns the collate which is being used on MySQL when querying nodes.
-     *
-     * @return string
      */
-    private function getCaseSensitiveEncoding()
+    private function getCaseSensitiveEncoding(): string
     {
         if (null !== $this->caseSensitiveEncoding) {
             return $this->caseSensitiveEncoding;
         }
 
         $params = $this->conn->getParams();
-        $charset = isset($params['charset']) ? $params['charset'] : 'utf8';
-        if (isset($params['defaultTableOptions']) && isset($params['defaultTableOptions']['collate'])) {
+        $charset = $params['charset'] ?? 'utf8';
+        if (isset($params['defaultTableOptions']['collate'])) {
             return $this->caseSensitiveEncoding = $params['defaultTableOptions']['collate'];
         }
 
         return $this->caseSensitiveEncoding = 'binary' === $charset ? $charset : $charset.'_bin';
     }
 
-    protected function workspaceExists($workspaceName)
+    protected function workspaceExists($workspaceName): bool
     {
+        $query = 'SELECT 1 FROM phpcr_workspaces WHERE name = ?';
         try {
-            $query = 'SELECT 1 FROM phpcr_workspaces WHERE name = ?';
-            $result = $this->getConnection()->fetchFirstColumn($query, [$workspaceName]);
+            return 0 < count($this->getConnection()->fetchFirstColumn($query, [$workspaceName]));
         } catch (Exception $e) {
             if ($e instanceof DBALException) {
                 if (1045 === $e->getCode()) {
@@ -500,8 +435,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             throw $e;
         }
-
-        return $result;
     }
 
     /**
@@ -515,24 +448,25 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws UnsupportedRepositoryOperationException
      * @throws RepositoryException                     if this transport is not logged in
      */
-    protected function assertLoggedIn()
+    protected function assertLoggedIn(): void
     {
-        if (!$this->loggedIn) {
-            if (!$this->checkLoginOnServer && $this->workspaceName) {
-                $this->checkLoginOnServer = true;
-                if ($this->login($this->credentials, $this->workspaceName)) {
-                    return;
-                }
-            }
-
-            throw new RepositoryException('You need to be logged in for this operation');
+        if ($this->loggedIn) {
+            return;
         }
+        if (!$this->checkLoginOnServer && $this->workspaceName) {
+            $this->checkLoginOnServer = true;
+            if ($this->login($this->credentials, $this->workspaceName)) {
+                return;
+            }
+        }
+
+        throw new RepositoryException('You need to be logged in for this operation');
     }
 
     /**
      * {@inheritDoc}
      */
-    public function getRepositoryDescriptors()
+    public function getRepositoryDescriptors(): array
     {
         return [
             RepositoryInterface::IDENTIFIER_STABILITY => RepositoryInterface::IDENTIFIER_STABILITY_INDEFINITE_DURATION,
@@ -585,10 +519,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * Get the registered namespace prefixes.
-     *
-     * @return array
      */
-    private function getNamespacePrefixes()
+    private function getNamespacePrefixes(): array
     {
         return array_keys($this->getNamespaces());
     }
@@ -596,17 +528,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function getNamespaces()
+    public function getNamespaces(): array
     {
         return (array) $this->getNamespacesObject();
     }
 
     /**
      * Return the namespaces of the current session as a referenceable ArrayObject.
-     *
-     * @return ArrayObject
      */
-    protected function getNamespacesObject()
+    private function getNamespacesObject(): ArrayObject
     {
         if (null === $this->namespaces) {
             $query = 'SELECT prefix, uri FROM phpcr_namespaces';
@@ -627,7 +557,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @param array|ArrayObject $namespaces
      */
-    protected function setNamespaces($namespaces)
+    protected function setNamespaces($namespaces): void
     {
         if ($this->namespaces instanceof ArrayObject) {
             $this->namespaces->exchangeArray($namespaces);
@@ -639,20 +569,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Executes an UPDATE on DBAL while ensuring that we never try to send more than 999 parameters to SQLite.
      *
-     * @param $query
-     *
      * @throws DBALException
      */
-    private function executeChunkedUpdate($query, array $params)
+    private function executeChunkedUpdate(string $query, array $params): void
     {
         $types = [Connection::PARAM_INT_ARRAY];
 
         if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
             foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                $this->getConnection()->executeUpdate($query, [$chunk], $types);
+                $this->getConnection()->executeQuery($query, [$chunk], $types);
             }
         } else {
-            $this->getConnection()->executeUpdate($query, [$params], $types);
+            $this->getConnection()->executeQuery($query, [$params], $types);
         }
     }
 
@@ -666,7 +594,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws DBALException
      * @throws InvalidArgumentException
      */
-    public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
+    public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null): void
     {
         $this->assertLoggedIn();
 
@@ -773,7 +701,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'INSERT INTO phpcr_binarydata (node_id, property_name, workspace_name, idx, data)'.'   SELECT ?, b.property_name, ?, b.idx, b.data FROM phpcr_binarydata b WHERE b.node_id = ?';
 
             try {
-                $this->getConnection()->executeUpdate($query, [$newNodeId, $this->workspaceName, $row['id']]);
+                $this->getConnection()->executeQuery($query, [$newNodeId, $this->workspaceName, $row['id']]);
             } catch (DBALException $e) {
                 throw new RepositoryException(
                     "Unexpected exception while copying node from $srcAbsPath to $dstAbsPath",
@@ -794,13 +722,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @param string $path
-     *
-     * @return array
+     * @return string[] First element is the namespace, second the local name
      *
      * @throws NamespaceException
      */
-    private function getJcrName($path)
+    private function getJcrName(string $path): array
     {
         $name = implode('', array_slice(explode('/', $path), -1, 1));
         $alias = '';
@@ -822,12 +748,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Actually write the node into the database.
      *
-     * @param string     $uuid      node uuid
-     * @param string     $path      absolute path of the node
-     * @param string     $type      node type name
      * @param bool       $isNewNode new nodes to insert (true) or existing node to update (false)
      * @param Property[] $props
-     * @param array      $propsData
      *
      * @return bool|string
      *
@@ -836,7 +758,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws NamespaceException
      * @throws Exception
      */
-    private function syncNode($uuid, $path, $type, $isNewNode, $props = [], $propsData = [])
+    private function syncNode(?string $uuid, string $path, string $type, bool $isNewNode, $props = [], $propsData = [])
     {
         // TODO: Not sure if there are always ALL props in $props, should we grab the online data here?
         // TODO: PERFORMANCE Binary data is handled very inefficiently here, UPSERT will really be necessary here as well as lazy handling
@@ -863,9 +785,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             try {
                 $insert = 'INSERT INTO phpcr_nodes (identifier, type, path, local_name, namespace, parent, workspace_name, props, numerical_props, depth, sort_order) '.$sql;
 
-                $this->getConnection()->executeUpdate(
+                $this->getConnection()->executeQuery(
                     $insert,
-                    $data = [
+                    [
                         'identifier' => $uuid,
                         'type' => $type,
                         'path' => $path,
@@ -956,7 +878,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws RepositoryException
      * @throws ReferentialIntegrityException
      */
-    private function syncReferences(array $referencesToUpdate)
+    private function syncReferences(array $referencesToUpdate): void
     {
         if ($referencesToUpdate) {
             // do not update references that are going to be deleted anyways
@@ -1079,13 +1001,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Convert the node XML to stdClass node representation containing all properties.
      *
-     * @param string $xml
-     *
-     * @return stdClass
-     *
      * @throws InvalidArgumentException
      */
-    protected function xmlToProps($xml)
+    private function xmlToProps(string $xml): stdClass
     {
         $xmlParser = new XmlToPropsParser(
             $xml,
@@ -1098,14 +1016,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Convert the node XML to stdClass node representation containing only the given properties.
      *
-     * @param string $xml
-     * @param array  $propertyNames
-     *
-     * @return stdClass
+     * @param string[] $propertyNames
      *
      * @throws InvalidArgumentException
      */
-    protected function xmlToColumns($xml, $propertyNames)
+    private function xmlToColumns(string $xml, array $propertyNames): stdClass
     {
         $xmlParser = new XmlToPropsParser(
             $xml,
@@ -1117,77 +1032,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Map a property from the given property XML node to the given \stdClass node representation.
-     *
-     * @throws InvalidArgumentException
-     *
-     * @deprecated this method was replaced with the `XmlToPropsParser` for performance reasons
-     */
-    protected function mapPropertyFromElement(DOMElement $propertyNode, stdClass $data)
-    {
-        @trigger_error(
-            sprintf('The "%s" method is deprecated since jackalope/jackalope-doctrine-dbal 1.7.', __METHOD__),
-            \E_USER_DEPRECATED
-        );
-
-        $name = $propertyNode->getAttribute('sv:name');
-
-        $values = [];
-
-        $type = PropertyType::valueFromName($propertyNode->getAttribute('sv:type'));
-        foreach ($propertyNode->childNodes as $valueNode) {
-            switch ($type) {
-                case PropertyType::NAME:
-                case PropertyType::URI:
-                case PropertyType::WEAKREFERENCE:
-                case PropertyType::REFERENCE:
-                case PropertyType::PATH:
-                case PropertyType::DECIMAL:
-                case PropertyType::STRING:
-                    $values[] = $valueNode->nodeValue;
-                    break;
-                case PropertyType::BOOLEAN:
-                    $values[] = (bool) $valueNode->nodeValue;
-                    break;
-                case PropertyType::LONG:
-                    $values[] = (int) $valueNode->nodeValue;
-                    break;
-                case PropertyType::BINARY:
-                    $values[] = (int) $valueNode->nodeValue;
-                    break;
-                case PropertyType::DATE:
-                    $date = $valueNode->nodeValue;
-                    if ($date) {
-                        $date = new DateTime($date);
-                        $date->setTimezone(new DateTimeZone(date_default_timezone_get()));
-                        // Jackalope expects a string, might make sense to refactor to allow DateTime instances too
-                        $date = $this->valueConverter->convertType($date, PropertyType::STRING);
-                    }
-                    $values[] = $date;
-                    break;
-                case PropertyType::DOUBLE:
-                    $values[] = (float) $valueNode->nodeValue;
-                    break;
-                default:
-                    throw new InvalidArgumentException("Type with constant $type not found.");
-            }
-        }
-
-        switch ($type) {
-            case PropertyType::BINARY:
-                $data->{':'.$name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
-                break;
-            default:
-                $data->{$name} = $propertyNode->getAttribute('sv:multi-valued') ? $values : $values[0];
-                $data->{':'.$name} = $type;
-                break;
-        }
-    }
-
-    /**
      * Seperate properties array into an xml and binary data.
      *
-     * @param array $properties
+     * @param Property[] $properties
      *
      * @return array (
      *               'stringDom' => $stringDom,
@@ -1198,7 +1045,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws RepositoryException
      */
-    private function propsToXML($properties)
+    private function propsToXML($properties): array
     {
         $namespaces = [
             NS::PREFIX_MIX => NS::NAMESPACE_MIX,
@@ -1349,7 +1196,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws DBALException
      */
-    public function getAccessibleWorkspaceNames()
+    public function getAccessibleWorkspaceNames(): array
     {
         $query = 'SELECT DISTINCT name FROM phpcr_workspaces';
         $stmt = $this->getConnection()->executeQuery($query);
@@ -1407,11 +1254,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Attach a node at a subpath under the ancestor node.
      *
-     * @param stdClass $ancestor  The root node
-     * @param stdClass $node      The node to add
-     * @param array    $nodeNames Breadcrumb of child nodes from parentNode to the node itself
+     * @param string[] $nodeNames Breadcrumb of child nodes from parentNode to the node itself
      */
-    private function nestNode($ancestor, $node, array $nodeNames)
+    private function nestNode(stdClass $ancestor, stdClass $node, array $nodeNames): void
     {
         while ($name = array_shift($nodeNames)) {
             if (empty($nodeNames)) {
@@ -1426,11 +1271,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Convert a node result row to the stdClass representing all raw data.
      *
-     * @param array $row
-     *
      * @return stdClass raw node data
      */
-    private function getNodeData($row)
+    private function getNodeData(array $row): stdClass
     {
         $data = $this->getNodesData([$row]);
 
@@ -1441,14 +1284,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * Build the raw data for a list of database result rows, fetching the
      * additional information in one single query.
      *
-     * @param array $rows
-     *
      * @return stdClass[]
      *
      * @throws NoSuchNodeTypeException
      * @throws RepositoryException
      */
-    private function getNodesData($rows)
+    private function getNodesData(array $rows): array
     {
         $data = [];
         $paths = [];
@@ -1572,12 +1413,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Determine if a path exists already.
      *
-     * @param string $path          Path of the node
-     * @param string $workspaceName To overwrite the current workspace
-     *
-     * @return bool
+     * @param string      $path          Path of the node
+     * @param string|null $workspaceName To overwrite the current workspace
      */
-    private function pathExists($path, $workspaceName = null)
+    private function pathExists(string $path, string $workspaceName = null): bool
     {
         return (bool) $this->getSystemIdForNode($path, $workspaceName);
     }
@@ -1585,12 +1424,12 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Get the database primary key for node.
      *
-     * @param string $identifier    Path of the identifier
-     * @param string $workspaceName To overwrite the current workspace
+     * @param string      $identifier    Path of the identifier
+     * @param string|null $workspaceName To overwrite the current workspace
      *
      * @return bool|string The database id
      */
-    private function getSystemIdForNode($identifier, $workspaceName = null)
+    private function getSystemIdForNode(string $identifier, string $workspaceName = null)
     {
         if (null === $workspaceName) {
             $workspaceName = $this->workspaceName;
@@ -1635,7 +1474,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function getNodesByIdentifier($identifiers)
+    public function getNodesByIdentifier($identifiers): array
     {
         $this->assertLoggedIn();
 
@@ -1686,7 +1525,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws NotImplementedException
      * @throws ItemNotFoundException
      */
-    public function getNodePathForIdentifier($uuid, $workspace = null)
+    public function getNodePathForIdentifier($uuid, $workspace = null): string
     {
         if (null !== $workspace) {
             throw new NotImplementedException('Specifying the workspace is not yet supported.');
@@ -1706,7 +1545,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deleteNodes(array $operations)
+    public function deleteNodes(array $operations): bool
     {
         $this->assertLoggedIn();
 
@@ -1720,7 +1559,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deleteNodeImmediately($path)
+    public function deleteNodeImmediately($path): bool
     {
         $this->prepareSave();
         $this->deleteNode($path);
@@ -1739,7 +1578,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws ItemNotFoundException
      * @throws RepositoryException
      */
-    protected function deleteNode($path)
+    private function deleteNode($path): void
     {
         if ('/' === $path) {
             throw new ConstraintViolationException('You can not delete the root node of a repository');
@@ -1758,7 +1597,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         try {
             $query = 'DELETE FROM phpcr_nodes WHERE (path = ? OR path LIKE ?) AND workspace_name = ?';
-            $this->getConnection()->executeUpdate($query, $params);
+            $this->getConnection()->executeQuery($query, $params);
             $this->cleanIdentifierCache($path);
         } catch (DBALException $e) {
             throw new RepositoryException('Unexpected exception while deleting node '.$path, $e->getCode(), $e);
@@ -1770,7 +1609,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @param string $root Path to the root node to be cleared
      */
-    private function cleanIdentifierCache($root)
+    private function cleanIdentifierCache(string $root): void
     {
         unset($this->nodeIdentifiers[$root]);
         foreach (array_keys($this->nodeIdentifiers) as $path) {
@@ -1783,7 +1622,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deleteProperties(array $operations)
+    public function deleteProperties(array $operations): bool
     {
         $this->assertLoggedIn();
 
@@ -1797,7 +1636,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function deletePropertyImmediately($path)
+    public function deletePropertyImmediately($path): bool
     {
         $this->prepareSave();
         $this->deleteProperty($path);
@@ -1807,12 +1646,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @throws ItemNotFoundException
      * @throws RepositoryException
      */
-    protected function deleteProperty($path)
+    private function deleteProperty(string $path): void
     {
         $this->assertLoggedIn();
 
@@ -1842,7 +1679,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
                         try {
                             $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
-                            $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
+                            $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
                         } catch (DBALException $e) {
                             throw new RepositoryException(
                                 'Unexpected exception while cleaning up deleted nodes',
@@ -1867,7 +1704,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $params = [$xml, $nodeId];
 
         try {
-            $this->getConnection()->executeUpdate($query, $params);
+            $this->getConnection()->executeQuery($query, $params);
         } catch (DBALException $e) {
             throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
         }
@@ -1876,7 +1713,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function moveNodes(array $operations)
+    public function moveNodes(array $operations): bool
     {
         /** @var $op MoveNodeOperation */
         foreach ($operations as $op) {
@@ -1889,7 +1726,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function moveNodeImmediately($srcAbsPath, $dstAbspath)
+    public function moveNodeImmediately($srcAbsPath, $dstAbspath): bool
     {
         $this->prepareSave();
         $this->moveNode($srcAbsPath, $dstAbspath);
@@ -1905,7 +1742,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * @throws ItemExistsException
      * @throws RepositoryException
      */
-    protected function moveNode($srcAbsPath, $dstAbsPath)
+    private function moveNode($srcAbsPath, $dstAbsPath): void
     {
         $this->assertLoggedIn();
         PathHelper::assertValidAbsolutePath($srcAbsPath, false, true, $this->getNamespacePrefixes());
@@ -2016,7 +1853,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      *
      * @throws RepositoryException
      */
-    public function reorderChildren(Node $node)
+    public function reorderChildren(Node $node): bool
     {
         $this->assertLoggedIn();
 
@@ -2048,14 +1885,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Return the node processor for processing nodes
-     * according to their node types.
-     *
-     * @return NodeProcessor
+     * Return the node processor for processing nodes according to their node types.
      */
-    private function getNodeProcessor()
+    private function getNodeProcessor(): NodeProcessor
     {
-        if ($this->nodeProcessor) {
+        if (isset($this->nodeProcessor)) {
             return $this->nodeProcessor;
         }
 
@@ -2071,7 +1905,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function storeNodes(array $operations)
+    public function storeNodes(array $operations): void
     {
         $this->assertLoggedIn();
 
@@ -2098,14 +1932,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Make sure we have a uuid and a primaryType, then sync data into the database.
      *
-     * @param string     $path       the path to store the node at
-     * @param Property[] $properties the properties of this node
-     *
-     * @return bool true on success
+     * @param Property[] $properties
      *
      * @throws RepositoryException if not logged in
      */
-    protected function storeNode($path, $properties)
+    private function storeNode(string $path, $properties): bool
     {
         $nodeIdentifier = $this->getIdentifier($path, $properties);
         $type = isset($properties['jcr:primaryType']) ? $properties['jcr:primaryType']->getValue() : 'nt:unstructured';
@@ -2118,12 +1949,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Determine a UUID for the node at this path with these properties.
      *
-     * @param string     $path
      * @param Property[] $properties
      *
      * @return string a unique id
      */
-    protected function getIdentifier($path, $properties)
+    private function getIdentifier(string $path, $properties): string
     {
         if (isset($this->nodeIdentifiers[$path])) {
             return $this->nodeIdentifiers[$path];
@@ -2140,7 +1970,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * {@inheritDoc}
      */
-    public function getNodeTypes($nodeTypes = [])
+    public function getNodeTypes($nodeTypes = []): array
     {
         $standardTypes = StandardNodeTypes::getNodeTypeData();
 
@@ -2159,10 +1989,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
     /**
      * Fetch a user-defined node-type definition.
-     *
-     * @return array
      */
-    protected function fetchUserNodeTypes()
+    protected function fetchUserNodeTypes(): array
     {
         $result = [];
 
@@ -2192,7 +2020,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         $statement = $this->getConnection()->prepare($query);
 
-        $stmtResult = $statement->execute();
+        $stmtResult = $statement->executeQuery();
         $stmtResult = is_bool($stmtResult) ? $statement : $stmtResult;
 
         while ($row = $stmtResult->fetchAssociative()) {
@@ -2258,7 +2086,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function registerNodeTypes($types, $allowUpdate)
+    public function registerNodeTypes($types, $allowUpdate): bool
     {
         $builtinTypes = StandardNodeTypes::getNodeTypeData();
 
@@ -2350,7 +2178,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function setNodeTypeManager($nodeTypeManager)
+    public function setNodeTypeManager($nodeTypeManager): void
     {
         $this->nodeTypeManager = $nodeTypeManager;
     }
@@ -2574,7 +2402,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function getSupportedQueryLanguages()
+    public function getSupportedQueryLanguages(): array
     {
         return [
             QueryInterface::JCR_SQL2,
@@ -2590,7 +2418,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * This method also ensures that namespaces are loaded to begin with.
      */
-    private function ensureNamespacesBackup()
+    private function ensureNamespacesBackup(): void
     {
         if (!$this->namespaces instanceof \ArrayObject) {
             $this->getNamespacesObject();
@@ -2610,7 +2438,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * @throws NamespaceException
      */
-    public function registerNamespace($prefix, $uri)
+    public function registerNamespace($prefix, $uri): void
     {
         if (isset($this->namespaces[$prefix])) {
             if ($this->namespaces[$prefix] === $uri) {
@@ -2645,7 +2473,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function unregisterNamespace($prefix)
+    public function unregisterNamespace($prefix): void
     {
         if (isset($this->coreNamespaces[$prefix])) {
             throw new NamespaceException("Cannot unregister JCR core namespace prefix '$prefix'.");
@@ -2663,7 +2491,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function getReferences($path, $name = null)
+    public function getReferences($path, $name = null): array
     {
         return $this->getNodeReferences($path, $name, false);
     }
@@ -2671,19 +2499,19 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function getWeakReferences($path, $name = null)
+    public function getWeakReferences($path, $name = null): array
     {
         return $this->getNodeReferences($path, $name, true);
     }
 
     /**
-     * @param string $path          the path for which we need the references
-     * @param string $name          the name of the referencing properties or null for all
-     * @param bool   $weakReference whether to get weak or strong references
+     * @param string      $path          the path for which we need the references
+     * @param string|null $name          the name of the referencing properties or null for all
+     * @param bool        $weakReference whether to get weak or strong references
      *
      * @return array list of paths to nodes that reference $path
      */
-    private function getNodeReferences($path, $name = null, $weakReference = false)
+    private function getNodeReferences(string $path, string $name = null, bool $weakReference = false): array
     {
         $targetId = $this->getSystemIdForNode($path);
 
@@ -2712,7 +2540,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * @return ?string Transaction token if available
      */
-    public function beginTransaction()
+    public function beginTransaction(): ?string
     {
         if ($this->inTransaction) {
             throw new RepositoryException('Begin transaction failed: transaction already open');
@@ -2726,6 +2554,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         } catch (Exception $e) {
             throw new RepositoryException('Begin transaction failed: '.$e->getMessage());
         }
+
+        return null;
     }
 
     /**
@@ -2733,7 +2563,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * @throws RepositoryException
      */
-    public function commitTransaction()
+    public function commitTransaction(): void
     {
         if (!$this->inTransaction) {
             throw new RepositoryException('Commit transaction failed: no transaction open');
@@ -2760,7 +2590,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * @throws RepositoryException
      */
-    public function rollbackTransaction()
+    public function rollbackTransaction(): void
     {
         if (!$this->inTransaction) {
             throw new RepositoryException('Rollback transaction failed: no transaction open');
@@ -2788,7 +2618,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
      *
      * @param int $seconds The value of the timeout in seconds
      */
-    public function setTransactionTimeout($seconds)
+    public function setTransactionTimeout($seconds): void
     {
         $this->assertLoggedIn();
 
@@ -2798,7 +2628,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function prepareSave()
+    public function prepareSave(): void
     {
         $this->getConnection()->beginTransaction();
     }
@@ -2806,7 +2636,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function finishSave()
+    public function finishSave(): void
     {
         $this->syncReferences($this->referencesToUpdate);
         $this->referencesToUpdate = $this->referencesToDelete = [];
@@ -2816,7 +2646,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * {@inheritDoc}
      */
-    public function rollbackSave()
+    public function rollbackSave(): void
     {
         $this->referencesToUpdate = $this->referencesToDelete = [];
         $this->getConnection()->rollBack();
@@ -2825,7 +2655,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * @param Node $node the node to update
      */
-    public function updateProperties(Node $node)
+    public function updateProperties(Node $node): bool
     {
         $this->assertLoggedIn();
         // we can ignore the operations returned, there will be no additions because of property updates
@@ -2834,7 +2664,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         $this->syncNode(
             $node->getIdentifier(),
             $node->getPath(),
-            $node->getPrimaryNodeType(),
+            $node->getPrimaryNodeType()->getName(),
             false,
             $node->getProperties()
         );
@@ -2845,9 +2675,9 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
     /**
      * Initialize the dbal connection lazily.
      */
-    private function initConnection()
+    private function initConnection(): void
     {
-        if (true === $this->conn->isConnected() && true === $this->connectionInitialized) {
+        if ($this->connectionInitialized && $this->conn->isConnected()) {
             return;
         }
 
