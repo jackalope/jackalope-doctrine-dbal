@@ -17,7 +17,7 @@ class Pgsql extends Generic
 
         // update next serial/autoincrement value to max
         foreach ($result->fetchAllAssociative() as $info) {
-            $query = "SELECT setval((SELECT pg_get_serial_sequence('" . $info['table_name'] . "', '" . $info['column_name'] . "') as sequence), (SELECT max(" . $info['column_name'] . ") FROM " . $info['table_name'] . "));";
+            $query = "SELECT setval((SELECT pg_get_serial_sequence('".$info['table_name']."', '".$info['column_name']."') as sequence), (SELECT max(".$info['column_name'].') FROM '.$info['table_name'].'));';
             $this->connection->executeStatement($query);
         }
     }

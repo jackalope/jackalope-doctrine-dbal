@@ -31,7 +31,7 @@ class CachedClientTest extends FunctionalTestCase
     }
 
     /**
-     * The default key sanitizer replaces spaces with underscores
+     * The default key sanitizer replaces spaces with underscores.
      */
     public function testDefaultKeySanitizer(): void
     {

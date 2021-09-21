@@ -2,31 +2,29 @@
 
 namespace Jackalope\Tools\Console\Command;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use InvalidArgumentException;
+use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 use PDOException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\InvalidArgumentException as CliInvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception as DBALException;
-use Doctrine\DBAL\Exception\TableNotFoundException;
-use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
 /**
  * Init doctrine dbal.
  *
  * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
  * @license http://opensource.org/licenses/MIT MIT License
- *
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
 class InitDoctrineDbalCommand extends Command
 {
-    const RETURN_CODE_NOT_DROP = 1;
+    private const RETURN_CODE_NOT_DROP = 1;
 
-    const RETURN_CODE_NO_FORCE = 2;
+    private const RETURN_CODE_NO_FORCE = 2;
 
     /**
      * @see Command
@@ -57,7 +55,7 @@ class InitDoctrineDbalCommand extends Command
                     null,
                     InputOption::VALUE_NONE,
                     'Drop any existing tables before trying to create the new tables.'
-                )
+                ),
             ])
             ->setHelp(
                 <<<EOT
@@ -86,7 +84,7 @@ EOT
         }
 
         if (true !== $input->getOption('dump-sql') && !$input->getOption('force')) {
-            $output->write('ATTENTION: This operation should not be executed in a production environment. Please use "--force" to execute the command.' .PHP_EOL.PHP_EOL);
+            $output->write('ATTENTION: This operation should not be executed in a production environment. Please use "--force" to execute the command.'.PHP_EOL.PHP_EOL);
 
             return self::RETURN_CODE_NO_FORCE;
         }

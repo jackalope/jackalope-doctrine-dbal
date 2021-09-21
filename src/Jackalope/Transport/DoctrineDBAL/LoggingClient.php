@@ -4,31 +4,26 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use Doctrine\DBAL\Connection;
 use Jackalope\FactoryInterface;
+use Jackalope\Query\Query;
 use Jackalope\Transport\AbstractReadWriteLoggingWrapper;
+use Jackalope\Transport\Logging\LoggerInterface;
+use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\TransactionInterface;
-use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\WorkspaceManagementInterface;
-use Jackalope\Query\Query;
 use PHPCR\NamespaceException;
 use PHPCR\Query\InvalidQueryException;
-use Jackalope\Transport\Logging\LoggerInterface;
 
 /**
  * Logging enabled wrapper for the Jackalope Doctrine DBAL client.
  *
  * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
  * @license http://opensource.org/licenses/MIT MIT License
- *
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
 
 // PermissionInterface, VersioningInterface, LockingInterface, ObservationInterface
-class LoggingClient extends AbstractReadWriteLoggingWrapper implements
-    QueryTransport,
-    NodeTypeManagementInterface,
-    WorkspaceManagementInterface,
-    TransactionInterface
+class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTransport, NodeTypeManagementInterface, WorkspaceManagementInterface, TransactionInterface
 {
     /**
      * @var Client
@@ -38,9 +33,8 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements
     /**
      * Constructor.
      *
-     * @param FactoryInterface $factory
-     * @param Client           $transport A jackalope doctrine dbal client instance
-     * @param LoggerInterface  $logger    A logger instance
+     * @param Client          $transport A jackalope doctrine dbal client instance
+     * @param LoggerInterface $logger    A logger instance
      */
     public function __construct(FactoryInterface $factory, Client $transport, LoggerInterface $logger)
     {
@@ -75,6 +69,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements
         $this->logger->startCall(__FUNCTION__, func_get_args(), ['fetchDepth' => $this->transport->getFetchDepth()]);
         $result = $this->transport->query($query);
         $this->logger->stopCall();
+
         return $result;
     }
 

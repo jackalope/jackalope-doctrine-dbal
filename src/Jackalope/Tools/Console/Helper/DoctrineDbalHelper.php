@@ -2,8 +2,8 @@
 
 namespace Jackalope\Tools\Console\Helper;
 
-use Symfony\Component\Console\Helper\Helper;
 use Doctrine\DBAL\Connection;
+use Symfony\Component\Console\Helper\Helper;
 
 /**
  * Helper class to make the session instance available to console command.
@@ -18,11 +18,6 @@ class DoctrineDbalHelper extends Helper
      */
     protected $connection;
 
-    /**
-     * Constructor
-     *
-     * @param Connection $connection the doctrine dbal connection
-     */
     public function __construct(Connection $connection)
     {
         $this->connection = $connection;
