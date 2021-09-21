@@ -59,7 +59,7 @@ class ClientTest extends FunctionalTestCase
         $ntm->registerNodeTypes([$template], true);
 
         $def = $ntm->getNodeType('phpcr:article');
-        $this->assertEquals("phpcr:article", $def->getName());
+        $this->assertEquals('phpcr:article', $def->getName());
         $this->assertCount(1, $def->getDeclaredPropertyDefinitions());
         $this->assertCount(1, $def->getDeclaredChildNodeDefinitions());
     }
@@ -112,7 +112,7 @@ class ClientTest extends FunctionalTestCase
     }
 
     /**
-     * Test cases for depth set when adding nodes
+     * Test cases for depth set when adding nodes.
      */
     public function testDepthOnAdd(): void
     {
@@ -144,7 +144,7 @@ class ClientTest extends FunctionalTestCase
     }
 
     /**
-     * Test cases for depth when moving nodes
+     * Test cases for depth when moving nodes.
      */
     public function testDepthOnMove(): void
     {
@@ -203,7 +203,7 @@ class ClientTest extends FunctionalTestCase
             ['This is valid too!'.$this->translateCharFromCode('\u0009'), true],
             ['This is valid', true],
             [$this->translateCharFromCode('\uD7FF'), true],
-            ['This is on the edge, but valid too.'. $this->translateCharFromCode('\uFFFD'), true],
+            ['This is on the edge, but valid too.'.$this->translateCharFromCode('\uFFFD'), true],
             [$this->translateCharFromCode('\u10000'), true],
             [$this->translateCharFromCode('\u10FFFF'), true],
             [$this->translateCharFromCode('\u0001'), false],
@@ -216,7 +216,7 @@ class ClientTest extends FunctionalTestCase
 
     private function translateCharFromCode($char)
     {
-        return json_decode('"' . $char . '"', true, 512, JSON_THROW_ON_ERROR);
+        return json_decode('"'.$char.'"', true, 512, JSON_THROW_ON_ERROR);
     }
 
     public function testDeleteMoreThanOneThousandNodes(): void
@@ -224,7 +224,7 @@ class ClientTest extends FunctionalTestCase
         $root = $this->session->getNode('/');
         $parent = $root->addNode('test-more-than-one-thousand');
 
-        for ($i = 0; $i <= 1200; $i++) {
+        for ($i = 0; $i <= 1200; ++$i) {
             $parent->addNode('node-'.$i);
         }
 
@@ -244,17 +244,17 @@ class ClientTest extends FunctionalTestCase
 
         $data = [
             // PropertyName         PropertyValue                   PropertyType            Expected Length
-            'simpleString'  => ['simplestring',                PropertyType::STRING,   12],
-            'mbString'      => ['stringMultibit漢',             PropertyType::STRING,   17],
-            'long'          => [42,                            PropertyType::LONG,     2],
-            'double'        => [3.1415,                        PropertyType::DOUBLE,   6],
-            'decimal'       => [3.141592,                      PropertyType::DECIMAL,  8],
-            'date'          => [new DateTime('now'),          PropertyType::DATE,     29],
-            'booleanTrue'   => [true,                          PropertyType::BOOLEAN,  1],
-            'booleanFalse'  => [false,                         PropertyType::BOOLEAN,  0],
-            'name'          => ['nt:unstructured',             PropertyType::NAME,     15],
-            'uri'           => ['https://google.com',          PropertyType::URI,      18],
-            'path'          => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
+            'simpleString' => ['simplestring',                PropertyType::STRING,   12],
+            'mbString' => ['stringMultibit漢',             PropertyType::STRING,   17],
+            'long' => [42,                            PropertyType::LONG,     2],
+            'double' => [3.1415,                        PropertyType::DOUBLE,   6],
+            'decimal' => [3.141592,                      PropertyType::DECIMAL,  8],
+            'date' => [new DateTime('now'),          PropertyType::DATE,     29],
+            'booleanTrue' => [true,                          PropertyType::BOOLEAN,  1],
+            'booleanFalse' => [false,                         PropertyType::BOOLEAN,  0],
+            'name' => ['nt:unstructured',             PropertyType::NAME,     15],
+            'uri' => ['https://google.com',          PropertyType::URI,      18],
+            'path' => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
             // 'multiString'   => array(array('foo', 'bar'),           PropertyType::STRING,   array(3,3)),
             // (weak)reference...
         ];
@@ -292,7 +292,7 @@ class ClientTest extends FunctionalTestCase
             // we expect to always have some $data
             \assert(isset($xpath));
 
-            $this->assertEquals(1, $propertyElement->length, 'Property ' . $propertyName . ' exists');
+            $this->assertEquals(1, $propertyElement->length, 'Property '.$propertyName.' exists');
 
             $values = $xpath->query('sv:value', $propertyElement->item(0));
 
@@ -347,7 +347,7 @@ class ClientTest extends FunctionalTestCase
         foreach (['/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'] as $path) {
             $stmnt = $this->getConnection()->executeQuery($query, ['path' => $path]);
             $row = $stmnt->fetchAssociative();
-            $this->assertNotFalse($row, $path . ' does not exist in database');
+            $this->assertNotFalse($row, $path.' does not exist in database');
         }
     }
 
@@ -375,12 +375,12 @@ class ClientTest extends FunctionalTestCase
         $expectedData = [
             '/jcr:topic2' => 'topic2',
             '/jcr:topic2/jcr:thisisanewnode' => 'thisisanewnode',
-            '/jcr:topic2/jcr:topic1Child' => 'topic1Child'
+            '/jcr:topic2/jcr:topic1Child' => 'topic1Child',
         ];
         foreach ($expectedData as $path => $localName) {
             $stmnt = $this->getConnection()->executeQuery($query, ['path' => $path, 'local_name' => $localName]);
             $row = $stmnt->fetchAssociative();
-            $this->assertNotFalse($row, $path . ' with local_name' . $localName . ' does not exist in database');
+            $this->assertNotFalse($row, $path.' with local_name'.$localName.' does not exist in database');
         }
     }
 
@@ -418,7 +418,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->refresh(false);
 
         foreach ($data as [$propName]) {
-            $this->assertTrue($node->hasProperty($propName), 'Node has property "' . $propName .'"');
+            $this->assertTrue($node->hasProperty($propName), 'Node has property "'.$propName.'"');
         }
     }
 
@@ -529,7 +529,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $qm = $this->session->getWorkspace()->getQueryManager();
-        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY ' . $orderBy, QueryInterface::JCR_SQL2);
+        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY '.$orderBy, QueryInterface::JCR_SQL2);
         $result = $query->execute();
 
         $rows = $result->getRows();
@@ -634,8 +634,6 @@ class ClientTest extends FunctionalTestCase
         $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
         $this->session->save();
 
-
-
         $qm = $this->session->getWorkspace()->getQueryManager();
         $qom = $qm->getQOMFactory();
         $documentSelector = $qom->selector('d', 'test');
@@ -706,7 +704,6 @@ class ClientTest extends FunctionalTestCase
             'c',
             'jcr:uuid'
         ));
-
 
         $from = $qom->join($join, $groupSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
             'd',

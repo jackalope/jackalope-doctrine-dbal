@@ -1,11 +1,11 @@
 cli-config.php
 .phpunit.result.cache
+.php-cs-fixer.cache
 
 test-reports
 .buildpath
 .project
 .buildpath
-.idea/
 .settings/
 cscope.out
 doc/config/phpdoc.ini
@@ -21,7 +21,6 @@ phpcr_tests.db
 phpcr_tests.db-journal
 
 vendor/
-composer.phar
 composer.lock
 
 /test

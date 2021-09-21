@@ -1,14 +1,14 @@
 <?php
 
-use Doctrine\DBAL\Platforms\MySQLPlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
-use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
-use Jackalope\Test\Tester\Generic;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\RepositoryFactoryDoctrineDBAL;
 use Jackalope\Session;
+use Jackalope\Test\Tester\Generic;
 use Jackalope\Test\Tester\Mysql;
 use Jackalope\Test\Tester\Pgsql;
 use Jackalope\Transport\DoctrineDBAL\Client;
@@ -21,7 +21,7 @@ use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Psr16Cache;
 
 /**
- * Implementation loader for jackalope-doctrine-dbal
+ * Implementation loader for jackalope-doctrine-dbal.
  */
 class ImplementationLoader extends AbstractLoader
 {
@@ -31,7 +31,7 @@ class ImplementationLoader extends AbstractLoader
     {
         if (null === self::$instance) {
             global $dbConn;
-            $fixturePath = realpath(__DIR__ . '/fixtures/doctrine');
+            $fixturePath = realpath(__DIR__.'/fixtures/doctrine');
             self::$instance = new ImplementationLoader($dbConn, $fixturePath);
         }
 
@@ -52,8 +52,8 @@ class ImplementationLoader extends AbstractLoader
     {
         parent::__construct(RepositoryFactoryDoctrineDBAL::class, $GLOBALS['phpcr.workspace']);
 
-        $this->connection   = $connection;
-        $this->fixturePath  = $fixturePath;
+        $this->connection = $connection;
+        $this->fixturePath = $fixturePath;
 
         $this->unsupportedChapters = [
             'ShareableNodes', //TODO: Not implemented, no test currently written for it
@@ -101,7 +101,7 @@ class ImplementationLoader extends AbstractLoader
 
             // TODO: implement creating workspace with source
             'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithSource',
-            'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource'
+            'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
         ];
 
         if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {
@@ -164,7 +164,7 @@ class ImplementationLoader extends AbstractLoader
     }
 
     /**
-     * Doctrine dbal supports anonymous login
+     * Doctrine dbal supports anonymous login.
      *
      * @return bool true
      */
@@ -180,7 +180,7 @@ class ImplementationLoader extends AbstractLoader
 
     public function getRepository()
     {
-        $transport = new Client(new Factory, $this->connection);
+        $transport = new Client(new Factory(), $this->connection);
         foreach ([$GLOBALS['phpcr.workspace'], $this->otherWorkspacename] as $workspace) {
             try {
                 $transport->createWorkspace($workspace);
@@ -203,7 +203,7 @@ class ImplementationLoader extends AbstractLoader
                 $testerClass = Mysql::class;
                 break;
 
-            case ($platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform):
+            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform:
                 $testerClass = Pgsql::class;
                 break;
 

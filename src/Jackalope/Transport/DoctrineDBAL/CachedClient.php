@@ -17,7 +17,6 @@ use Psr\SimpleCache\CacheInterface;
  *
  * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
  * @license http://opensource.org/licenses/MIT MIT License
- *
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
 class CachedClient extends Client
@@ -28,7 +27,7 @@ class CachedClient extends Client
     private $caches;
 
     /**
-     * @var Closure that accepts a cache key as argument and returns it after sanitizing it.
+     * @var Closure that accepts a cache key as argument and returns it after sanitizing it
      */
     private $keySanitizer;
 
@@ -58,9 +57,6 @@ class CachedClient extends Client
         };
     }
 
-    /**
-     * @param Closure $sanitizer
-     */
     public function setKeySanitizer(Closure $sanitizer)
     {
         $this->keySanitizer = $sanitizer;
@@ -80,7 +76,7 @@ class CachedClient extends Client
     }
 
     /**
-     * Sanitizes the key using $this->keySanitizer
+     * Sanitizes the key using $this->keySanitizer.
      *
      * @param string $cacheKey
      *
@@ -96,8 +92,6 @@ class CachedClient extends Client
     }
 
     /**
-     * @param Node $node
-     *
      * @throws RepositoryException
      */
     private function clearNodeCache(Node $node)
@@ -117,7 +111,6 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
-     *
      */
     public function createWorkspace($name, $srcWorkspace = null)
     {
@@ -129,7 +122,6 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
-     *
      */
     public function deleteWorkspace($name)
     {
@@ -531,7 +523,7 @@ class CachedClient extends Client
             return parent::getReferences($path, $name);
         }
 
-        $cacheKey = "nodes references: $path, $name, " . $this->workspaceName;
+        $cacheKey = "nodes references: $path, $name, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
         if (false !== ($result = $this->caches['nodes']->get($cacheKey))) {
@@ -554,7 +546,7 @@ class CachedClient extends Client
             return parent::getWeakReferences($path, $name);
         }
 
-        $cacheKey = "nodes weak references: $path, $name, " . $this->workspaceName;
+        $cacheKey = "nodes weak references: $path, $name, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
         if ($result = $this->caches['nodes']->get($cacheKey)) {

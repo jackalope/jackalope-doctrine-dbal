@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Jackalope\Test\Tester;
 
@@ -8,11 +10,11 @@ use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
 use InvalidArgumentException;
-use RuntimeException;
-use SimpleXMLElement;
 use function libxml_clear_errors;
 use function libxml_get_errors;
 use function libxml_use_internal_errors;
+use RuntimeException;
+use SimpleXMLElement;
 
 class XmlDataSet
 {
@@ -42,7 +44,7 @@ class XmlDataSet
             throw new InvalidArgumentException("Could not find xml file: $xmlFile");
         }
 
-        $libxmlErrorReporting  = libxml_use_internal_errors(true);
+        $libxmlErrorReporting = libxml_use_internal_errors(true);
         $this->xmlFileContents = simplexml_load_string(file_get_contents($xmlFile), 'SimpleXMLElement', LIBXML_COMPACT | LIBXML_PARSEHUGE);
 
         if (!$this->xmlFileContents) {
@@ -59,7 +61,7 @@ class XmlDataSet
         libxml_use_internal_errors($libxmlErrorReporting);
 
         $tableColumns = [];
-        $tableValues  = [];
+        $tableValues = [];
 
         $this->getTableInfo($tableColumns, $tableValues);
         $this->createTables($tableColumns, $tableValues);
@@ -96,7 +98,7 @@ class XmlDataSet
 
     protected function getTableInfo(array &$tableColumns, array &$tableValues): void
     {
-        if ($this->xmlFileContents->getName() !== 'dataset') {
+        if ('dataset' !== $this->xmlFileContents->getName()) {
             throw new RuntimeException('The root element of an xml data set file must be called <dataset>');
         }
 
@@ -132,8 +134,8 @@ class XmlDataSet
             }
 
             foreach ($tableElement->xpath('./row') as $rowElement) {
-                $rowValues                 = [];
-                $index                     = 0;
+                $rowValues = [];
+                $index = 0;
                 $numOfTableInstanceColumns = \count($tableInstanceColumns);
 
                 foreach ($rowElement->children() as $columnValue) {
@@ -144,16 +146,16 @@ class XmlDataSet
                     switch ($columnValue->getName()) {
                         case 'value':
                             $rowValues[$tableInstanceColumns[$index]] = (string) $columnValue;
-                            $index++;
+                            ++$index;
 
                             break;
                         case 'null':
                             $rowValues[$tableInstanceColumns[$index]] = null;
-                            $index++;
+                            ++$index;
 
                             break;
                         default:
-                            throw new RuntimeException('Unknown element ' . $columnValue->getName() . ' in a row element.');
+                            throw new RuntimeException('Unknown element '.$columnValue->getName().' in a row element.');
                     }
                 }
 
@@ -166,7 +168,7 @@ class XmlDataSet
      * Returns the table with the matching name. If the table does not exist
      * an empty one is created.
      *
-     * @param mixed  $tableColumns
+     * @param mixed $tableColumns
      *
      * @return Table
      */
@@ -175,7 +177,7 @@ class XmlDataSet
         if (empty($this->tables[$tableName])) {
             $table = new Table($tableName, array_map(static function (string $columnName): Column {
                 return new Column($columnName, Type::getType(Types::STRING));
-            }, $tableColumns), [ new Index('primary', [ $tableColumns[0] ], false, true) ]);
+            }, $tableColumns), [new Index('primary', [$tableColumns[0]], false, true)]);
 
             $this->tables[$tableName] = $table;
         }

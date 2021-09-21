@@ -2,11 +2,10 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Schema\Schema;
-use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
-use PDO;
 use PHPCR\RepositoryException;
 
 /**
@@ -23,7 +22,7 @@ class RepositorySchema extends Schema
     private $connection;
 
     /**
-     * @var integer
+     * @var int
      */
     private $maxIndexLength = -1;
 
@@ -33,7 +32,7 @@ class RepositorySchema extends Schema
     private $options;
 
     /**
-     * @param array $options The options could be use to make the table names configurable.
+     * @param array $options the options could be use to make the table names configurable
      */
     public function __construct(array $options = [], Connection $connection = null)
     {
@@ -58,8 +57,6 @@ class RepositorySchema extends Schema
 
     /**
      * Merges Jackalope schema with the given schema.
-     *
-     * @param Schema $schema
      */
     public function addToSchema(Schema $schema)
     {

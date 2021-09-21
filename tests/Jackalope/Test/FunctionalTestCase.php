@@ -62,7 +62,7 @@ class FunctionalTestCase extends TestCase
         $tables = $schema->getTables();
 
         foreach ($tables as $table) {
-            $conn->executeStatement('DELETE FROM ' . $table->getName());
+            $conn->executeStatement('DELETE FROM '.$table->getName());
         }
     }
 

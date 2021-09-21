@@ -2,15 +2,15 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Jackalope\Factory;
 use Jackalope\NodeType\NodeTypeManager;
-use Jackalope\Query\QOM\QueryObjectModel;
-use Jackalope\Test\TestCase;
 use Jackalope\Query\QOM\Length;
 use Jackalope\Query\QOM\PropertyValue;
+use Jackalope\Query\QOM\QueryObjectModel;
 use Jackalope\Query\QOM\QueryObjectModelFactory;
-use Jackalope\Factory;
+use Jackalope\Test\TestCase;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
@@ -18,7 +18,6 @@ use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 class QOMWalkerTest extends TestCase
 {
     /**
-     *
      * @var QueryObjectModelFactory
      */
     private $factory;
@@ -56,7 +55,7 @@ class QOMWalkerTest extends TestCase
             ->willReturn(true)
         ;
 
-        $this->factory = new QueryObjectModelFactory(new Factory);
+        $this->factory = new QueryObjectModelFactory(new Factory());
         $this->walker = new QOMWalker($this->nodeTypeManager, $conn);
         $this->defaultColumns = 'n0.path AS n0_path, n0.identifier AS n0_identifier, n0.props AS n0_props';
     }
@@ -228,7 +227,7 @@ class QOMWalkerTest extends TestCase
             [QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN, '<'],
             [QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN_OR_EQUAL_TO, '<='],
             [QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO, '!='],
-            [QueryObjectModelConstantsInterface::JCR_OPERATOR_LIKE, 'LIKE']
+            [QueryObjectModelConstantsInterface::JCR_OPERATOR_LIKE, 'LIKE'],
         ];
     }
 
@@ -267,7 +266,7 @@ class QOMWalkerTest extends TestCase
         $query = $this->factory->createQuery(
             $this->factory->selector('nt:unstructured', 'nt:unstructured'),
             null,
-            [$this->factory->ascending($this->factory->propertyValue('nt:unstructured', "jcr:path"))],
+            [$this->factory->ascending($this->factory->propertyValue('nt:unstructured', 'jcr:path'))],
             []
         );
         $this->assertInstanceOf(QueryObjectModel::class, $query);
@@ -297,26 +296,25 @@ class QOMWalkerTest extends TestCase
         $res = $this->walker->walkQOMQuery($query);
 
         switch ($platform) {
-            case ($platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform):
+            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform:
                 $ordering =
-                    "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, " .
+                    "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, ".
                    "(xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text ASC";
                 break;
 
             default:
                 $ordering =
-                    "CAST(EXTRACTVALUE(n0.numerical_props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') AS DECIMAL) ASC, " .
+                    "CAST(EXTRACTVALUE(n0.numerical_props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') AS DECIMAL) ASC, ".
                     "EXTRACTVALUE(n0.props, '//sv:property[@sv:name=\"foobar\"]/sv:value[1]') ASC";
         }
-
 
         self::assertEquals(
             sprintf(
                 implode(' ', [
-                    "SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ?",
+                    'SELECT %s FROM phpcr_nodes n0 WHERE n0.workspace_name = ?',
                     "AND n0.type IN ('nt:unstructured')",
-                    "ORDER BY",
-                    $ordering
+                    'ORDER BY',
+                    $ordering,
                 ]),
                 $this->defaultColumns
             ),
