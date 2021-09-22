@@ -14,6 +14,7 @@ use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\Statement;
 use DOMDocument;
 use DOMXPath;
 use Exception;
@@ -84,6 +85,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      * see https://github.com/jackalope/jackalope-doctrine-dbal/pull/149/files#diff-a3a0165ed79ca1ba3513ec5ecd59ec56R707.
      */
     private const SQLITE_MAXIMUM_IN_PARAM_COUNT = 999;
+    private const DBAL2 = 'DBAL2';
+    private const DBAL3 = 'DBAL3';
+    private string $dbalVersion;
 
     /**
      * The factory to instantiate objects.
@@ -219,10 +223,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         );
     }
 
-    /**
-     * @return Connection
-     */
-    public function getConnection()
+    public function getConnection(): Connection
     {
         $this->initConnection();
 
@@ -2018,9 +2019,12 @@ LEFT JOIN
 phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type_id
 ';
 
+        if (!isset($this->dbalVersion)) {
+            $this->determineDbalVersion();
+        }
         $statement = $this->getConnection()->prepare($query);
 
-        $stmtResult = $statement->executeQuery();
+        $stmtResult = self::DBAL3 === $this->dbalVersion ? $statement->executeQuery() : $statement->execute();
         $stmtResult = is_bool($stmtResult) ? $statement : $stmtResult;
 
         while ($row = $stmtResult->fetchAssociative()) {
@@ -2698,5 +2702,10 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         }
 
         $this->connectionInitialized = true;
+    }
+
+    private function determineDbalVersion(): void
+    {
+        $this->dbalVersion = method_exists(Statement::class, 'executeQuery') ? self::DBAL3 : self::DBAL2;
     }
 }
