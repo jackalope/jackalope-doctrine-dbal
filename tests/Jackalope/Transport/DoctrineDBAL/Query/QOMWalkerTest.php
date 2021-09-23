@@ -42,13 +42,7 @@ class QOMWalkerTest extends TestCase
         parent::setUp();
 
         $conn = $this->getConnection();
-        $this->nodeTypeManager = $this->getMockBuilder(NodeTypeManager::class)
-            ->setMethods([])
-            ->setConstructorArgs([])
-            ->setMockClassName('')
-            ->disableOriginalConstructor()
-            ->getMock()
-        ;
+        $this->nodeTypeManager = $this->createMock(NodeTypeManager::class);
 
         $this->nodeTypeManager
             ->method('hasNodeType')

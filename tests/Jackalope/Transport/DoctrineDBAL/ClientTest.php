@@ -242,19 +242,19 @@ class ClientTest extends FunctionalTestCase
         $node = $rootNode->addNode('testLengthAttribute');
 
         $data = [
-            // PropertyName         PropertyValue                   PropertyType            Expected Length
-            'simpleString' => ['simplestring',                PropertyType::STRING,   12],
-            'mbString' => ['stringMultibit漢',             PropertyType::STRING,   17],
-            'long' => [42,                            PropertyType::LONG,     2],
-            'double' => [3.1415,                        PropertyType::DOUBLE,   6],
-            'decimal' => [3.141592,                      PropertyType::DECIMAL,  8],
-            'date' => [new \DateTime('now'),          PropertyType::DATE,     29],
-            'booleanTrue' => [true,                          PropertyType::BOOLEAN,  1],
-            'booleanFalse' => [false,                         PropertyType::BOOLEAN,  0],
-            'name' => ['nt:unstructured',             PropertyType::NAME,     15],
-            'uri' => ['https://google.com',          PropertyType::URI,      18],
-            'path' => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
-            // 'multiString'   => array(array('foo', 'bar'),           PropertyType::STRING,   array(3,3)),
+            // PropertyName => [PropertyValue, PropertyType, Expected Length]
+            'simpleString' => ['simplestring', PropertyType::STRING, 12],
+            'mbString' => ['stringMultibit漢', PropertyType::STRING, 17],
+            'long' => [42, PropertyType::LONG, 2],
+            'double' => [3.1415, PropertyType::DOUBLE, 6],
+            'decimal' => [3.141592, PropertyType::DECIMAL, 8],
+            'date' => [new \DateTime('now'), PropertyType::DATE, 29],
+            'booleanTrue' => [true, PropertyType::BOOLEAN, 1],
+            'booleanFalse' => [false, PropertyType::BOOLEAN, 0],
+            'name' => ['nt:unstructured', PropertyType::NAME, 15],
+            'uri' => ['https://google.com', PropertyType::URI, 18],
+            'path' => ['/root/testLengthAttribute', PropertyType::PATH, 25],
+            // 'multiString' => [['foo', 'bar']], PropertyType::STRING, [3,3]),
             // (weak)reference...
         ];
 

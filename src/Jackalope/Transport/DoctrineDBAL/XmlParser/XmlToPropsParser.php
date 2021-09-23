@@ -66,7 +66,7 @@ final class XmlToPropsParser
     private $data;
 
     /**
-     * @param string[] $columnNames
+     * @param string[] $propertyNames
      */
     public function __construct(
         string $xml,

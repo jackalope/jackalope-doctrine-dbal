@@ -11,8 +11,6 @@ use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\WorkspaceManagementInterface;
-use PHPCR\NamespaceException;
-use PHPCR\Query\InvalidQueryException;
 
 /**
  * Logging enabled wrapper for the Jackalope Doctrine DBAL client.
@@ -23,16 +21,13 @@ use PHPCR\Query\InvalidQueryException;
  */
 
 // PermissionInterface, VersioningInterface, LockingInterface, ObservationInterface
+
+/**
+ * @property Client $transport
+ */
 class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTransport, NodeTypeManagementInterface, WorkspaceManagementInterface, TransactionInterface
 {
     /**
-     * @var Client
-     */
-    protected $transport;
-
-    /**
-     * Constructor.
-     *
      * @param Client          $transport A jackalope doctrine dbal client instance
      * @param LoggerInterface $logger    A logger instance
      */
@@ -41,10 +36,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
         parent::__construct($factory, $transport, $logger);
     }
 
-    /**
-     * @return Connection
-     */
-    public function getConnection()
+    public function getConnection(): Connection
     {
         return $this->transport->getConnection();
     }
@@ -54,17 +46,12 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      *
      * Will improve error reporting at the cost of some round trips.
      */
-    public function setCheckLoginOnServer($bool)
+    public function setCheckLoginOnServer($bool): void
     {
         $this->transport->setCheckLoginOnServer($bool);
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @throws InvalidQueryException
-     */
-    public function query(Query $query)
+    public function query(Query $query): array
     {
         $this->logger->startCall(__FUNCTION__, func_get_args(), ['fetchDepth' => $this->transport->getFetchDepth()]);
         $result = $this->transport->query($query);
@@ -73,85 +60,53 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
         return $result;
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function getSupportedQueryLanguages()
+    public function getSupportedQueryLanguages(): array
     {
         return $this->transport->getSupportedQueryLanguages();
     }
 
-    /**
-     * {@inheritDoc}
-     *
-     * @throws NamespaceException
-     */
-    public function registerNamespace($prefix, $uri)
+    public function registerNamespace($prefix, $uri): void
     {
-        return $this->transport->registerNamespace($prefix, $uri);
+        $this->transport->registerNamespace($prefix, $uri);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function unregisterNamespace($prefix)
+    public function unregisterNamespace($prefix): void
     {
-        return $this->transport->unregisterNamespace($prefix);
+        $this->transport->unregisterNamespace($prefix);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function registerNodeTypes($types, $allowUpdate)
+    public function registerNodeTypes($types, $allowUpdate): void
     {
-        return $this->transport->registerNodeTypes($types, $allowUpdate);
+        $this->transport->registerNodeTypes($types, $allowUpdate);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function createWorkspace($name, $srcWorkspace = null)
+    public function createWorkspace(string $name, string $srcWorkspace = null): void
     {
-        return $this->transport->createWorkspace($name, $srcWorkspace);
+        $this->transport->createWorkspace($name, $srcWorkspace);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function deleteWorkspace($name)
+    public function deleteWorkspace($name): void
     {
         $this->transport->deleteWorkspace($name);
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function beginTransaction()
+    public function beginTransaction(): ?string
     {
         return $this->transport->beginTransaction();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function commitTransaction()
+    public function commitTransaction(): void
     {
         $this->transport->commitTransaction();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function rollbackTransaction()
+    public function rollbackTransaction(): void
     {
         $this->transport->rollbackTransaction();
     }
 
-    /**
-     * {@inheritDoc}
-     */
-    public function setTransactionTimeout($seconds)
+    public function setTransactionTimeout(int $seconds): void
     {
-        return $this->transport->setTransactionTimeout($seconds);
+        $this->transport->setTransactionTimeout($seconds);
     }
 }
