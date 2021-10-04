@@ -1710,7 +1710,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         $query = "SELECT path FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?";
-        $path = $this->getConnection()->fetchColumn($query, [$uuid, $this->workspaceName]);
+        $path = $this->getConnection()->fetchOne($query, [$uuid, $this->workspaceName]);
         if (!$path) {
             throw new ItemNotFoundException("no item found with uuid " . $uuid);
         }
