@@ -7,6 +7,11 @@ Changelog
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide a cache instance, as CachedClient does not know which implementation to pick. 
 
+1.7.1
+-----
+
+* Fixed DBAL 3 compatibility bug.
+
 1.7.0
 -----
 
