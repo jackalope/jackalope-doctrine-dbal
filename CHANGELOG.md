@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.7.1
+-----
+
+* Fixed DBAL 3 compatibility bug.
+
 1.7.0
 -----
 
