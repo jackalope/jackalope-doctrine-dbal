@@ -22,6 +22,7 @@ jobs:
 
             matrix:
                 php-version:
+                    - 7.2
                     - 7.3
                     - 7.4
                     - 8.0
@@ -39,6 +40,15 @@ jobs:
                       dependencies: lowest
                       db: mysql
                     - php-version: '7.3'
+                      dependencies: lowest
+                      db: pgsql
+                    - php-version: '7.2'
+                      dependencies: lowest
+                      db: sqlite
+                    - php-version: '7.2'
+                      dependencies: lowest
+                      db: mysql
+                    - php-version: '7.2'
                       dependencies: lowest
                       db: pgsql
 
