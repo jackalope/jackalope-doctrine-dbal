@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.7.2
+-----
+
+* Allow installation with PHP 7.2
+* Limit to doctrine/cache 1 as the code relies on code that was removed in doctrine/cache 2.
+
 1.7.1
 -----
 
