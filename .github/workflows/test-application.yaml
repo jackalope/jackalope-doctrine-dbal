@@ -33,15 +33,6 @@ jobs:
                 dependencies:
                     - highest
                 include:
-                    - php-version: '7.3'
-                      dependencies: lowest
-                      db: sqlite
-                    - php-version: '7.3'
-                      dependencies: lowest
-                      db: mysql
-                    - php-version: '7.3'
-                      dependencies: lowest
-                      db: pgsql
                     - php-version: '7.2'
                       dependencies: lowest
                       db: sqlite
