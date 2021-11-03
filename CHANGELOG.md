@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.7.3
+-----
+
+* Improve performance for deleting properties of nodes by using xpath. #390
+
 1.7.2
 -----
 
