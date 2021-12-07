@@ -1,11 +1,28 @@
 Changelog
 =========
 
+
 2.0.0 (unreleased)
 ------------------
 
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide a cache instance, as CachedClient does not know which implementation to pick. 
+
+unreleased
+----------
+
+Test with PHP 8.1
+
+1.7.3
+-----
+
+* Improve performance for deleting properties of nodes by using xpath. #390
+
+1.7.2
+-----
+
+* Allow installation with PHP 7.2
+* Limit to doctrine/cache 1 as the code relies on code that was removed in doctrine/cache 2.
 
 1.7.1
 -----

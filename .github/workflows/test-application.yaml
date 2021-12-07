@@ -22,8 +22,9 @@ jobs:
 
       matrix:
         php-version:
-          - 7.4
-          - 8.0
+          - '7.4'
+          - '8.0'
+          - '8.1'
         db:
           - mysql
           - pgsql

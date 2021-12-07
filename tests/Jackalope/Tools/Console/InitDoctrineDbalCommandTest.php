@@ -63,6 +63,15 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->platform
             ->method('getCreateTableSQL')
             ->willReturn([]);
+        $this->platform
+            ->method('getDropForeignKeySQL')
+            ->willReturn('drop foreign key');
+        $this->platform
+            ->method('getDropSequenceSQL')
+            ->willReturn('drop sequence');
+        $this->platform
+            ->method('getDropTableSQL')
+            ->willReturn('drop table');
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
