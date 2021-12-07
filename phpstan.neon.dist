@@ -4,4 +4,4 @@ parameters:
         - src
     ignoreErrors:
         # BC for legacy version of postgres platform class
-        - '#Class Doctrine\\DBAL\\Platforms\\PostgreSqlPlatform not found.#'
+        - '#Class Doctrine\\DBAL\\Platforms\\PostgreSQLPlatform referenced with incorrect case: Doctrine\\DBAL\\Platforms\\PostgreSqlPlatform.#'

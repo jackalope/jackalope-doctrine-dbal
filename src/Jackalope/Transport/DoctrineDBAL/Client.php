@@ -1666,33 +1666,32 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         $dom->loadXML($xml);
+        $xpath = new DomXpath($dom);
 
         $found = false;
         $propertyName = PathHelper::getNodeName($path);
-        foreach ($dom->getElementsByTagNameNS('http://www.jcp.org/jcr/sv/1.0', 'property') as $propertyNode) {
-            if ($propertyName == $propertyNode->getAttribute('sv:name')) {
-                $found = true;
-                // would be nice to have the property object to ask for type
-                // but its in state deleted, would mean lots of refactoring
-                if ($propertyNode->hasAttribute('sv:type')) {
-                    $type = strtolower($propertyNode->getAttribute('sv:type'));
-                    if (in_array($type, ['reference', 'weakreference'])) {
-                        $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
-                        try {
-                            $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
-                            $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
-                        } catch (DBALException $e) {
-                            throw new RepositoryException(
-                                'Unexpected exception while cleaning up deleted nodes',
-                                $e->getCode(),
-                                $e
-                            );
-                        }
+        foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
+            $found = true;
+            // would be nice to have the property object to ask for type
+            // but its in state deleted, would mean lots of refactoring
+            if ($propertyNode->hasAttribute('sv:type')) {
+                $type = strtolower($propertyNode->getAttribute('sv:type'));
+                if (in_array($type, ['reference', 'weakreference'])) {
+                    $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
+                    try {
+                        $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
+                        $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
+                    } catch (DBALException $e) {
+                        throw new RepositoryException(
+                            'Unexpected exception while cleaning up deleted nodes',
+                            $e->getCode(),
+                            $e
+                        );
                     }
                 }
-                $propertyNode->parentNode->removeChild($propertyNode);
-                break;
             }
+
+            $propertyNode->parentNode->removeChild($propertyNode);
         }
 
         if (!$found) {
