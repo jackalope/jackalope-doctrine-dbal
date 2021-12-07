@@ -1,6 +1,11 @@
 Changelog
 =========
 
+unreleased
+----------
+
+Test with PHP 8.1
+
 1.7.3
 -----
 
