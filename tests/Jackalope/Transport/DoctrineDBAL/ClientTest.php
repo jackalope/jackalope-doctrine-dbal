@@ -9,9 +9,11 @@ use Jackalope\NodeType\NodeTypeTemplate;
 use Jackalope\Test\FunctionalTestCase;
 use PDO;
 use PHPCR\PropertyType;
+use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 use PHPCR\Query\QueryInterface;
 use PHPCR\Util\NodeHelper;
 use PHPCR\Util\PathHelper;
+use PHPCR\Util\QOM\QueryBuilder;
 use PHPCR\ValueFormatException;
 use ReflectionClass;
 
@@ -435,6 +437,7 @@ class ClientTest extends FunctionalTestCase
                         'value' => 'CCC',
                     ],
                 ],
+                'value',
                 'value DESC',
                 ['three', 'two', 'one'],
             ],
@@ -453,6 +456,7 @@ class ClientTest extends FunctionalTestCase
                     ],
                 ],
                 'value',
+                'value',
                 ['three', 'two', 'one'],
             ],
 
@@ -470,6 +474,7 @@ class ClientTest extends FunctionalTestCase
                     ],
                 ],
                 'value',
+                'value',
                 ['one', 'three', 'two'],
             ],
 
@@ -486,6 +491,7 @@ class ClientTest extends FunctionalTestCase
                         'value' => 5.05,
                     ],
                 ],
+                'value',
                 'value',
                 ['two', 'three', 'one'],
             ],
@@ -510,8 +516,45 @@ class ClientTest extends FunctionalTestCase
                         'value' => 5.05,
                     ],
                 ],
+                'value',
                 'title, value ASC',
                 ['two', 'one', 'four', 'three'],
+            ],
+
+            // property with double quotes
+            [
+                [
+                    'one' => [
+                        'val"ue' => 'AAA',
+                    ],
+                    'two' => [
+                        'val"ue' => 'BBB',
+                    ],
+                    'three' => [
+                        'val"ue' => 'CCC',
+                    ],
+                ],
+                'val"ue',
+                'val"ue DESC',
+                ['three', 'two', 'one'],
+            ],
+
+            // property with single quotes
+            [
+                [
+                    'one' => [
+                        'val\'ue' => 'AAA',
+                    ],
+                    'two' => [
+                        'val\'ue' => 'BBB',
+                    ],
+                    'three' => [
+                        'val\'ue' => 'CCC',
+                    ],
+                ],
+                'val\'ue',
+                'val\'ue DESC',
+                ['three', 'two', 'one'],
             ],
         ];
     }
@@ -519,7 +562,7 @@ class ClientTest extends FunctionalTestCase
     /**
      * @dataProvider provideOrder
      */
-    public function testOrder($nodes, $orderBy, $expectedOrder)
+    public function testOrder($nodes, $propertyName, $orderBy, $expectedOrder)
     {
         $rootNode = $this->session->getNode('/');
 
@@ -533,7 +576,30 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $qm = $this->session->getWorkspace()->getQueryManager();
-        $query = $qm->createQuery('SELECT * FROM [nt:unstructured] WHERE value IS NOT NULL ORDER BY ' . $orderBy, QueryInterface::JCR_SQL2);
+        $qf = $qm->getQOMFactory();
+        $qb = new QueryBuilder($qf);
+        $qb->from(
+            $qb->qomf()->selector('a', 'nt:unstructured')
+        );
+        $qb->where($qf->comparison(
+            $qf->propertyValue('a', $propertyName),
+            QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO,
+            $qf->literal('NULL')
+        ));
+
+        $orderBys = explode(',', $orderBy);
+        foreach ($orderBys as $orderByItem) {
+            $orderByParts = explode(' ', trim($orderByItem));
+            $propertyName = $orderByParts[0];
+            $order = isset($orderByParts[1]) ? $orderByParts[1] : 'ASC';
+
+            $qb->addOrderBy(
+                $qb->qomf()->propertyValue('a', $propertyName),
+                $order
+            );
+        }
+
+        $query = $qb->getQuery();
         $result = $query->execute();
 
         $rows = $result->getRows();

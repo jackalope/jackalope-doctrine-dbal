@@ -723,10 +723,10 @@ class QOMWalker
 
         if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
             return sprintf(
-                '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name="%s"]/sv:value\'), " ", ","))',
+                '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name=%s]/sv:value\'), " ", ","))',
                 $literalOperand->getLiteralValue(),
                 $alias,
-                $property
+                Xpath::escape($property)
             );
         }
 
@@ -920,15 +920,15 @@ class QOMWalker
     private function sqlXpathValueExists($alias, $property)
     {
         if ($this->platform instanceof MySQLPlatform) {
-            return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
+            return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1])') = 1";
         }
 
         if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            return "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
+            return "xpath_exists('//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         }
 
         if ($this->platform instanceof SqlitePlatform) {
-            return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1])') = 1";
+            return "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1])') = 1";
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
@@ -945,15 +945,15 @@ class QOMWalker
     private function sqlXpathExtractValue($alias, $property, $column = 'props')
     {
         if ($this->platform instanceof MySQLPlatform) {
-            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
+            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1]')";
         }
 
         if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
+            return "(xpath('//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1]/text()', CAST($alias.$column AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text";
         }
 
         if ($this->platform instanceof SqlitePlatform) {
-            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]')";
+            return "EXTRACTVALUE($alias.$column, '//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1]')";
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
@@ -962,7 +962,7 @@ class QOMWalker
     private function sqlXpathExtractNumValue($alias, $property)
     {
         if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            return "(xpath('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
+            return "(xpath('//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[1]/text()', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces()."))[1]::text::int";
         }
 
         return 'CAST(' . $this->sqlXpathExtractValue($alias, $property) . ' AS DECIMAL)';
@@ -971,15 +971,15 @@ class QOMWalker
     private function sqlXpathExtractValueAttribute($alias, $property, $attribute, $valueIndex = 1)
     {
         if ($this->platform instanceof MySQLPlatform) {
-            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value[%d]/@%s')", $alias, Xpath::escape($property), $valueIndex, $attribute);
         }
 
         if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            return sprintf("CAST((xpath('//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", $property, $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
+            return sprintf("CAST((xpath('//sv:property[@sv:name=%s]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", Xpath::escape($property), $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
 
         if ($this->platform instanceof SqlitePlatform) {
-            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=\"%s\"]/sv:value[%d]/@%s')", $alias, $property, $valueIndex, $attribute);
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value[%d]/@%s')", $alias, Xpath::escape($property), $valueIndex, $attribute);
         }
 
         throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
@@ -1001,13 +1001,13 @@ class QOMWalker
         $expression = null;
 
         if ($this->platform instanceof MySQLPlatform) {
-            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[text()%s%s]) > 0')";
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
         } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            $expression = "xpath_exists('//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
+            $expression = "xpath_exists('//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[text()%s%s]', CAST($alias.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'";
         } elseif ($this->platform instanceof SqlitePlatform) {
-            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=\"" . $property . "\"]/sv:value[text()%s%s]) > 0')";
+            $expression = "EXTRACTVALUE($alias.props, 'count(//sv:property[@sv:name=" . Xpath::escape($property) . "]/sv:value[text()%s%s]) > 0')";
         } else {
             throw new NotImplementedException("Xpath evaluations cannot be executed with '" . $this->platform->getName() . "' yet.");
         }
