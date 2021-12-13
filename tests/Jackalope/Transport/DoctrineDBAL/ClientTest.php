@@ -3,6 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL;
 
 use DateTime;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
 use DOMDocument;
 use DOMXPath;
 use Jackalope\NodeType\NodeTypeTemplate;
@@ -537,6 +538,9 @@ class ClientTest extends FunctionalTestCase
                 'val"ue',
                 'val"ue DESC',
                 ['three', 'two', 'one'],
+                [MySQLPlatform::class]
+                // see https://stackoverflow.com/questions/70339679/use-extractvalue-against-correctly-escaped-xml-attribute-value-in-mysql
+                // currently mysql does not escape 'val"ue' the same was as "val&quot;ue" so the test fails
             ],
 
             // property with single quotes
@@ -580,8 +584,15 @@ class ClientTest extends FunctionalTestCase
     /**
      * @dataProvider provideOrder
      */
-    public function testOrder($nodes, $propertyName, $orderBy, $expectedOrder)
+    public function testOrder($nodes, $propertyName, $orderBy, $expectedOrder, $skipPlatforms = [])
     {
+        $platform = $this->getConnection()->getDatabasePlatform();
+        foreach ($skipPlatforms as $skipPlatform) {
+            if ($platform instanceof $skipPlatform) {
+                $this->markTestSkipped(sprintf('The "%s" platform is not supported yet for this test.', $skipPlatform));
+            }
+        }
+
         $rootNode = $this->session->getNode('/');
 
         foreach ($nodes as $nodeName => $nodeProperties) {
@@ -618,6 +629,7 @@ class ClientTest extends FunctionalTestCase
         }
 
         $query = $qb->getQuery();
+
         $result = $query->execute();
 
         $rows = $result->getRows();
