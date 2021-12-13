@@ -556,6 +556,24 @@ class ClientTest extends FunctionalTestCase
                 'val\'ue DESC',
                 ['three', 'two', 'one'],
             ],
+
+            // property with semicolon quotes
+            [
+                [
+                    'one' => [
+                        'val;ue' => 'AAA',
+                    ],
+                    'two' => [
+                        'val;ue' => 'BBB',
+                    ],
+                    'three' => [
+                        'val;ue' => 'CCC',
+                    ],
+                ],
+                'val;ue',
+                'val;ue DESC',
+                ['three', 'two', 'one'],
+            ],
         ];
     }
 
