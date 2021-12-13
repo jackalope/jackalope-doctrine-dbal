@@ -98,7 +98,7 @@ EOT
                 try {
                     foreach ($schema->toDropSql($connection->getDatabasePlatform()) as $sql) {
                         if (true === $input->getOption('dump-sql')) {
-                            $output->writeln($sql ?: '');
+                            $output->writeln($sql);
                         } else {
                             $connection->executeStatement($sql);
                         }
@@ -112,7 +112,7 @@ EOT
 
             foreach ($schema->toSql($connection->getDatabasePlatform()) as $sql) {
                 if (true === $input->getOption('dump-sql')) {
-                    $output->writeln($sql ?: '');
+                    $output->writeln($sql);
                 } else {
                     $connection->executeStatement($sql);
                 }
