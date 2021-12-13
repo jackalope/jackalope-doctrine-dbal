@@ -1,10 +1,11 @@
 Changelog
 =========
 
-unreleased
-----------
+1.7.4
+-----
 
-Test with PHP 8.1
+* Fix SQL injection in SQL2 queries: Escape xpaths in queries. See [security advisory](https://github.com/jackalope/jackalope-doctrine-dbal/security/advisories/GHSA-ph98-v78f-jqrm)
+* Test with PHP 8.1
 
 1.7.3
 -----
