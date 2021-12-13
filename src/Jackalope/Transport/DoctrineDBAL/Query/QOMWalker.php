@@ -578,7 +578,7 @@ class QOMWalker
         return sprintf(
             "%s.path LIKE '%s/%%'",
             $this->getTableAlias($constraint->getSelectorName()),
-            $ancestorPath
+            addcslashes($ancestorPath, "'")
         );
     }
 
@@ -592,7 +592,7 @@ class QOMWalker
         return sprintf(
             "%s.parent = '%s'",
             $this->getTableAlias($constraint->getSelectorName()),
-            $constraint->getParentPath()
+            addcslashes($constraint->getParentPath(), "'")
         );
     }
 
