@@ -1,17 +1,23 @@
 Changelog
 =========
 
-
 2.0.0 (unreleased)
 ------------------
 
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide a cache instance, as CachedClient does not know which implementation to pick. 
 
-unreleased
-----------
+1.7.5
+-----
 
-Test with PHP 8.1
+* Fix an edge case with postgres when searching for a node name with a double quote `"` in the search expression.
+  Note that with MySQL, searching for a node name with double quote no longer works due to wrong XPath handling in MySQL.
+
+1.7.4
+-----
+
+* Fix SQL injection in SQL2 queries: Escape xpaths in queries. See [security advisory](https://github.com/jackalope/jackalope-doctrine-dbal/security/advisories/GHSA-ph98-v78f-jqrm)
+* Test with PHP 8.1
 
 1.7.3
 -----
