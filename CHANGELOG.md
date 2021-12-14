@@ -1,6 +1,12 @@
 Changelog
 =========
 
+1.7.5
+-----
+
+* Fix an edge case with postgres when searching for a node name with a double quote `"` in the search expression.
+  Note that with MySQL, searching for a node name with double quote no longer works due to wrong XPath handling in MySQL.
+
 1.7.4
 -----
 
