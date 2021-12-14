@@ -1044,7 +1044,7 @@ class QOMWalker
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
         } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
-            $expression = sprintf("xpath_exists('//sv:property[@sv:name=%s]/sv:value[text()%s%s]', CAST(%%s.props AS xml), %%s) = 't'", Xpath::escape($property), $alias, $this->sqlXpathPostgreSQLNamespaces());
+            $expression = sprintf("xpath_exists('//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]', CAST(%s.props AS xml), %s) = 't'", Xpath::escape($property), $alias, $this->sqlXpathPostgreSQLNamespaces());
         } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]) > 0')", $alias, Xpath::escape($property));
         } else {
