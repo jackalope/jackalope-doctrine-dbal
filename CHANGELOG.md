@@ -1,6 +1,11 @@
 Changelog
 =========
 
+1.7.6
+-----
+
+* Fix to correctly handle SQLite connections when middleware is used by dbal.
+
 1.7.5
 -----
 

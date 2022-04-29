@@ -2869,9 +2869,13 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
         if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
-            $connection = $this->conn->getWrappedConnection();
-            if ($connection instanceof PDOConnection && ! $connection instanceof PDO) {
-                $connection = $connection->getWrappedConnection();
+            if (method_exists($this->conn, 'getNativeConnection')) {
+                $connection = $this->conn->getNativeConnection();
+            } else {
+                $connection = $this->conn->getWrappedConnection();
+                if ($connection instanceof PDOConnection && !$connection instanceof PDO) {
+                    $connection = $connection->getWrappedConnection();
+                }
             }
 
             $this->registerSqliteFunctions($connection);
