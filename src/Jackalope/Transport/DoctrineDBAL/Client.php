@@ -634,7 +634,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $resultSetUuids = [];
 
         // first iterate and build up an array of all the UUIDs in the result set
-        foreach ($rows as $row) {
+        foreach ($rows as &$row) {
+            $row = array_change_key_case($row, CASE_LOWER);
             $resultSetUuids[$row['identifier']] = $row['path'];
         }
 
@@ -1296,6 +1297,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $paths = [];
 
         foreach ($rows as $row) {
+            $row = array_change_key_case($row, CASE_LOWER);
             $this->nodeIdentifiers[$row['path']] = $row['identifier'];
             $data[$row['path']] = $this->xmlToProps($row['props']);
             $data[$row['path']]->{'jcr:primaryType'} = $row['type'];
@@ -1321,6 +1323,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         foreach ($childrenRows as $child) {
+            $child = array_change_key_case($child, CASE_LOWER);
             $childName = explode('/', $child['path']);
             $childName = end($childName);
             if (!isset($data[$child['parent']]->{$childName})) {
@@ -1464,6 +1467,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         if (!$row) {
             throw new ItemNotFoundException("Item $uuid not found in workspace ".$this->workspaceName);
         }
+        $row = array_change_key_case($row, CASE_LOWER);
 
         $path = $row['path'];
         $data = $this->getNodeData($row);
@@ -1801,6 +1805,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $values = $ids = [];
         $srcAbsPathPattern = '/^'.preg_quote($srcAbsPath, '/').'/';
         while ($row = $stmt->fetchAssociative()) {
+            $row = array_change_key_case($row, CASE_LOWER);
             $values['id'.$i] = $row['id'];
             $values['path'.$i] = preg_replace($srcAbsPathPattern, $dstAbsPath, $row['path'], 1);
             $values['parent'.$i] = PathHelper::getParentPath($values['path'.$i]);
@@ -2027,6 +2032,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         $stmtResult = is_bool($stmtResult) ? $statement : $stmtResult;
 
         while ($row = $stmtResult->fetchAssociative()) {
+
+            $row = array_change_key_case($row, CASE_LOWER);
             $nodeName = $row['node_name'];
 
             if (!isset($result[$nodeName])) {
@@ -2226,6 +2233,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         $streams = [];
         foreach ($data as $row) {
+            $row = array_change_key_case($row, CASE_LOWER);
             if (is_resource($row['data'])) {
                 $stream = $row['data'];
             } else {
