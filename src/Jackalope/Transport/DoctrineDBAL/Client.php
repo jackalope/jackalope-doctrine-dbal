@@ -78,6 +78,7 @@ use stdClass;
  *
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
+ * @author David Buchmann <mail@davidbu.ch>
  */
 class Client extends BaseTransport implements QueryTransport, WritingInterface, WorkspaceManagementInterface, NodeTypeManagementInterface, TransactionInterface
 {
