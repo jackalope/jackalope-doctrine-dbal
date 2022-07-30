@@ -5,9 +5,12 @@ namespace Jackalope\Transport\DoctrineDBAL\Query;
 use BadMethodCallException;
 use DateTime;
 use DateTimeZone;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
+use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Jackalope\NotImplementedException;
 use Jackalope\Query\QOM\PropertyValue;
@@ -19,9 +22,6 @@ use PHPCR\NodeType\NodeTypeInterface;
 use PHPCR\NodeType\NodeTypeManagerInterface;
 use PHPCR\Query\InvalidQueryException;
 use PHPCR\Query\QOM;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
 
 /**
  * Converts QOM to SQL Statements for the Doctrine DBAL database backend.
@@ -66,11 +66,6 @@ class QOMWalker
      */
     private $schema;
 
-    /**
-     * @param NodeTypeManagerInterface $manager
-     * @param Connection               $conn
-     * @param array                    $namespaces
-     */
     public function __construct(NodeTypeManagerInterface $manager, Connection $conn, array $namespaces = [])
     {
         $this->conn = $conn;
@@ -81,7 +76,7 @@ class QOMWalker
     }
 
     /**
-     * Generate a table alias
+     * Generate a table alias.
      *
      * @param string $selectorName
      *
@@ -92,7 +87,7 @@ class QOMWalker
         $selectorAlias = $this->getSelectorAlias($selectorName);
 
         if (!isset($this->alias[$selectorAlias])) {
-            $this->alias[$selectorAlias] = 'n' . count($this->alias);
+            $this->alias[$selectorAlias] = 'n'.count($this->alias);
         }
 
         return $this->alias[$selectorAlias];
@@ -111,14 +106,14 @@ class QOMWalker
             } else { // Currently no aliases, use an empty string as index
                 $selectorAlias = '';
             }
-        } elseif (strpos($selectorName, '.') === false) {
+        } elseif (false === strpos($selectorName, '.')) {
             $selectorAlias = $selectorName;
         } else {
             $parts = explode('.', $selectorName);
             $selectorAlias = reset($parts);
         }
 
-        if (strpos($selectorAlias, '[') === 0) {
+        if (0 === strpos($selectorAlias, '[')) {
             $selectorAlias = substr($selectorAlias, 1, -1);
         }
 
@@ -129,28 +124,23 @@ class QOMWalker
         return $selectorAlias;
     }
 
-    /**
-     * @param QueryObjectModel $qom
-     *
-     * @return string
-     */
-    public function walkQOMQuery(QueryObjectModel $qom)
+    public function walkQOMQuery(QueryObjectModel $qom): array
     {
         $source = $qom->getSource();
         $selectors = $this->validateSource($source);
 
-        $sourceSql = ' ' . $this->walkSource($source);
+        $sourceSql = ' '.$this->walkSource($source);
         $constraintSql = '';
         if ($constraint = $qom->getConstraint()) {
-            $constraintSql = ' AND ' . $this->walkConstraint($constraint);
+            $constraintSql = ' AND '.$this->walkConstraint($constraint);
         }
 
         $orderingSql = '';
         if ($orderings = $qom->getOrderings()) {
-            $orderingSql = ' ' . $this->walkOrderings($orderings);
+            $orderingSql = ' '.$this->walkOrderings($orderings);
         }
 
-        $sql = 'SELECT ' . $this->getColumns($qom);
+        $sql = 'SELECT '.$this->getColumns($qom);
         $sql .= $sourceSql;
         $sql .= $constraintSql;
         $sql .= $orderingSql;
@@ -191,9 +181,7 @@ class QOMWalker
     }
 
     /**
-     * Validates the nodeTypes in given source
-     *
-     * @param QOM\SourceInterface $source
+     * Validates the nodeTypes in given source.
      *
      * @return QOM\SelectorInterface[]
      *
@@ -214,8 +202,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\SelectorInterface $source
-     *
      * @throws InvalidQueryException
      */
     protected function validateSelectorSource(QOM\SelectorInterface $source)
@@ -223,9 +209,9 @@ class QOMWalker
         $nodeType = $source->getNodeTypeName();
 
         if (!$this->nodeTypeManager->hasNodeType($nodeType)) {
-            $msg = 'Selected node type does not exist: ' . $nodeType;
+            $msg = 'Selected node type does not exist: '.$nodeType;
             if ($alias = $source->getSelectorName()) {
-                $msg .= ' AS ' . $alias;
+                $msg .= ' AS '.$alias;
             }
 
             throw new InvalidQueryException($msg);
@@ -233,8 +219,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\JoinInterface $source
-     *
      * @return QOM\SelectorInterface[]
      *
      * @throws InvalidQueryException
@@ -263,8 +247,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\SourceInterface $source
-     *
      * @return string
      *
      * @throws NotImplementedException
@@ -283,8 +265,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\SelectorInterface $source
-     *
      * @return string
      */
     public function walkSelectorSource(QOM\SelectorInterface $source)
@@ -298,8 +278,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\JoinConditionInterface $right
-     *
      * @return string the alias on the right side of a join
      *
      * @throws BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
@@ -315,7 +293,6 @@ class QOMWalker
         }
         throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
-
 
     /**
      * @param QOM\JoinConditionInterface $right
@@ -337,9 +314,7 @@ class QOMWalker
     }
 
     /**
-     * find the most left join in a tree
-     *
-     * @param QOM\JoinInterface $source
+     * find the most left join in a tree.
      *
      * @return QOM\JoinInterface
      */
@@ -348,13 +323,13 @@ class QOMWalker
         if ($source->getLeft() instanceof QOM\JoinInterface) {
             return $this->getLeftMostJoin($source->getLeft());
         }
+
         return $source;
     }
 
     /**
-     * @param QOM\JoinInterface $source
-     * @param boolean $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
-     *        that checks the workspace_name and type
+     * @param bool $root whether the method call is recursed for nested joins. If true, it will add a WHERE clause
+     *                   that checks the workspace_name and type
      *
      * @return string
      *
@@ -373,7 +348,7 @@ class QOMWalker
             $this->getTableAlias($source->getLeft()->getSelectorName());
             $sql = "FROM phpcr_nodes $leftAlias ";
         } else {
-            $sql = $this->walkJoinSource($left, false) . ' '; // One step left, until we're at the selector
+            $sql = $this->walkJoinSource($left, false).' '; // One step left, until we're at the selector
             $leftMostJoin = $this->getLeftMostJoin($source);
             $leftAlias = $this->getTableAlias(
                 $this->getLeftJoinSelector($leftMostJoin->getJoinCondition())
@@ -385,20 +360,19 @@ class QOMWalker
 
         switch ($source->getJoinType()) {
             case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_INNER:
-                $sql .= sprintf("INNER JOIN phpcr_nodes %s ", $rightAlias);
+                $sql .= sprintf('INNER JOIN phpcr_nodes %s ', $rightAlias);
                 break;
             case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_LEFT_OUTER:
-                $sql .= sprintf("LEFT JOIN phpcr_nodes %s ", $rightAlias);
+                $sql .= sprintf('LEFT JOIN phpcr_nodes %s ', $rightAlias);
                 break;
             case QOM\QueryObjectModelConstantsInterface::JCR_JOIN_TYPE_RIGHT_OUTER:
-                $sql .= sprintf("RIGHT JOIN phpcr_nodes %s ", $rightAlias);
+                $sql .= sprintf('RIGHT JOIN phpcr_nodes %s ', $rightAlias);
                 break;
         }
 
-        $sql .= sprintf("ON ( %s.workspace_name = %s.workspace_name AND %s ", $leftAlias, $rightAlias, $nodeTypeClause);
-        $sql .= 'AND ' . $this->walkJoinCondition($source->getLeft(), $source->getRight(), $source->getJoinCondition()) . ' ';
+        $sql .= sprintf('ON ( %s.workspace_name = %s.workspace_name AND %s ', $leftAlias, $rightAlias, $nodeTypeClause);
+        $sql .= 'AND '.$this->walkJoinCondition($source->getLeft(), $source->getRight(), $source->getJoinCondition()).' ';
         $sql .= ') '; // close on-clause
-
 
         if ($root) { // The method call is not recursed when $root is true, so we can add a WHERE clause
             // TODO: revise this part for alternatives
@@ -416,37 +390,35 @@ class QOMWalker
 
     /**
      * @param QOM\SelectorInterface|QOM\JoinInterface $left
-     * @param QOM\SelectorInterface $right
-     * @param QOM\JoinConditionInterface $condition
      *
      * @return string
      *
-     * @throws NotImplementedException if a SameNodeJoinCondtion is used.
+     * @throws NotImplementedException if a SameNodeJoinCondition is used
      */
     public function walkJoinCondition($left, QOM\SelectorInterface $right, QOM\JoinConditionInterface $condition)
     {
-        if ($condition instanceof QOM\ChildNodeJoinConditionInterface) {
-            return $this->walkChildNodeJoinCondition($condition);
-        }
-        if ($condition instanceof QOM\DescendantNodeJoinConditionInterface) {
-            return $this->walkDescendantNodeJoinCondition($condition);
-        }
-        if ($condition instanceof QOM\EquiJoinConditionInterface) {
-            if ($left instanceof QOM\SelectorInterface) {
-                $selectorName = $left->getSelectorName();
-            } else {
-                $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
-            }
-            return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
-        }
-        if ($condition instanceof QOM\SameNodeJoinConditionInterface) {
-            throw new NotImplementedException('SameNodeJoinCondtion');
+        switch ($condition) {
+            case $condition instanceof QOM\ChildNodeJoinConditionInterface:
+                return $this->walkChildNodeJoinCondition($condition);
+
+            case $condition instanceof QOM\DescendantNodeJoinConditionInterface:
+                return $this->walkDescendantNodeJoinCondition($condition);
+
+            case $condition instanceof QOM\EquiJoinConditionInterface:
+                if ($left instanceof QOM\SelectorInterface) {
+                    $selectorName = $left->getSelectorName();
+                } else {
+                    $selectorName = $this->getLeftJoinSelector($this->getLeftMostJoin($left)->getJoinCondition());
+                }
+
+                return $this->walkEquiJoinCondition($selectorName, $right->getSelectorName(), $condition);
+
+            default:
+                throw new NotImplementedException(get_class($condition));
         }
     }
 
     /**
-     * @param QOM\ChildNodeJoinConditionInterface $condition
-     *
      * @return string
      */
     public function walkChildNodeJoinCondition(QOM\ChildNodeJoinConditionInterface $condition)
@@ -455,12 +427,10 @@ class QOMWalker
         $leftAlias = $this->getTableAlias($condition->getParentSelectorName());
         $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return sprintf("(%s.path LIKE %s AND %s.depth = %s.depth + 1) ", $rightAlias, $concatExpression, $rightAlias, $leftAlias);
+        return sprintf('(%s.path LIKE %s AND %s.depth = %s.depth + 1) ', $rightAlias, $concatExpression, $rightAlias, $leftAlias);
     }
 
     /**
-     * @param QOM\DescendantNodeJoinConditionInterface $condition
-     *
      * @return string
      */
     public function walkDescendantNodeJoinCondition(QOM\DescendantNodeJoinConditionInterface $condition)
@@ -469,18 +439,16 @@ class QOMWalker
         $leftAlias = $this->getTableAlias($condition->getAncestorSelectorName());
         $concatExpression = $this->platform->getConcatExpression("$leftAlias.path", "'/%'");
 
-        return sprintf("%s.path LIKE %s ", $rightAlias, $concatExpression);
+        return sprintf('%s.path LIKE %s ', $rightAlias, $concatExpression);
     }
 
     /**
-     * @param QOM\EquiJoinConditionInterface $condition
-     *
      * @return string
      */
     public function walkEquiJoinCondition($leftSelectorName, $rightSelectorName, QOM\EquiJoinConditionInterface $condition)
     {
-        return $this->walkOperand(new PropertyValue($leftSelectorName, $condition->getProperty1Name())) . ' ' .
-               $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) . ' ' .
+        return $this->walkOperand(new PropertyValue($leftSelectorName, $condition->getProperty1Name())).' '.
+               $this->walkOperator(QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO).' '.
                $this->walkOperand(new PropertyValue($rightSelectorName, $condition->getProperty2Name()));
     }
 
@@ -521,12 +489,10 @@ class QOMWalker
             return $this->walkFullTextSearchConstraint($constraint);
         }
 
-        throw new InvalidQueryException(sprintf("Constraint %s not yet supported.", get_class($constraint)));
+        throw new InvalidQueryException(sprintf('Constraint %s not yet supported.', get_class($constraint)));
     }
 
     /**
-     * @param QOM\SameNodeInterface $constraint
-     *
      * @return string
      */
     public function walkSameNodeConstraint(QOM\SameNodeInterface $constraint)
@@ -539,8 +505,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\FullTextSearchInterface $constraint
-     *
      * @return string
      */
     public function walkFullTextSearchConstraint(QOM\FullTextSearchInterface $constraint)
@@ -552,8 +516,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\PropertyExistenceInterface $constraint
-     *
      * @return string
      */
     public function walkPropertyExistenceConstraint(QOM\PropertyExistenceInterface $constraint)
@@ -562,8 +524,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\DescendantNodeInterface $constraint
-     *
      * @return string
      */
     public function walkDescendantNodeConstraint(QOM\DescendantNodeInterface $constraint)
@@ -571,20 +531,14 @@ class QOMWalker
         $ancestorPath = $constraint->getAncestorPath();
         if ('/' === $ancestorPath) {
             $ancestorPath = '';
-        } elseif (substr($ancestorPath, -1) === '/') {
+        } elseif ('/' === substr($ancestorPath, -1)) {
             throw new InvalidQueryException("Trailing slash in $ancestorPath");
         }
 
-        return sprintf(
-            "%s.path LIKE '%s/%%'",
-            $this->getTableAlias($constraint->getSelectorName()),
-            addcslashes($ancestorPath, "'")
-        );
+        return $this->getTableAlias($constraint->getSelectorName()).".path LIKE '".$ancestorPath."/%'";
     }
 
     /**
-     * @param QOM\ChildNodeInterface $constraint
-     *
      * @return string
      */
     public function walkChildNodeConstraint(QOM\ChildNodeInterface $constraint)
@@ -597,42 +551,36 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\AndInterface $constraint
-     *
      * @return string
      */
     public function walkAndConstraint(QOM\AndInterface $constraint)
     {
         return sprintf(
-            "(%s AND %s)",
+            '(%s AND %s)',
             $this->walkConstraint($constraint->getConstraint1()),
             $this->walkConstraint($constraint->getConstraint2())
         );
     }
 
     /**
-     * @param QOM\OrInterface $constraint
-     *
      * @return string
      */
     public function walkOrConstraint(QOM\OrInterface $constraint)
     {
         return sprintf(
-            "(%s OR %s)",
+            '(%s OR %s)',
             $this->walkConstraint($constraint->getConstraint1()),
             $this->walkConstraint($constraint->getConstraint2())
         );
     }
 
     /**
-     * @param QOM\NotInterface $constraint
-     *
      * @return string
      */
     public function walkNotConstraint(QOM\NotInterface $constraint)
     {
         return sprintf(
-            "NOT (%s)",
+            'NOT (%s)',
             $this->walkConstraint($constraint->getConstraint())
         );
     }
@@ -641,9 +589,7 @@ class QOMWalker
      * This method figures out the best way to do a comparison
      * When we need to compare a property with a literal value,
      * we need to be aware of the multivalued properties, we then require
-     * a different xpath statement then with other comparisons
-     *
-     * @param QOM\ComparisonInterface $constraint
+     * a different xpath statement then with other comparisons.
      *
      * @return string
      */
@@ -676,8 +622,8 @@ class QOMWalker
 
             if (is_string($literalOperand->getLiteralValue()) && '=' !== $operator && '!=' !== $operator) {
                 return
-                    $this->walkOperand($operator1) . ' ' .
-                    $operator . ' ' .
+                    $this->walkOperand($operator1).' '.
+                    $operator.' '.
                     $this->walkOperand($operator2);
             }
 
@@ -689,7 +635,7 @@ class QOMWalker
                 if (false !== strpos($literal, ':')) {
                     $parts = explode(':', $literal);
                     if (!isset($this->namespaces[$parts[0]])) {
-                        throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
+                        throw new NamespaceException('The namespace '.$parts[0].' was not registered.');
                     }
 
                     $parts[0] = $this->namespaces[$parts[0]];
@@ -699,13 +645,13 @@ class QOMWalker
                 return sprintf(
                     '%s %s %s',
                     $this->platform->getConcatExpression(
-                        sprintf("%s.namespace", $alias),
+                        sprintf('%s.namespace', $alias),
                         sprintf("(CASE %s.namespace WHEN '' THEN '' ELSE ':' END)", $alias),
-                        sprintf("%s.local_name", $alias)
+                        sprintf('%s.local_name', $alias)
                     ),
                     $operator,
                     $this->conn->quote($literal)
-                ) ;
+                );
             }
 
             if ('jcr:path' !== $operand->getPropertyName() && 'jcr:uuid' !== $operand->getPropertyName()) {
@@ -729,15 +675,13 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\PropertyValueInterface $propertyOperand
-     * @param QOM\LiteralInterface $literalOperand
      * @param string $operator
      *
      * @return string
      */
     public function walkTextComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
     {
-        $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
+        $alias = $this->getTableAlias($propertyOperand->getSelectorName().'.'.$propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
 
         return $this->sqlXpathComparePropertyValue($alias, $property, $this->getLiteralValue($literalOperand), $operator);
@@ -747,14 +691,13 @@ class QOMWalker
     {
         $value = true === $literalOperand->getLiteralValue() ? '1' : '0';
 
-        return $this->walkOperand($propertyOperand) . ' ' . $operator . ' ' . $this->conn->quote($value);
+        return $this->walkOperand($propertyOperand).' '.$operator.' '.$this->conn->quote($value);
     }
 
     public function walkNumComparisonConstraint(QOM\PropertyValueInterface $propertyOperand, QOM\LiteralInterface $literalOperand, $operator)
     {
-        $alias = $this->getTableAlias($propertyOperand->getSelectorName() . '.' . $propertyOperand->getPropertyName());
+        $alias = $this->getTableAlias($propertyOperand->getSelectorName().'.'.$propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
-
 
         if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
             return sprintf(
@@ -784,25 +727,25 @@ class QOMWalker
      */
     public function walkOperator($operator)
     {
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_EQUAL_TO === $operator) {
             return '=';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_GREATER_THAN) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_GREATER_THAN === $operator) {
             return '>';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_GREATER_THAN_OR_EQUAL_TO) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_GREATER_THAN_OR_EQUAL_TO === $operator) {
             return '>=';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN === $operator) {
             return '<';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN_OR_EQUAL_TO) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LESS_THAN_OR_EQUAL_TO === $operator) {
             return '<=';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_NOT_EQUAL_TO === $operator) {
             return '!=';
         }
-        if ($operator === QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LIKE) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_OPERATOR_LIKE === $operator) {
             return 'LIKE';
         }
 
@@ -810,8 +753,6 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\OperandInterface $operand
-     *
      * @return string
      *
      * @throws InvalidQueryException
@@ -823,9 +764,9 @@ class QOMWalker
             $alias = $this->getTableAlias($selectorName);
 
             return $this->platform->getConcatExpression(
-                sprintf("%s.namespace", $alias),
+                sprintf('%s.namespace', $alias),
                 sprintf("(CASE %s.namespace WHEN '' THEN '' ELSE ':' END)", $alias),
-                sprintf("%s.local_name", $alias)
+                sprintf('%s.local_name', $alias)
             );
         }
 
@@ -833,7 +774,7 @@ class QOMWalker
             $selectorName = $operand->getSelectorName();
             $alias = $this->getTableAlias($selectorName);
 
-            return sprintf("%s.local_name", $alias);
+            return sprintf('%s.local_name', $alias);
         }
 
         if ($operand instanceof QOM\LowerCaseInterface) {
@@ -849,13 +790,13 @@ class QOMWalker
         }
 
         if ($operand instanceof QOM\PropertyValueInterface) {
-            $alias = $this->getTableAlias($operand->getSelectorName() . '.' . $operand->getPropertyName());
+            $alias = $this->getTableAlias($operand->getSelectorName().'.'.$operand->getPropertyName());
             $property = $operand->getPropertyName();
-            if ($property === 'jcr:path') {
-                return sprintf("%s.path", $alias);
+            if ('jcr:path' === $property) {
+                return sprintf('%s.path', $alias);
             }
-            if ($property === "jcr:uuid") {
-                return sprintf("%s.identifier", $alias);
+            if ('jcr:uuid' === $property) {
+                return sprintf('%s.identifier', $alias);
             }
 
             return $this->sqlXpathExtractValue($alias, $property);
@@ -868,12 +809,10 @@ class QOMWalker
             return $this->sqlXpathExtractValueAttribute($alias, $property, 'length');
         }
 
-        throw new InvalidQueryException(sprintf("Dynamic operand %s not yet supported.", get_class($operand)));
+        throw new InvalidQueryException(sprintf('Dynamic operand %s not yet supported.', get_class($operand)));
     }
 
     /**
-     * @param array $orderings
-     *
      * @return string
      */
     public function walkOrderings(array $orderings)
@@ -888,16 +827,14 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\OrderingInterface $ordering
-     *
      * @return string
      */
     public function walkOrdering(QOM\OrderingInterface $ordering)
     {
         $direction = $ordering->getOrder();
-        if ($direction === QOM\QueryObjectModelConstantsInterface::JCR_ORDER_ASCENDING) {
+        if (QOM\QueryObjectModelConstantsInterface::JCR_ORDER_ASCENDING === $direction) {
             $direction = 'ASC';
-        } elseif ($direction === QOM\QueryObjectModelConstantsInterface::JCR_ORDER_DESCENDING) {
+        } elseif (QOM\QueryObjectModelConstantsInterface::JCR_ORDER_DESCENDING === $direction) {
             $direction = 'DESC';
         }
 
@@ -906,8 +843,8 @@ class QOMWalker
         if ($ordering->getOperand() instanceof QOM\PropertyValueInterface) {
             $operand = $ordering->getOperand();
             $property = $ordering->getOperand()->getPropertyName();
-            if ($property !== 'jcr:path' && $property !== 'jcr:uuid') {
-                $alias = $this->getTableAlias($operand->getSelectorName() . '.' . $property);
+            if ('jcr:path' !== $property && 'jcr:uuid' !== $property) {
+                $alias = $this->getTableAlias($operand->getSelectorName().'.'.$property);
 
                 $numericalSelector = $this->sqlXpathExtractValue($alias, $property, 'numerical_props');
 
@@ -920,14 +857,12 @@ class QOMWalker
             }
         }
 
-        $sql .= ' ' .$direction;
+        $sql .= ' '.$direction;
 
         return $sql;
     }
 
     /**
-     * @param QOM\LiteralInterface $operand
-     *
      * @return string
      *
      * @throws NamespaceException
@@ -936,12 +871,13 @@ class QOMWalker
     {
         $value = $operand->getLiteralValue();
 
-        /**
+        /*
          * Normalize Dates to UTC
          */
         if ($value instanceof DateTime) {
-            $valueUTC = clone($value);
+            $valueUTC = clone $value;
             $valueUTC->setTimezone(new DateTimeZone('UTC'));
+
             return $valueUTC->format('c');
         }
 
@@ -1033,7 +969,7 @@ class QOMWalker
      * @return string
      *
      * @throws NotImplementedException if the storage backend is neither mysql
-     *      nor postgres nor sqlite
+     *                                 nor postgres nor sqlite
      */
     private function sqlXpathComparePropertyValue($alias, $property, $value, $operator)
     {
@@ -1063,8 +999,7 @@ class QOMWalker
     }
 
     /**
-     * @param QOM\SelectorInterface $source
-     * @param string                $alias
+     * @param string $alias
      *
      * @return string
      */

@@ -2,7 +2,10 @@
 
 namespace Jackalope\Tools\Console;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Jackalope\Tools\Console\Command\InitDoctrineDbalCommand;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use PDOException;
@@ -10,9 +13,6 @@ use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
 use Symfony\Component\Console\Tester\CommandTester;
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Schema\AbstractSchemaManager;
 
 class InitDoctrineDbalCommandTest extends TestCase
 {
@@ -90,8 +90,6 @@ class InitDoctrineDbalCommandTest extends TestCase
      * @param string $name   command name
      * @param array  $args   command arguments
      * @param int    $status expected return status
-     *
-     * @return CommandTester
      */
     protected function executeCommand($name, $args, $status = 0): CommandTester
     {

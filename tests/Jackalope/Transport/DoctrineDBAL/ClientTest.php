@@ -6,9 +6,7 @@ use DateTime;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
 use DOMDocument;
 use DOMXPath;
-use Jackalope\NodeType\NodeTypeTemplate;
 use Jackalope\Test\FunctionalTestCase;
-use PDO;
 use PHPCR\PropertyType;
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 use PHPCR\Query\QueryInterface;
@@ -20,7 +18,7 @@ use ReflectionClass;
 
 class ClientTest extends FunctionalTestCase
 {
-    public function testQueryNodes()
+    public function testQueryNodes(): void
     {
         $root = $this->session->getNode('/');
         $article = $root->addNode('article');
@@ -41,7 +39,7 @@ class ClientTest extends FunctionalTestCase
         $this->assertCount(1, $result->getNodes());
     }
 
-    public function testAddNodeTypes()
+    public function testAddNodeTypes(): void
     {
         $workspace = $this->session->getWorkspace();
         $ntm = $workspace->getNodeTypeManager();
@@ -52,24 +50,24 @@ class ClientTest extends FunctionalTestCase
         $propertyTemplate = $ntm->createPropertyDefinitionTemplate();
         $propertyTemplate->setName('headline');
         $propertyTemplate->setRequiredType(PropertyType::STRING);
-        $propertyDefs[] = $propertyTemplate;
+        $propertyDefs[] = $propertyTemplate; // add the template to the property templates
 
         $childDefs = $template->getNodeDefinitionTemplates();
         $nodeTemplate = $ntm->createNodeDefinitionTemplate();
         $nodeTemplate->setName('article_content');
         $nodeTemplate->setDefaultPrimaryTypeName('nt:unstructured');
         $nodeTemplate->setMandatory(true);
-        $childDefs[] = $nodeTemplate;
+        $childDefs[] = $nodeTemplate; // add the template to the node templates
 
         $ntm->registerNodeTypes([$template], true);
 
         $def = $ntm->getNodeType('phpcr:article');
-        $this->assertEquals("phpcr:article", $def->getName());
+        $this->assertEquals('phpcr:article', $def->getName());
         $this->assertCount(1, $def->getDeclaredPropertyDefinitions());
         $this->assertCount(1, $def->getDeclaredChildNodeDefinitions());
     }
 
-    public function testReorderNodes()
+    public function testReorderNodes(): void
     {
         $root = $this->session->getNode('/');
         $topic = $root->addNode('topic');
@@ -97,28 +95,29 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, ['name' => 'page3', 'parent' => '/topic']);
-        $row = $stmnt->fetch();
+        $result = $this->getConnection()->executeQuery($query, ['name' => 'page3', 'parent' => '/topic']);
+        $row = $result->fetchAssociative();
         $this->assertEquals(0, $row['sort_order']);
 
-        $stmnt = $this->conn->executeQuery($query, ['name' => 'page4', 'parent' => '/topic']);
+        $result = $this->getConnection()->executeQuery($query, ['name' => 'page4', 'parent' => '/topic']);
 
-        $row = $stmnt->fetch();
+        $row = $result->fetchAssociative();
         $this->assertEquals(4, $row['sort_order']);
 
         $retrieved = $this->session->getNode('/topic');
+        $check = [];
         foreach ($retrieved as $name => $child) {
             $check[] = $name;
         }
 
-        $this->assertEquals($check[0], 'page3');
-        $this->assertEquals($check[4], 'page4');
+        $this->assertSame('page3', $check[0]);
+        $this->assertSame('page4', $check[4]);
     }
 
     /**
-     * Test cases for depth set when adding nodes
+     * Test cases for depth set when adding nodes.
      */
-    public function testDepthOnAdd()
+    public function testDepthOnAdd(): void
     {
         $root = $this->session->getNode('/');
         $topic = $root->addNode('topic');
@@ -135,21 +134,22 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic']);
-        $row = $stmnt->fetch();
+        $result = $this->getConnection()->executeQuery($query, ['path' => '/topic']);
+        $row = $result->fetchAssociative();
 
-        $this->assertEquals($row['depth'], '1');
+        // need to cast to int, as mysql returns the value as string, while postgres returns it as int
+        $this->assertSame(1, (int) $row['depth']);
 
-        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic/page1']);
-        $row = $stmnt->fetch();
+        $result = $this->getConnection()->executeQuery($query, ['path' => '/topic/page1']);
+        $row = $result->fetchAssociative();
 
-        $this->assertEquals($row['depth'], '2');
+        $this->assertSame(2, (int) $row['depth']);
     }
 
     /**
-     * Test cases for depth when moving nodes
+     * Test cases for depth when moving nodes.
      */
-    public function testDepthOnMove()
+    public function testDepthOnMove(): void
     {
         $root = $this->session->getNode('/');
         $topic1 = $root->addNode('topic1');
@@ -174,19 +174,19 @@ class ClientTest extends FunctionalTestCase
 
         $query = $qb->getSql();
 
-        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic1/page1/page2']);
-        $row = $stmnt->fetch();
-        $this->assertEquals($row['depth'], '3');
+        $result = $this->getConnection()->executeQuery($query, ['path' => '/topic1/page1/page2']);
+        $row = $result->fetchAssociative();
+        $this->assertSame(3, (int) $row['depth']);
 
-        $stmnt = $this->conn->executeQuery($query, ['path' => '/topic1/page1/page2/topic3/page3']);
-        $row = $stmnt->fetch();
-        $this->assertEquals($row['depth'], '5');
+        $result = $this->getConnection()->executeQuery($query, ['path' => '/topic1/page1/page2/topic3/page3']);
+        $row = $result->fetchAssociative();
+        $this->assertSame(5, (int) $row['depth']);
     }
 
     /**
      * @dataProvider provideTestOutOfRangeCharacters
      */
-    public function testOutOfRangeCharacterOccurrence($string, $isValid)
+    public function testOutOfRangeCharacterOccurrence($string, $isValid): void
     {
         if (false === $isValid) {
             $this->expectException(ValueFormatException::class);
@@ -200,13 +200,13 @@ class ClientTest extends FunctionalTestCase
         $this->addToAssertionCount(1);
     }
 
-    public function provideTestOutOfRangeCharacters()
+    public function provideTestOutOfRangeCharacters(): array
     {
         return [
             ['This is valid too!'.$this->translateCharFromCode('\u0009'), true],
             ['This is valid', true],
             [$this->translateCharFromCode('\uD7FF'), true],
-            ['This is on the edge, but valid too.'. $this->translateCharFromCode('\uFFFD'), true],
+            ['This is on the edge, but valid too.'.$this->translateCharFromCode('\uFFFD'), true],
             [$this->translateCharFromCode('\u10000'), true],
             [$this->translateCharFromCode('\u10FFFF'), true],
             [$this->translateCharFromCode('\u0001'), false],
@@ -219,15 +219,15 @@ class ClientTest extends FunctionalTestCase
 
     private function translateCharFromCode($char)
     {
-        return json_decode('"'.$char.'"');
+        return json_decode('"'.$char.'"', true, 512, JSON_THROW_ON_ERROR);
     }
 
-    public function testDeleteMoreThanOneThousandNodes()
+    public function testDeleteMoreThanOneThousandNodes(): void
     {
         $root = $this->session->getNode('/');
         $parent = $root->addNode('test-more-than-one-thousand');
 
-        for ($i = 0; $i <= 1200; $i++) {
+        for ($i = 0; $i <= 1200; ++$i) {
             $parent->addNode('node-'.$i);
         }
 
@@ -240,24 +240,24 @@ class ClientTest extends FunctionalTestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testPropertyLengthAttribute()
+    public function testPropertyLengthAttribute(): void
     {
         $rootNode = $this->session->getRootNode();
         $node = $rootNode->addNode('testLengthAttribute');
 
         $data = [
             // PropertyName         PropertyValue                   PropertyType            Expected Length
-            'simpleString'  => ['simplestring',                PropertyType::STRING,   12],
-            'mbString'      => ['stringMultibit漢',             PropertyType::STRING,   17],
-            'long'          => [42,                            PropertyType::LONG,     2],
-            'double'        => [3.1415,                        PropertyType::DOUBLE,   6],
-            'decimal'       => [3.141592,                      PropertyType::DECIMAL,  8],
-            'date'          => [new DateTime('now'),          PropertyType::DATE,     29],
-            'booleanTrue'   => [true,                          PropertyType::BOOLEAN,  1],
-            'booleanFalse'  => [false,                         PropertyType::BOOLEAN,  0],
-            'name'          => ['nt:unstructured',             PropertyType::NAME,     15],
-            'uri'           => ['https://google.com',          PropertyType::URI,      18],
-            'path'          => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
+            'simpleString' => ['simplestring',                PropertyType::STRING,   12],
+            'mbString' => ['stringMultibit漢',             PropertyType::STRING,   17],
+            'long' => [42,                            PropertyType::LONG,     2],
+            'double' => [3.1415,                        PropertyType::DOUBLE,   6],
+            'decimal' => [3.141592,                      PropertyType::DECIMAL,  8],
+            'date' => [new DateTime('now'),          PropertyType::DATE,     29],
+            'booleanTrue' => [true,                          PropertyType::BOOLEAN,  1],
+            'booleanFalse' => [false,                         PropertyType::BOOLEAN,  0],
+            'name' => ['nt:unstructured',             PropertyType::NAME,     15],
+            'uri' => ['https://google.com',          PropertyType::URI,      18],
+            'path' => ['/root/testLengthAttribute',   PropertyType::PATH,     25],
             // 'multiString'   => array(array('foo', 'bar'),           PropertyType::STRING,   array(3,3)),
             // (weak)reference...
         ];
@@ -269,7 +269,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
 
         $statement = $this->getConnection()->executeQuery('SELECT props, numerical_props FROM phpcr_nodes WHERE path = ?', ['/testLengthAttribute']);
-        $row = $statement->fetch(PDO::FETCH_ASSOC);
+        $row = $statement->fetchAssociative();
         $props = $row['props'];
         $decimalProps = $row['numerical_props'];
 
@@ -292,7 +292,10 @@ class ClientTest extends FunctionalTestCase
                 }
             }
 
-            $this->assertEquals(1, $propertyElement->length, 'Property ' . $propertyName . ' exists');
+            // we expect to always have some $data
+            \assert(isset($xpath));
+
+            $this->assertEquals(1, $propertyElement->length, 'Property '.$propertyName.' exists');
 
             $values = $xpath->query('sv:value', $propertyElement->item(0));
 
@@ -307,7 +310,7 @@ class ClientTest extends FunctionalTestCase
         }
     }
 
-    public function testUuid()
+    public function testUuid(): void
     {
         $class = new ReflectionClass(Client::class);
         $method = $class->getMethod('generateUuid');
@@ -322,7 +325,7 @@ class ClientTest extends FunctionalTestCase
         self::assertEquals('like-a-uuid', $method->invoke($this->transport));
     }
 
-    public function testMoveAndReplace()
+    public function testMoveAndReplace(): void
     {
         $root = $this->session->getNode('/');
         $topic1 = $root->addNode('topic1');
@@ -345,13 +348,13 @@ class ClientTest extends FunctionalTestCase
         $query = $qb->getSql();
 
         foreach (['/topic1', '/topic2', '/topic2/thisisanewnode', '/topic2/topic1Child'] as $path) {
-            $stmnt = $this->conn->executeQuery($query, ['path' => $path]);
-            $row = $stmnt->fetch();
-            $this->assertNotFalse($row, $path . ' does not exist in database');
+            $stmnt = $this->getConnection()->executeQuery($query, ['path' => $path]);
+            $row = $stmnt->fetchAssociative();
+            $this->assertNotFalse($row, $path.' does not exist in database');
         }
     }
 
-    public function testMoveNamespacedNodes()
+    public function testMoveNamespacedNodes(): void
     {
         $root = $this->session->getNode('/');
         $topic1 = $root->addNode('jcr:topic1');
@@ -375,19 +378,19 @@ class ClientTest extends FunctionalTestCase
         $expectedData = [
             '/jcr:topic2' => 'topic2',
             '/jcr:topic2/jcr:thisisanewnode' => 'thisisanewnode',
-            '/jcr:topic2/jcr:topic1Child' => 'topic1Child'
+            '/jcr:topic2/jcr:topic1Child' => 'topic1Child',
         ];
         foreach ($expectedData as $path => $localName) {
-            $stmnt = $this->conn->executeQuery($query, ['path' => $path, 'local_name' => $localName]);
-            $row = $stmnt->fetch();
-            $this->assertNotFalse($row, $path . ' with local_name' . $localName . ' does not exist in database');
+            $stmnt = $this->getConnection()->executeQuery($query, ['path' => $path, 'local_name' => $localName]);
+            $row = $stmnt->fetchAssociative();
+            $this->assertNotFalse($row, $path.' with local_name'.$localName.' does not exist in database');
         }
     }
 
-    public function testCaseInsensativeRename()
+    public function testCaseInsensativeRename(): void
     {
         $root = $this->session->getNode('/');
-        $topic1 = $root->addNode('topic');
+        $root->addNode('topic');
 
         $this->session->save();
         $this->session->move('/topic', '/Topic');
@@ -396,7 +399,7 @@ class ClientTest extends FunctionalTestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testStoreTypes()
+    public function testStoreTypes(): void
     {
         $rootNode = $this->session->getRootNode();
         $node = $rootNode->addNode('testStoreTypes');
@@ -417,174 +420,164 @@ class ClientTest extends FunctionalTestCase
         $this->session->save();
         $this->session->refresh(false);
 
-        foreach ($data as $propertyData) {
-            list($propName) = $propertyData;
-            $this->assertTrue($node->hasProperty($propName), 'Node has property "' . $propName .'"');
+        foreach ($data as [$propName]) {
+            $this->assertTrue($node->hasProperty($propName), 'Node has property "'.$propName.'"');
         }
     }
 
-    public function provideOrder()
+    public function provideOrder(): iterable
     {
-        return [
+        yield 'string' => [
             [
-                [
-                    'one' => [
-                        'value' => 'AAA',
-                    ],
-                    'two' => [
-                        'value' => 'BBB',
-                    ],
-                    'three' => [
-                        'value' => 'CCC',
-                    ],
+                'one' => [
+                    'value' => 'AAA',
                 ],
-                'value',
-                'value DESC',
-                ['three', 'two', 'one'],
+                'two' => [
+                    'value' => 'BBB',
+                ],
+                'three' => [
+                    'value' => 'CCC',
+                ],
             ],
+            'value',
+            'value DESC',
+            ['three', 'two', 'one'],
+        ];
 
-            // longs
+        yield 'long' => [
             [
-                [
-                    'one' => [
-                        'value' => 30,
-                    ],
-                    'two' => [
-                        'value' => 20,
-                    ],
-                    'three' => [
-                        'value' => 10,
-                    ],
+                'one' => [
+                    'value' => 30,
                 ],
-                'value',
-                'value',
-                ['three', 'two', 'one'],
+                'two' => [
+                    'value' => 20,
+                ],
+                'three' => [
+                    'value' => 10,
+                ],
             ],
+            'value',
+            'value',
+            ['three', 'two', 'one'],
+        ];
 
-            // longs (ensure that values are not cast as strings)
+        yield 'longs (ensure that values are not cast as strings)' => [
             [
-                [
-                    'one' => [
-                        'value' => 10,
-                    ],
-                    'two' => [
-                        'value' => 100,
-                    ],
-                    'three' => [
-                        'value' => 20,
-                    ],
+                'one' => [
+                    'value' => 10,
                 ],
-                'value',
-                'value',
-                ['one', 'three', 'two'],
+                'two' => [
+                    'value' => 100,
+                ],
+                'three' => [
+                    'value' => 20,
+                ],
             ],
+            'value',
+            'value',
+            ['one', 'three', 'two'],
+        ];
 
-            // decimals
+        yield 'decimals' => [
             [
-                [
-                    'one' => [
-                        'value' => 10.01,
-                    ],
-                    'two' => [
-                        'value' => 0.01,
-                    ],
-                    'three' => [
-                        'value' => 5.05,
-                    ],
+                'one' => [
+                    'value' => 10.01,
                 ],
-                'value',
-                'value',
-                ['two', 'three', 'one'],
+                'two' => [
+                    'value' => 0.01,
+                ],
+                'three' => [
+                    'value' => 5.05,
+                ],
             ],
+            'value',
+            'value',
+            ['two', 'three', 'one'],
+        ];
 
-            // mixed
+        yield 'mixed' => [
             [
-                [
-                    'one' => [
-                        'title' => 'AAA',
-                        'value' => 10.01,
-                    ],
-                    'two' => [
-                        'title' => 'AAA',
-                        'value' => 0.01,
-                    ],
-                    'three' => [
-                        'title' => 'CCC',
-                        'value' => 5.05,
-                    ],
-                    'four' => [
-                        'title' => 'BBB',
-                        'value' => 5.05,
-                    ],
+                'one' => [
+                    'title' => 'AAA',
+                    'value' => 10.01,
                 ],
-                'value',
-                'title, value ASC',
-                ['two', 'one', 'four', 'three'],
+                'two' => [
+                    'title' => 'AAA',
+                    'value' => 0.01,
+                ],
+                'three' => [
+                    'title' => 'CCC',
+                    'value' => 5.05,
+                ],
+                'four' => [
+                    'title' => 'BBB',
+                    'value' => 5.05,
+                ],
             ],
+            'value',
+            'title, value ASC',
+            ['two', 'one', 'four', 'three'],
+        ];
 
-            // property with double quotes
+        yield 'property with double quotes' => [
             [
-                [
-                    'one' => [
-                        'val"ue' => 'AAA',
-                    ],
-                    'two' => [
-                        'val"ue' => 'BBB',
-                    ],
-                    'three' => [
-                        'val"ue' => 'CCC',
-                    ],
+                'one' => [
+                    'val"ue' => 'AAA',
                 ],
-                'val"ue',
-                'val"ue DESC',
-                ['three', 'two', 'one'],
-                [MySQLPlatform::class]
-                // see https://stackoverflow.com/questions/70339679/use-extractvalue-against-correctly-escaped-xml-attribute-value-in-mysql
-                // currently mysql does not escape 'val"ue' the same was as "val&quot;ue" so the test fails
+                'two' => [
+                    'val"ue' => 'BBB',
+                ],
+                'three' => [
+                    'val"ue' => 'CCC',
+                ],
             ],
+            'val"ue',
+            'val"ue DESC',
+            ['three', 'two', 'one'],
+            [MySQLPlatform::class],
+            // see https://stackoverflow.com/questions/70339679/use-extractvalue-against-correctly-escaped-xml-attribute-value-in-mysql
+            // currently mysql does not escape 'val"ue' the same was as "val&quot;ue" so the test fails
+        ];
 
-            // property with single quotes
+        yield 'property with single quotes' => [
             [
-                [
-                    'one' => [
-                        'val\'ue' => 'AAA',
-                    ],
-                    'two' => [
-                        'val\'ue' => 'BBB',
-                    ],
-                    'three' => [
-                        'val\'ue' => 'CCC',
-                    ],
+                'one' => [
+                    'val\'ue' => 'AAA',
                 ],
-                'val\'ue',
-                'val\'ue DESC',
-                ['three', 'two', 'one'],
+                'two' => [
+                    'val\'ue' => 'BBB',
+                ],
+                'three' => [
+                    'val\'ue' => 'CCC',
+                ],
             ],
+            'val\'ue',
+            'val\'ue DESC',
+            ['three', 'two', 'one'],
+        ];
 
-            // property with semicolon quotes
+        yield 'property with semicolon' => [
             [
-                [
-                    'one' => [
-                        'val;ue' => 'AAA',
-                    ],
-                    'two' => [
-                        'val;ue' => 'BBB',
-                    ],
-                    'three' => [
-                        'val;ue' => 'CCC',
-                    ],
+                'one' => [
+                    'val;ue' => 'AAA',
                 ],
-                'val;ue',
-                'val;ue DESC',
-                ['three', 'two', 'one'],
+                'two' => [
+                    'val;ue' => 'BBB',
+                ],
+                'three' => [
+                    'val;ue' => 'CCC',
+                ],
             ],
+            'val;ue',
+            'val;ue DESC',
+            ['three', 'two', 'one'],
         ];
     }
 
     /**
      * @dataProvider provideOrder
      */
-    public function testOrder($nodes, $propertyName, $orderBy, $expectedOrder, $skipPlatforms = [])
+    public function testOrder($nodes, $propertyName, $orderBy, $expectedOrder, $skipPlatforms = []): void
     {
         $platform = $this->getConnection()->getDatabasePlatform();
         foreach ($skipPlatforms as $skipPlatform) {
@@ -644,7 +637,7 @@ class ClientTest extends FunctionalTestCase
         }
     }
 
-    public function testCopy()
+    public function testCopy(): void
     {
         $rootNode = $this->session->getNode('/');
         $child1 = $rootNode->addNode('child1');
@@ -655,9 +648,9 @@ class ClientTest extends FunctionalTestCase
 
         $this->session->getWorkspace()->copy('/child1', '/child2');
 
-        $stmt = $this->conn->query("SELECT * FROM phpcr_nodes WHERE path = '/child1' OR path = '/child2'");
-        $child1 = $stmt->fetch();
-        $child2 = $stmt->fetch();
+        $result = $this->getConnection()->executeQuery("SELECT * FROM phpcr_nodes WHERE path = '/child1' OR path = '/child2'");
+        $child1 = $result->fetchAssociative();
+        $child2 = $result->fetchAssociative();
 
         $this->assertNotNull($child1);
         $this->assertNotNull($child2);
@@ -666,7 +659,7 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals($child1['numerical_props'], $child2['numerical_props']);
     }
 
-    public function testCopySiblingWithSamePrefix()
+    public function testCopySiblingWithSamePrefix(): void
     {
         $rootNode = $this->session->getNode('/');
         $child1 = $rootNode->addNode('child1');
@@ -680,13 +673,13 @@ class ClientTest extends FunctionalTestCase
 
         $this->session->getWorkspace()->copy('/child1', '/child2');
 
-        $stmt = $this->conn->query("SELECT * FROM phpcr_nodes WHERE path LIKE '/child%'");
-        $children = $stmt->fetchAll();
+        $stmt = $this->getConnection()->executeQuery("SELECT * FROM phpcr_nodes WHERE path LIKE '/child%'");
+        $children = $stmt->fetchAllAssociative();
 
         $this->assertCount(3, $children);
 
         $paths = array_map(
-            function ($child) {
+            static function ($child) {
                 return $child['path'];
             },
             $children
@@ -700,7 +693,7 @@ class ClientTest extends FunctionalTestCase
     /**
      * The date value should not change when saving.
      */
-    public function testDate()
+    public function testDate(): void
     {
         $rootNode = $this->session->getNode('/');
         $child1 = $rootNode->addNode('child1');
@@ -713,7 +706,7 @@ class ClientTest extends FunctionalTestCase
         $this->assertEquals($before, $after);
     }
 
-    public function testNestedJoinForDifferentDocumentTypes()
+    public function testNestedJoinForDifferentDocumentTypes(): void
     {
         $ntm = $this->session->getWorkspace()->getNodeTypeManager();
         $template = $ntm->createNodeTypeTemplate();
@@ -733,8 +726,6 @@ class ClientTest extends FunctionalTestCase
         $category->setProperty('title', 'someCategory');
         $documentNode->setProperty('category', $category->getProperty('jcr:uuid'), 'WeakReference');
         $this->session->save();
-
-
 
         $qm = $this->session->getWorkspace()->getQueryManager();
         $qom = $qm->getQOMFactory();
@@ -768,7 +759,7 @@ class ClientTest extends FunctionalTestCase
         $this->assertCount(1, $result);
     }
 
-    public function testMultiJoiningReferencedDocuments()
+    public function testMultiJoiningReferencedDocuments(): void
     {
         $ntm = $this->session->getWorkspace()->getNodeTypeManager();
         $template = $ntm->createNodeTypeTemplate();
@@ -806,7 +797,6 @@ class ClientTest extends FunctionalTestCase
             'c',
             'jcr:uuid'
         ));
-
 
         $from = $qom->join($join, $groupSelector, $qom::JCR_JOIN_TYPE_INNER, $qom->equiJoinCondition(
             'd',

@@ -25,7 +25,7 @@ This code is dual licensed under the MIT license and the Apache License Version
 
 # Preconditions
 
-* PHP ^7.1
+* PHP version: See composer.json
 * One of the following databases, including the PDO extension for it:
     * MySQL >= 5.1.5 (we need the ExtractValue function)
     * PostgreSQL

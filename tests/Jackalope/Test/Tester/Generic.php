@@ -4,8 +4,8 @@ namespace Jackalope\Test\Tester;
 
 use Doctrine\DBAL\Connection;
 use ImplementationLoader;
-use PHPCR\Test\FixtureLoaderInterface;
 use function implode;
+use PHPCR\Test\FixtureLoaderInterface;
 
 /**
  * Generic tester class.
@@ -36,8 +36,8 @@ class Generic implements FixtureLoaderInterface
      */
     public function __construct(Connection $connection, $fixturePath)
     {
-        $this->connection   = $connection;
-        $this->fixturePath  = $fixturePath;
+        $this->connection = $connection;
+        $this->fixturePath = $fixturePath;
     }
 
     /**
@@ -52,14 +52,14 @@ class Generic implements FixtureLoaderInterface
 
     public function import($fixtureName, $workspace = null)
     {
-        $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . $fixtureName . '.xml';
+        $fixture = $this->fixturePath.DIRECTORY_SEPARATOR.$fixtureName.'.xml';
         $this->dataSet = new XmlDataSet($fixture);
 
         if ($workspace) {
             $dataSet = $this->dataSet;
 
             // TODO: ugly hack, since we only really ever load a 2nd fixture in combination with '10_Writing/copy.xml'
-            $fixture = $this->fixturePath . DIRECTORY_SEPARATOR . '10_Writing/copy.xml';
+            $fixture = $this->fixturePath.DIRECTORY_SEPARATOR.'10_Writing/copy.xml';
             $this->dataSet = new XmlDataSet($fixture);
 
             $loader = ImplementationLoader::getInstance();

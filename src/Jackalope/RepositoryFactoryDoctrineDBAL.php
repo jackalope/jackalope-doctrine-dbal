@@ -9,7 +9,7 @@ use PHPCR\ConfigurationException;
 use PHPCR\RepositoryFactoryInterface;
 
 /**
- * This factory creates repositories with the Doctrine DBAL transport
+ * This factory creates repositories with the Doctrine DBAL transport.
  *
  * Use repository factory based on parameters (the parameters below are examples):
  *
@@ -70,16 +70,16 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         }
 
         if (count(array_diff_key(self::$required, $parameters))) {
-            throw new ConfigurationException('A required parameter is missing: ' . implode(', ', array_keys(array_diff_key(self::$required, $parameters))));
+            throw new ConfigurationException('A required parameter is missing: '.implode(', ', array_keys(array_diff_key(self::$required, $parameters))));
         }
 
         if (count(array_diff_key($parameters, self::$required, self::$optional))) {
-            throw new ConfigurationException('Additional unknown parameters found: ' . implode(', ', array_keys(array_diff_key($parameters, self::$required, self::$optional))));
+            throw new ConfigurationException('Additional unknown parameters found: '.implode(', ', array_keys(array_diff_key($parameters, self::$required, self::$optional))));
         }
 
         if (isset($parameters['jackalope.factory'])) {
             $factory = $parameters['jackalope.factory'] instanceof FactoryInterface
-                ? $parameters['jackalope.factory'] : new $parameters['jackalope.factory'];
+                ? $parameters['jackalope.factory'] : new $parameters['jackalope.factory']();
         } else {
             $factory = new Factory();
         }

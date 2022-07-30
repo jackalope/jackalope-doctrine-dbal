@@ -4,51 +4,60 @@ namespace Jackalope\Transport\DoctrineDBAL;
 
 use ArrayObject;
 use Closure;
-use Doctrine\Common\Cache\Cache;
-use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
-use Jackalope\NotImplementedException;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
 use Jackalope\Query\Query;
 use PHPCR\ItemNotFoundException;
 use PHPCR\RepositoryException;
+use Psr\SimpleCache\CacheInterface;
 
 /**
  * Class to add caching to the Doctrine DBAL client.
  *
  * @license http://www.apache.org/licenses Apache License Version 2.0, January 2004
  * @license http://opensource.org/licenses/MIT MIT License
- *
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  */
 class CachedClient extends Client
 {
     /**
-     * @var Cache[]
+     * @var CacheInterface[]
      */
-    private $caches;
+    private array $caches;
 
     /**
-     * @var Closure that accepts a cache key as argument and returns it after sanitizing it.
+     * @var Closure that accepts a cache key as argument and returns a cleaned up version of the key
      */
-    private $keySanitizer;
+    private Closure $keySanitizer;
 
-    public function __construct(FactoryInterface $factory, Connection $conn, array $caches = [])
+    /**
+     * @param CacheInterface[] $caches
+     */
+    public function __construct(FactoryInterface $factory, Connection $conn, array $caches)
     {
         parent::__construct($factory, $conn);
 
-        $caches['meta'] = $caches['meta'] ?? new ArrayCache();
+        if (!array_key_exists('meta', $caches)) {
+            throw new \InvalidArgumentException('The meta cache is required when setting up the CachedClient');
+        }
+        foreach ($caches as $type => $cache) {
+            if (!$cache instanceof CacheInterface) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Cache provided for type "%s" is %s which does not implement %s.',
+                    $type,
+                    is_object($cache) ? get_class($cache) : gettype($cache),
+                    CacheInterface::class
+                ));
+            }
+        }
         $this->caches = $caches;
-        $this->keySanitizer = static function ($cacheKey) {
+        $this->keySanitizer = static function (string $cacheKey): string {
             return str_replace(' ', '_', $cacheKey);
         };
     }
 
-    /**
-     * @param Closure $sanitizer
-     */
-    public function setKeySanitizer(Closure $sanitizer)
+    public function setKeySanitizer(Closure $sanitizer): void
     {
         $this->keySanitizer = $sanitizer;
     }
@@ -56,24 +65,20 @@ class CachedClient extends Client
     /**
      * @param array|null $caches which caches to invalidate, null means all except meta
      */
-    private function clearCaches(array $caches = null)
+    private function clearCaches(array $caches = null): void
     {
         $caches = $caches ?: ['nodes', 'query'];
         foreach ($caches as $cache) {
             if (isset($this->caches[$cache])) {
-                $this->caches[$cache]->deleteAll();
+                $this->caches[$cache]->clear();
             }
         }
     }
 
     /**
-     * Sanitizes the key using $this->keySanitizer
-     *
-     * @param string $cacheKey
-     *
-     * @return mixed
+     * Sanitizes the key using $this->keySanitizer.
      */
-    private function sanitizeKey($cacheKey)
+    private function sanitizeKey(string $cacheKey): string
     {
         if ($sanitizer = $this->keySanitizer) {
             return $sanitizer($cacheKey);
@@ -83,11 +88,9 @@ class CachedClient extends Client
     }
 
     /**
-     * @param Node $node
-     *
      * @throws RepositoryException
      */
-    private function clearNodeCache(Node $node)
+    private function clearNodeCache(Node $node): void
     {
         $cacheKey = "nodes: {$node->getPath()}, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
@@ -104,21 +107,19 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
-     *
      */
-    public function createWorkspace($name, $srcWorkspace = null)
+    public function createWorkspace($name, $srcWorkspace = null): void
     {
-        parent::createWorkspace($name, $srcWorkspace = null);
+        parent::createWorkspace($name, $srcWorkspace);
 
         $this->caches['meta']->delete('workspaces');
-        $this->caches['meta']->save("workspace: $name", 1);
+        $this->caches['meta']->set("workspace: $name", 1);
     }
 
     /**
      * {@inheritDoc}
-     *
      */
-    public function deleteWorkspace($name)
+    public function deleteWorkspace($name): void
     {
         parent::deleteWorkspace($name);
 
@@ -130,15 +131,15 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    protected function workspaceExists($workspaceName)
+    protected function workspaceExists($workspaceName): bool
     {
         $cacheKey = "workspace: $workspaceName";
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        $result = $this->caches['meta']->fetch($cacheKey);
+        $result = null !== $this->caches['meta']->get($cacheKey);
         if (!$result && parent::workspaceExists($workspaceName)) {
-            $result = 1;
-            $this->caches['meta']->save($cacheKey, $result);
+            $result = true;
+            $this->caches['meta']->set($cacheKey, $result);
         }
 
         return $result;
@@ -147,19 +148,19 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    protected function fetchUserNodeTypes()
+    protected function fetchUserNodeTypes(): array
     {
         $cacheKey = 'node_types';
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if (!$this->inTransaction && $result = $this->caches['meta']->fetch($cacheKey)) {
+        if (!$this->inTransaction && $result = $this->caches['meta']->get($cacheKey)) {
             return $result;
         }
 
         $result = parent::fetchUserNodeTypes();
 
         if (!$this->inTransaction) {
-            $this->caches['meta']->save($cacheKey, $result);
+            $this->caches['meta']->set($cacheKey, $result);
         }
 
         return $result;
@@ -168,15 +169,15 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodeTypes($nodeTypes = [])
+    public function getNodeTypes($nodeTypes = []): array
     {
         $cacheKey = 'nodetypes: '.serialize($nodeTypes);
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        $result = $this->caches['meta']->fetch($cacheKey);
+        $result = $this->caches['meta']->get($cacheKey);
         if (!$result) {
             $result = parent::getNodeTypes($nodeTypes);
-            $this->caches['meta']->save($cacheKey, $result);
+            $this->caches['meta']->set($cacheKey, $result);
         }
 
         return $result;
@@ -185,7 +186,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNamespaces()
+    public function getNamespaces(): array
     {
         if ($this->namespaces instanceof ArrayObject) {
             return parent::getNamespaces();
@@ -194,13 +195,13 @@ class CachedClient extends Client
         $cacheKey = 'namespaces';
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        $result = $this->caches['meta']->fetch($cacheKey);
+        $result = $this->caches['meta']->get($cacheKey);
         if ($result) {
             $this->setNamespaces($result);
         } else {
             $result = parent::getNamespaces();
 
-            $this->caches['meta']->save($cacheKey, $result);
+            $this->caches['meta']->set($cacheKey, $result);
         }
 
         return (array) $result;
@@ -209,7 +210,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null)
+    public function copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace = null): void
     {
         parent::copyNode($srcAbsPath, $dstAbsPath, $srcWorkspace);
 
@@ -219,15 +220,15 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getAccessibleWorkspaceNames()
+    public function getAccessibleWorkspaceNames(): array
     {
         $cacheKey = 'workspaces';
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        $workspaces = $this->caches['meta']->fetch($cacheKey);
+        $workspaces = $this->caches['meta']->get($cacheKey);
         if (!$workspaces) {
             $workspaces = parent::getAccessibleWorkspaceNames();
-            $this->caches['meta']->save($cacheKey, $workspaces);
+            $this->caches['meta']->set($cacheKey, $workspaces);
         }
 
         return $workspaces;
@@ -249,7 +250,7 @@ class CachedClient extends Client
         $cacheKey = "nodes: $path, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
+        if (false !== ($result = $this->caches['nodes']->get($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException("Item '$path' not found in workspace '$this->workspaceName'");
             }
@@ -261,13 +262,13 @@ class CachedClient extends Client
             $node = parent::getNode($path);
         } catch (ItemNotFoundException $e) {
             if (isset($this->caches['nodes'])) {
-                $this->caches['nodes']->save($cacheKey, 'ItemNotFoundException');
+                $this->caches['nodes']->set($cacheKey, 'ItemNotFoundException');
             }
 
             throw $e;
         }
 
-        $this->caches['nodes']->save($cacheKey, $node);
+        $this->caches['nodes']->set($cacheKey, $node);
 
         return $node;
     }
@@ -275,7 +276,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodes($paths)
+    public function getNodes($paths): array
     {
         if (empty($this->caches['nodes'])) {
             return parent::getNodes($paths);
@@ -295,37 +296,6 @@ class CachedClient extends Client
 
     /**
      * {@inheritDoc}
-     */
-    protected function getSystemIdForNodeUuid($uuid, $workspaceName = null)
-    {
-        if (empty($this->caches['nodes'])) {
-            return parent::getSystemIdForNodeUuid($uuid, $workspaceName);
-        }
-
-        if (null === $workspaceName) {
-            $workspaceName = $this->workspaceName;
-        }
-
-        $cacheKey = "id: $uuid, ".$workspaceName;
-        $cacheKey = $this->sanitizeKey($cacheKey);
-
-        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
-            if ('false' === $result) {
-                return false;
-            }
-
-            return $result;
-        }
-
-        $nodeId = parent::getSystemIdForNodeUuid($uuid, $workspaceName);
-
-        $this->caches['nodes']->save($cacheKey, $nodeId ? $nodeId : 'false');
-
-        return $nodeId;
-    }
-
-    /**
-     * {@inheritDoc}
      *
      * @throws RepositoryException
      */
@@ -341,7 +311,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getNodesByIdentifier($uuids)
+    public function getNodesByIdentifier($uuids): array
     {
         $data = [];
         foreach ($uuids as $uuid) {
@@ -359,7 +329,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deleteNodes(array $operations)
+    public function deleteNodes(array $operations): bool
     {
         $result = parent::deleteNodes($operations);
 
@@ -373,7 +343,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deleteProperties(array $operation)
+    public function deleteProperties(array $operation): bool
     {
         $result = parent::deleteProperties($operation);
 
@@ -388,7 +358,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deleteNodeImmediately($absPath)
+    public function deleteNodeImmediately($absPath): bool
     {
         $result = parent::deleteNodeImmediately($absPath);
 
@@ -402,7 +372,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function deletePropertyImmediately($absPath)
+    public function deletePropertyImmediately($absPath): bool
     {
         $result = parent::deletePropertyImmediately($absPath);
 
@@ -417,7 +387,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function moveNodes(array $operations)
+    public function moveNodes(array $operations): bool
     {
         $result = parent::moveNodes($operations);
 
@@ -431,7 +401,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function moveNodeImmediately($srcAbsPath, $dstAbsPath)
+    public function moveNodeImmediately($srcAbsPath, $dstAbsPath): bool
     {
         $result = parent::moveNodeImmediately($srcAbsPath, $dstAbsPath);
 
@@ -447,7 +417,7 @@ class CachedClient extends Client
      *
      * @throws RepositoryException
      */
-    public function reorderChildren(Node $node)
+    public function reorderChildren(Node $node): bool
     {
         $result = parent::reorderChildren($node);
 
@@ -461,7 +431,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function storeNodes(array $operations)
+    public function storeNodes(array $operations): void
     {
         parent::storeNodes($operations);
 
@@ -474,7 +444,7 @@ class CachedClient extends Client
      *
      * @throws RepositoryException
      */
-    public function getNodePathForIdentifier($uuid, $workspace = null)
+    public function getNodePathForIdentifier($uuid, $workspace = null): string
     {
         if (empty($this->caches['nodes']) || null !== $workspace) {
             return parent::getNodePathForIdentifier($uuid);
@@ -485,7 +455,7 @@ class CachedClient extends Client
         $cacheKey = "nodes by uuid: $uuid, $this->workspaceName";
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
+        if (false !== ($result = $this->caches['nodes']->get($cacheKey))) {
             if ('ItemNotFoundException' === $result) {
                 throw new ItemNotFoundException("no item found with uuid $uuid");
             }
@@ -497,13 +467,13 @@ class CachedClient extends Client
             $path = parent::getNodePathForIdentifier($uuid);
         } catch (ItemNotFoundException $e) {
             if (isset($this->caches['nodes'])) {
-                $this->caches['nodes']->save($cacheKey, 'ItemNotFoundException');
+                $this->caches['nodes']->set($cacheKey, 'ItemNotFoundException');
             }
 
             throw $e;
         }
 
-        $this->caches['nodes']->save($cacheKey, $path);
+        $this->caches['nodes']->set($cacheKey, $path);
 
         return $path;
     }
@@ -511,52 +481,54 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function registerNodeTypes($types, $allowUpdate)
+    public function registerNodeTypes($types, $allowUpdate): bool
     {
-        parent::registerNodeTypes($types, $allowUpdate);
+        $ret = parent::registerNodeTypes($types, $allowUpdate);
 
         if (!$this->inTransaction) {
             $this->caches['meta']->delete('node_types');
         }
+
+        return $ret;
     }
 
     /**
      * {@inheritDoc}
      */
-    public function registerNamespace($prefix, $uri)
+    public function registerNamespace($prefix, $uri): void
     {
         parent::registerNamespace($prefix, $uri);
-        $this->caches['meta']->save('namespaces', $this->namespaces);
+        $this->caches['meta']->set('namespaces', $this->namespaces);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function unregisterNamespace($prefix)
+    public function unregisterNamespace($prefix): void
     {
         parent::unregisterNamespace($prefix);
-        $this->caches['meta']->save('namespaces', $this->namespaces);
+        $this->caches['meta']->set('namespaces', $this->namespaces);
     }
 
     /**
      * {@inheritDoc}
      */
-    public function getReferences($path, $name = null)
+    public function getReferences($path, $name = null): array
     {
         if (empty($this->caches['nodes'])) {
             return parent::getReferences($path, $name);
         }
 
-        $cacheKey = "nodes references: $path, $name, " . $this->workspaceName;
+        $cacheKey = "nodes references: $path, $name, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if (false !== ($result = $this->caches['nodes']->fetch($cacheKey))) {
+        if (false !== ($result = $this->caches['nodes']->get($cacheKey))) {
             return $result;
         }
 
         $references = parent::getReferences($path, $name);
 
-        $this->caches['nodes']->save($cacheKey, $references);
+        $this->caches['nodes']->set($cacheKey, $references);
 
         return $references;
     }
@@ -564,22 +536,22 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function getWeakReferences($path, $name = null)
+    public function getWeakReferences($path, $name = null): array
     {
         if (empty($this->caches['nodes'])) {
             return parent::getWeakReferences($path, $name);
         }
 
-        $cacheKey = "nodes weak references: $path, $name, " . $this->workspaceName;
+        $cacheKey = "nodes weak references: $path, $name, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if ($result = $this->caches['nodes']->fetch($cacheKey)) {
+        if ($result = $this->caches['nodes']->get($cacheKey)) {
             return $result;
         }
 
         $references = parent::getWeakReferences($path, $name);
 
-        $this->caches['nodes']->save($cacheKey, $references);
+        $this->caches['nodes']->set($cacheKey, $references);
 
         return $references;
     }
@@ -598,13 +570,13 @@ class CachedClient extends Client
         $cacheKey = "query: {$query->getStatement()}, {$query->getLimit()}, {$query->getOffset()}, {$query->getLanguage()}, ".$this->workspaceName;
         $cacheKey = $this->sanitizeKey($cacheKey);
 
-        if (false !== ($result = $this->caches['query']->fetch($cacheKey))) {
+        if (false !== ($result = $this->caches['query']->get($cacheKey))) {
             return $result;
         }
 
         $result = parent::query($query);
 
-        $this->caches['query']->save($cacheKey, $result);
+        $this->caches['query']->set($cacheKey, $result);
 
         return $result;
     }
@@ -612,7 +584,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function commitTransaction()
+    public function commitTransaction(): void
     {
         parent::commitTransaction();
 
@@ -622,7 +594,7 @@ class CachedClient extends Client
     /**
      * {@inheritDoc}
      */
-    public function rollbackTransaction()
+    public function rollbackTransaction(): void
     {
         parent::rollbackTransaction();
 

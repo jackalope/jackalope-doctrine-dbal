@@ -13,21 +13,21 @@ abstract class TestCase extends BaseTestCase
      */
     protected $conn;
 
-    protected function getConnection()
+    protected function getConnection(): Connection
     {
-        if ($this->conn === null) {
+        if (null === $this->conn) {
             // @TODO see https://github.com/jackalope/jackalope-doctrine-dbal/issues/48
             global $dbConn;
             $this->conn = $dbConn;
 
-            if ($this->conn === null) {
+            if (null === $this->conn) {
                 $this->conn = DriverManager::getConnection([
-                    'driver'    => @$GLOBALS['phpcr.doctrine.dbal.driver'],
-                    'path'      => @$GLOBALS['phpcr.doctrine.dbal.path'],
-                    'host'      => @$GLOBALS['phpcr.doctrine.dbal.host'],
-                    'user'      => @$GLOBALS['phpcr.doctrine.dbal.username'],
-                    'password'  => @$GLOBALS['phpcr.doctrine.dbal.password'],
-                    'dbname'    => @$GLOBALS['phpcr.doctrine.dbal.dbname']
+                    'driver' => @$GLOBALS['phpcr.doctrine.dbal.driver'],
+                    'path' => @$GLOBALS['phpcr.doctrine.dbal.path'],
+                    'host' => @$GLOBALS['phpcr.doctrine.dbal.host'],
+                    'user' => @$GLOBALS['phpcr.doctrine.dbal.username'],
+                    'password' => @$GLOBALS['phpcr.doctrine.dbal.password'],
+                    'dbname' => @$GLOBALS['phpcr.doctrine.dbal.dbname'],
                 ]);
             }
         }

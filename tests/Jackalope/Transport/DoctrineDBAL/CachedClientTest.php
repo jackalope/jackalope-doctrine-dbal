@@ -2,53 +2,48 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\Connection;
 use Jackalope\Factory;
 use Jackalope\Test\FunctionalTestCase;
-use PHPUnit\Framework\MockObject\MockObject;
+use Jackalope\Transport\TransportInterface;
+use Psr\SimpleCache\CacheInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Psr16Cache;
 
 class CachedClientTest extends FunctionalTestCase
 {
     /**
-     * @var ArrayCache|MockObject
+     * @var CacheInterface
      */
-    private $cacheMock;
+    private $cache;
 
-    protected function getClient(Connection $conn)
+    protected function getClient(Connection $conn): TransportInterface
     {
-        $this->cacheMock = $this->createMock(ArrayCache::class);
+        $this->cache = new Psr16Cache(new ArrayAdapter());
 
-        return new CachedClient(new Factory(), $conn, ['nodes' => $this->cacheMock, 'meta' => $this->cacheMock]);
+        return new CachedClient(new Factory(), $conn, ['nodes' => $this->cache, 'meta' => $this->cache]);
     }
 
-    public function testArrayObjectIsConvertedToArray()
+    public function testArrayObjectIsConvertedToArray(): void
     {
         $namespaces = $this->transport->getNamespaces();
         self::assertIsArray($namespaces);
     }
 
     /**
-     * The default key sanitizer replaces spaces with underscores
+     * The default key sanitizer replaces spaces with underscores.
      */
-    public function testDefaultKeySanitizer()
+    public function testDefaultKeySanitizer(): void
     {
-        $first = true;
-        $this->cacheMock
-            ->method('fetch')
-            ->with(self::callback(function ($arg) use (&$first) {
-                self::assertEquals($first ? 'nodetypes:_a:0:{}' : 'node_types', $arg);
-                $first = false;
-
-                return true;
-            }));
-
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
         $cachedClient->getNodeTypes();
+
+        $this->assertTrue($this->cache->has('node_types'));
+        $this->assertTrue($this->cache->has('nodetypes:_a:0:{}'));
     }
 
-    public function testCustomkeySanitizer()
+    public function testCustomKeySanitizer(): void
     {
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
@@ -57,18 +52,11 @@ class CachedClientTest extends FunctionalTestCase
             return strrev($cacheKey);
         });
 
-        $first = true;
-        $this->cacheMock
-            ->method('fetch')
-            ->with(self::callback(function ($arg) use (&$first) {
-                self::assertEquals($first ? '}{:0:a :sepytedon' : 'sepyt_edon', $arg);
-                $first = false;
-
-                return true;
-            }));
-
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
         $cachedClient->getNodeTypes();
+
+        $this->assertTrue($this->cache->has('sepyt_edon'));
+        $this->assertTrue($this->cache->has('}{:0:a :sepytedon'));
     }
 }

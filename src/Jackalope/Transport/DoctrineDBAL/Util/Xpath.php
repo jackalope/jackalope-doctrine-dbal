@@ -27,7 +27,7 @@ class Xpath
     /**
      * Escapes a string to be used in an xpath query
      * There is a lot of double escaping here because we use single
-     * quote in the EXTRACTVALUE functions
+     * quote in the EXTRACTVALUE functions.
      *
      * The purpose of this method, is to escape a string quotes within a xpath expression
      * which can be kind-of hard.
@@ -47,20 +47,20 @@ class Xpath
         $escapeSingleQuote = $doubleEscapeSingleQuote ? '"\'%s"' : '"%s"';
         $escapeDoubleQuote = $doubleEscapeSingleQuote ? "''%s''" : "'%s'";
 
-        if ((strpos($query, '\'') !== false)
-            || (strpos($query, '"') !== false)
+        if ((false !== strpos($query, '\''))
+            || (false !== strpos($query, '"'))
         ) {
-            $quotechars = ['\'','"'];
+            $quotechars = ['\'', '"'];
             $parts = [];
             $current = '';
 
             foreach (str_split($query) as $character) {
                 if (in_array($character, $quotechars)) {
                     if ('' !== $current) {
-                        $parts[] = $enclosure . $current . $enclosure;
+                        $parts[] = $enclosure.$current.$enclosure;
                     }
 
-                    if ($character === '\'') {
+                    if ('\'' === $character) {
                         $parts[] = sprintf($escapeSingleQuote, $character);
                     } else {
                         $parts[] = sprintf($escapeDoubleQuote, $character);
@@ -73,27 +73,25 @@ class Xpath
             }
 
             if ($current) {
-                $parts[] =  $enclosure . $current . $enclosure;
+                $parts[] = $enclosure.$current.$enclosure;
             }
 
-            $ret = 'concat(' . implode(', ', $parts) . ')';
+            $ret = 'concat('.implode(', ', $parts).')';
 
             if (count($parts) > 2) {
                 $part1 = array_shift($parts);
-                $ret = 'concat(' . $part1 . ', ' . self::concatBy2($parts) . ')';
+                $ret = 'concat('.$part1.', '.self::concatBy2($parts).')';
             }
 
             return $ret;
         }
 
-        return $enclosure . $query . $enclosure;
+        return $enclosure.$query.$enclosure;
     }
 
     /**
      * Because not all concat() implementations support more then 2 arguments,
-     * we need this recursive function
-     *
-     * @param array $parts
+     * we need this recursive function.
      *
      * @return string
      */
@@ -105,6 +103,6 @@ class Xpath
 
         $part1 = array_shift($parts);
 
-        return 'concat(' . $part1 . ', ' . self::concatBy2($parts) . ')';
+        return 'concat('.$part1.', '.self::concatBy2($parts).')';
     }
 }
