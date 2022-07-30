@@ -9,7 +9,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
 use Doctrine\DBAL\Schema\Schema;
 use Jackalope\NotImplementedException;
@@ -898,7 +898,7 @@ class QOMWalker
             return sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[1])') = 1", $alias, Xpath::escape($property));
         }
 
-        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
             return sprintf("xpath_exists('//sv:property[@sv:name=%s]/sv:value[1]', CAST(%s.props AS xml), ".$this->sqlXpathPostgreSQLNamespaces().") = 't'", Xpath::escape($property), $alias);
         }
 
@@ -923,7 +923,7 @@ class QOMWalker
             return sprintf("EXTRACTVALUE(%s.%s, '//sv:property[@sv:name=%s]/sv:value[1]')", $alias, $column, Xpath::escape($property));
         }
 
-        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
             return sprintf("(xpath('//sv:property[@sv:name=%s]/sv:value[1]/text()', CAST(%s.%s AS xml), %s))[1]::text", Xpath::escape($property), $alias, $column, $this->sqlXpathPostgreSQLNamespaces());
         }
 
@@ -936,7 +936,7 @@ class QOMWalker
 
     private function sqlXpathExtractNumValue($alias, $property)
     {
-        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
             return sprintf("(xpath('//sv:property[@sv:name=%s]/sv:value[1]/text()', CAST(%s.props AS xml), %s))[1]::text::int", Xpath::escape($property), $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
 
@@ -949,7 +949,7 @@ class QOMWalker
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value[%d]/@%s')", $alias, Xpath::escape($property), $valueIndex, $attribute);
         }
 
-        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
             return sprintf("CAST((xpath('//sv:property[@sv:name=%s]/sv:value[%d]/@%s', CAST(%s.props AS xml), %s))[1]::text AS bigint)", Xpath::escape($property), $valueIndex, $attribute, $alias, $this->sqlXpathPostgreSQLNamespaces());
         }
 
@@ -979,7 +979,7 @@ class QOMWalker
             $expression = sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]) > 0')", $alias, Xpath::escape($property));
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);
-        } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSqlPlatform) {
+        } elseif ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
             $expression = sprintf("xpath_exists('//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]', CAST(%s.props AS xml), %s) = 't'", Xpath::escape($property), $alias, $this->sqlXpathPostgreSQLNamespaces());
         } elseif ($this->platform instanceof SqlitePlatform) {
             $expression = sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]) > 0')", $alias, Xpath::escape($property));

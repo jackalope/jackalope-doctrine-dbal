@@ -3,7 +3,7 @@
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\RepositoryFactoryDoctrineDBAL;
@@ -56,15 +56,15 @@ class ImplementationLoader extends AbstractLoader
         $this->fixturePath = $fixturePath;
 
         $this->unsupportedChapters = [
-            'ShareableNodes', //TODO: Not implemented, no test currently written for it
-            'AccessControlManagement', //TODO: Not implemented, no test currently written for it
-            'LifecycleManagement', //TODO: Not implemented, no test currently written for it
-            'RetentionAndHold', //TODO: Not implemented, no test currently written for it
-            'SameNameSiblings', //TODO: Not implemented, no test currently written for it
-            'PermissionsAndCapabilities', //TODO: Transport does not support permissions
-            'Observation', //TODO: Transport does not support observation
-            'Versioning', //TODO: Transport does not support versioning
-            'Locking', //TODO: Transport does not support locking
+            'ShareableNodes', // TODO: Not implemented, no test currently written for it
+            'AccessControlManagement', // TODO: Not implemented, no test currently written for it
+            'LifecycleManagement', // TODO: Not implemented, no test currently written for it
+            'RetentionAndHold', // TODO: Not implemented, no test currently written for it
+            'SameNameSiblings', // TODO: Not implemented, no test currently written for it
+            'PermissionsAndCapabilities', // TODO: Transport does not support permissions
+            'Observation', // TODO: Transport does not support observation
+            'Versioning', // TODO: Transport does not support versioning
+            'Locking', // TODO: Transport does not support locking
         ];
 
         $this->unsupportedCases = [
@@ -74,13 +74,13 @@ class ImplementationLoader extends AbstractLoader
         ];
 
         $this->unsupportedTests = [
-            'Connecting\\RepositoryTest::testLoginException', //TODO: figure out what would be invalid credentials
+            'Connecting\\RepositoryTest::testLoginException', // TODO: figure out what would be invalid credentials
 
             'Reading\\NodeReadMethodsTest::testGetSharedSetUnreferenced', // TODO: should this be moved to 14_ShareableNodes
-            'Reading\\SessionReadMethodsTest::testImpersonate', //TODO: Check if that's implemented in newer jackrabbit versions.
-            'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', //TODO: implement session scope remapping of namespaces
+            'Reading\\SessionReadMethodsTest::testImpersonate', // TODO: Check if that's implemented in newer jackrabbit versions.
+            'Reading\\SessionNamespaceRemappingTest::testSetNamespacePrefix', // TODO: implement session scope remapping of namespaces
 
-            //TODO: implement getQuery method in Jackalope QueryManager
+            // TODO: implement getQuery method in Jackalope QueryManager
             'Query\\QueryManagerTest::testGetQuery',
             'Query\\QueryManagerTest::testGetQueryInvalid',
             'Query\\QueryObjectSql2Test::testGetStoredQueryPath',
@@ -94,9 +94,9 @@ class ImplementationLoader extends AbstractLoader
             // TODO https://github.com/phpcr/phpcr-api-tests/issues/22
             'Query\\NodeViewTest::testSeekable',
 
-            'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', //TODO: update-on-copy is currently not supported
+            'Writing\\CopyMethodsTest::testCopyUpdateOnCopy', // TODO: update-on-copy is currently not supported
 
-            //TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
+            // TODO: https://github.com/jackalope/jackalope-doctrine-dbal/issues/22
             'Transactions\\TransactionMethodsTest::testTransactionCommit',
 
             // TODO: implement creating workspace with source
@@ -203,7 +203,7 @@ class ImplementationLoader extends AbstractLoader
                 $testerClass = Mysql::class;
                 break;
 
-            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform:
+            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSQLPlatform:
                 $testerClass = Pgsql::class;
                 break;
 

@@ -10,9 +10,11 @@ use Doctrine\DBAL\Schema\Table;
 use Doctrine\DBAL\Types\Type;
 use Doctrine\DBAL\Types\Types;
 use InvalidArgumentException;
+
 use function libxml_clear_errors;
 use function libxml_get_errors;
 use function libxml_use_internal_errors;
+
 use RuntimeException;
 use SimpleXMLElement;
 

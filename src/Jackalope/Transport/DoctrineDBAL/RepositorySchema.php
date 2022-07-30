@@ -145,7 +145,7 @@ class RepositorySchema extends Schema
         if (!empty($this->options['disable_fk'])) {
             $references->addForeignKeyConstraint($nodes, ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
             // TODO: this should be reenabled on RDBMS with deferred FK support
-            //$references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
+            // $references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
         }
     }
 

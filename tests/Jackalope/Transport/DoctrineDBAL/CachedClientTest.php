@@ -47,7 +47,7 @@ class CachedClientTest extends FunctionalTestCase
     {
         /** @var CachedClient $cachedClient */
         $cachedClient = $this->transport;
-        //set a custom sanitizer that reveres the cachekey
+        // set a custom sanitizer that reveres the cachekey
         $cachedClient->setKeySanitizer(function ($cacheKey) {
             return strrev($cacheKey);
         });
