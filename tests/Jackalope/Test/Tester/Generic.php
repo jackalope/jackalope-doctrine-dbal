@@ -4,7 +4,9 @@ namespace Jackalope\Test\Tester;
 
 use Doctrine\DBAL\Connection;
 use ImplementationLoader;
+
 use function implode;
+
 use PHPCR\Test\FixtureLoaderInterface;
 
 /**

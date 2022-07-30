@@ -102,15 +102,8 @@ abstract class XMLDocument extends DOMDocument
         return $this;
     }
 
-    /**
-     * Dumps the internal XML tree back into a string.
-     *
-     * @param DOMNode $node    - node to dump
-     * @param int     $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
-     *
-     * @return string
-     */
-    public function saveXml(DOMNode $node = null, $options = null)
+    #[\ReturnTypeWillChange]
+    public function saveXML(DOMNode $node = null, $options = null)
     {
         return str_replace('escaping_x0020 bla &lt;&gt;\'""', 'escaping_x0020 bla"', parent::saveXML($node));
     }

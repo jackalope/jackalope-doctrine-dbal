@@ -3,7 +3,7 @@
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
-use Doctrine\DBAL\Platforms\PostgreSqlPlatform;
+use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Jackalope\Factory;
 use Jackalope\NodeType\NodeTypeManager;
 use Jackalope\Query\QOM\Length;
@@ -296,7 +296,7 @@ class QOMWalkerTest extends TestCase
         $res = $this->walker->walkQOMQuery($query);
 
         switch ($platform) {
-            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSqlPlatform:
+            case $platform instanceof PostgreSQL94Platform || $platform instanceof PostgreSQLPlatform:
                 $ordering =
                     "CAST((xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.numerical_props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text AS DECIMAL) ASC, ".
                    "(xpath('//sv:property[@sv:name=\"foobar\"]/sv:value[1]/text()', CAST(n0.props AS xml), ARRAY[ARRAY['sv', 'http://www.jcp.org/jcr/sv/1.0']]))[1]::text ASC";
