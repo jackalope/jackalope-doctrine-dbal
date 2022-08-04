@@ -25,11 +25,12 @@ This code is dual licensed under the MIT license and the Apache License Version
 
 # Preconditions
 
-* PHP ^7.1
+* PHP (version see composer.json)
 * One of the following databases, including the PDO extension for it:
     * MySQL >= 5.1.5 (we need the ExtractValue function)
     * PostgreSQL
     * SQLite
+    * Oracle
 
 
 # Installation
@@ -67,6 +68,18 @@ $ psql -c "CREATE DATABASE jackalope WITH OWNER = jackalope;" -U postgres
 Database is created automatically if you specify driver and path ("pdo_sqlite", "jackalope.db"). Database name is not needed.
 
 For further details, please see the [Doctrine configuration page](http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details).
+
+### Oracle
+
+Disclaimer: There is no continous integration with Oracle. Jackalope 1.8.0 was
+successfully tested by one of our users against `Oracle 19c Enterprise Edition`.
+If you plan to use Jackalope with an Oracle Database, we recommend that you set
+up the Jackalope test suite to ensure your version of Jackalope and Oracle work
+together nicely.
+
+Note: A doctrine middleware is automatically added to the database connection to
+work around Oracle converting the lowercase table and field names to upper case
+in its results.
 
 
 ## Enable the commands
