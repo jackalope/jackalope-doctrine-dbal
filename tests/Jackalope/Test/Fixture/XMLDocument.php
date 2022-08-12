@@ -3,7 +3,6 @@
 namespace Jackalope\Test\Fixture;
 
 use DOMDocument;
-use DOMNode;
 
 /**
  * Base for Jackalope Document or System Views and PHPUnit DBUnit Fixture XML classes.
@@ -11,9 +10,12 @@ use DOMNode;
  * @author Benjamin Eberlei <kontakt@beberlei.de>
  * @author cryptocompress <cryptocompress@googlemail.com>
  */
-abstract class XMLDocument extends DOMDocument
+abstract class XMLDocument
 {
-    use XMLDocumentTrait;
+    /**
+     * @var DOMDocument
+     */
+    protected $dom;
 
     /**
      * file path
@@ -21,11 +23,6 @@ abstract class XMLDocument extends DOMDocument
      * @var string
      */
     protected $file;
-
-    /**
-     * @var int
-     */
-    protected $options;
 
     /**
      * @var array
@@ -38,19 +35,17 @@ abstract class XMLDocument extends DOMDocument
     protected $namespaces;
 
     /**
-     * @param string $file    - file path
-     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
+     * @param string $file Path to XML file
      */
-    public function __construct($file, $options = 0)
+    public function __construct(string $file)
     {
-        parent::__construct('1.0', 'UTF-8');
+        $this->dom = new DOMDocument('1.0', 'UTF-8');
+        $this->dom->preserveWhiteSpace = false;
+        $this->dom->formatOutput = true;
+        $this->dom->strictErrorChecking  = true;
+        $this->dom->validateOnParse = true;
 
-        $this->preserveWhiteSpace   = false;
-        $this->formatOutput         = true;
-        $this->strictErrorChecking  = true;
-        $this->validateOnParse      = true;
-        $this->file                 = $file;
-        $this->options              = $options;
+        $this->file = $file;
 
         $this->jcrTypes = [
             'string'        => [1, 'clob_data'],
@@ -79,54 +74,28 @@ abstract class XMLDocument extends DOMDocument
         ];
     }
 
-    /**
-     * Load xml file.
-     *
-     * @param string $file    - file path
-     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
-     *
-     * @return XMLDocument
-     */
-    public function load($file = null, $options = 0)
+    public function loadDocument(): XMLDocument
     {
-        if (isset($file)) {
-            $this->file = $file;
-        }
-
-        if (isset($options)) {
-            $this->options = $options;
-        }
-
-        parent::load($this->file, $this->options);
+        $this->dom->load($this->file);
 
         return $this;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    #[\ReturnTypeWillChange]
-    public function saveXml(?DOMNode $node = null, $options = 0)
-    {
-        return str_replace('escaping_x0020 bla &lt;&gt;\'""', 'escaping_x0020 bla"', parent::saveXML($node));
     }
 
     /**
      * Dumps the internal XML tree back into a file.
      *
-     * @param string $file
-     *
      * @return XMLDocument
      */
-    private function doSave($file = null)
+    public function save()
     {
-        if (isset($file)) {
-            $this->file = $file;
-        }
-
         @mkdir(dirname($this->file), 0777, true);
-        file_put_contents($this->file, $this->saveXml());
+        file_put_contents($this->file, $this->toXmlString());
 
         return $this;
+    }
+
+    private function toXmlString()
+    {
+        return str_replace('escaping_x0020 bla &lt;&gt;\'""', 'escaping_x0020 bla"', $this->dom->saveXML());
     }
 }
