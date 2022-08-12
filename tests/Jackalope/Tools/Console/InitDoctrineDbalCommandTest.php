@@ -46,7 +46,7 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->connection = $this->createMock(Connection::class);
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
 
-        $this->platform = $this->createMock(MySQLPlatform::class);
+        $this->platform = new MySQLPlatform();
 
         $this->connection
             ->method('getDatabasePlatform')
@@ -59,19 +59,6 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->connection
             ->method('getSchemaManager')
             ->willReturn($this->schemaManager);
-
-        $this->platform
-            ->method('getCreateTableSQL')
-            ->willReturn([]);
-        $this->platform
-            ->method('getDropForeignKeySQL')
-            ->willReturn('drop foreign key');
-        $this->platform
-            ->method('getDropSequenceSQL')
-            ->willReturn('drop sequence');
-        $this->platform
-            ->method('getDropTableSQL')
-            ->willReturn('drop table');
 
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
@@ -104,14 +91,33 @@ class InitDoctrineDbalCommandTest extends TestCase
         return $commandTester;
     }
 
-    public function testCommand(): void
+    public function testCommandMissingForce(): void
     {
         $this->executeCommand('jackalope:init:dbal', [], 2);
-        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true], 0);
-        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true, '--drop' => true], 0);
-        $this->executeCommand('jackalope:init:dbal', ['--force' => true], 0);
-        $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 0);
+    }
 
+    public function testCommandDumpSql(): void
+    {
+        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true], 0);
+    }
+
+    public function testCommandDumpSqlWithDrop(): void
+    {
+        $this->executeCommand('jackalope:init:dbal', ['--dump-sql' => true, '--drop' => true], 0);
+    }
+
+    public function testCommandForce(): void
+    {
+        $this->executeCommand('jackalope:init:dbal', ['--force' => true], 0);
+    }
+
+    public function testCommandForceAndDrop(): void
+    {
+        $this->executeCommand('jackalope:init:dbal', ['--force' => true, '--drop' => true], 0);
+    }
+
+    public function testCommandTableExists(): void
+    {
         // Unfortunately PDO doesn't follow internals and uses a non integer error code, which cannot be manually created
         $this->connection
             ->method('executeStatement')

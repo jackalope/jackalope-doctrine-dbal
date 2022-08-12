@@ -2277,7 +2277,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                 $qom->setLimit($query->getLimit());
                 $qom->setOffset($query->getOffset());
             } catch (Exception $e) {
-                throw new InvalidQueryException('Invalid query: '.$query->getStatement(), null, $e);
+                throw new InvalidQueryException('Invalid query: '.$query->getStatement(), 0, $e);
             }
         } else {
             $qom = $query;
