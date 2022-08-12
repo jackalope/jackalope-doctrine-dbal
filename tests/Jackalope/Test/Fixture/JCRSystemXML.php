@@ -21,9 +21,9 @@ class JCRSystemXML extends XMLDocument
     {
         $namespaces = [];
 
-        $xpath = new DOMXPath($this);
+        $xpath = new DOMXPath($this->dom);
         foreach ($xpath->query('namespace::*') as $node) {
-            $namespaces[$this->documentElement->lookupPrefix($node->nodeValue)] = $node->nodeValue;
+            $namespaces[$this->dom->documentElement->lookupPrefix($node->nodeValue)] = $node->nodeValue;
         }
 
         return $namespaces;
@@ -36,6 +36,6 @@ class JCRSystemXML extends XMLDocument
      */
     public function getNodes()
     {
-        return $this->getElementsByTagNameNS($this->namespaces['sv'], 'node');
+        return $this->dom->getElementsByTagNameNS($this->namespaces['sv'], 'node');
     }
 }
