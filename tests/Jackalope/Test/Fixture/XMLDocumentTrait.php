@@ -8,6 +8,7 @@ if (PHP_VERSION_ID >= 80000) {
         /**
          * Dumps the internal XML tree back into a file.
          */
+        #[\ReturnTypeWillChange]
         public function save(string $filename = null, int $options = 0): XMLDocument
         {
             return $this->doSave($filename);

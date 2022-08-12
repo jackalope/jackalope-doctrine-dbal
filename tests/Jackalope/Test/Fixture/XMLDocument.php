@@ -41,7 +41,7 @@ abstract class XMLDocument extends DOMDocument
      * @param string $file    - file path
      * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
      */
-    public function __construct($file, $options = null)
+    public function __construct($file, $options = 0)
     {
         parent::__construct('1.0', 'UTF-8');
 
@@ -87,7 +87,7 @@ abstract class XMLDocument extends DOMDocument
      *
      * @return XMLDocument
      */
-    public function load($file = null, $options = null)
+    public function load($file = null, $options = 0)
     {
         if (isset($file)) {
             $this->file = $file;
@@ -103,14 +103,10 @@ abstract class XMLDocument extends DOMDocument
     }
 
     /**
-     * Dumps the internal XML tree back into a string.
-     *
-     * @param DOMNode $node    - node to dump
-     * @param int      $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
-     *
-     * @return string
+     * {@inheritDoc}
      */
-    public function saveXml(DOMNode $node = null, $options = null)
+    #[\ReturnTypeWillChange]
+    public function saveXml(?DOMNode $node = null, $options = 0)
     {
         return str_replace('escaping_x0020 bla &lt;&gt;\'""', 'escaping_x0020 bla"', parent::saveXML($node));
     }
