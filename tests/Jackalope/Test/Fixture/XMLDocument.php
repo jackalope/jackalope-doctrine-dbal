@@ -42,7 +42,7 @@ abstract class XMLDocument
         $this->dom = new DOMDocument('1.0', 'UTF-8');
         $this->dom->preserveWhiteSpace = false;
         $this->dom->formatOutput = true;
-        $this->dom->strictErrorChecking  = true;
+        $this->dom->strictErrorChecking = true;
         $this->dom->validateOnParse = true;
 
         $this->file = $file;

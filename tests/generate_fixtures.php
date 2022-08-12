@@ -19,7 +19,7 @@ function generate_fixtures($srcDir, $destDir)
         }
 
         $srcDom = new JCRSystemXML($srcFile->getPathname());
-        $nodes  = $srcDom->loadDocument()->getNodes();
+        $nodes = $srcDom->loadDocument()->getNodes();
         if ($nodes->length < 1) {
             continue;
         }
