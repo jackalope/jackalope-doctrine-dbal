@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.8.0 (unreleased)
+1.8.0
 -----
 
 * Automatically add the portability middleware to lowercase all fields when using Oracle.
