@@ -43,13 +43,9 @@ class DBUnitFixtureXML extends XMLDocument
      */
     protected $expectedNodes;
 
-    /**
-     * @param string $file    - file path
-     * @param int    $options - libxml option constants: http://www.php.net/manual/en/libxml.constants.php
-     */
-    public function __construct($file, $options = null)
+    public function __construct(string $file)
     {
-        parent::__construct($file, $options);
+        parent::__construct($file);
 
         $this->tables = [];
         $this->ids = [];
@@ -59,7 +55,7 @@ class DBUnitFixtureXML extends XMLDocument
 
     public function addDataset()
     {
-        $this->appendChild($this->createElement('dataset'));
+        $this->dom->appendChild($this->dom->createElement('dataset'));
 
         // purge binary in case no binary properties are in fixture
         $this->ensureTableExists('phpcr_binarydata', [
@@ -154,8 +150,7 @@ class DBUnitFixtureXML extends XMLDocument
         $properties = $this->getAttributes($node);
         $uuid = isset($properties['jcr:uuid']['value'][0])
             ? (string) $properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
-        $this->ids[$uuid] = $id = isset($this->expectedNodes[$uuid])
-            ? $this->expectedNodes[$uuid] : self::$idCounter++;
+        $this->ids[$uuid] = $id = $this->expectedNodes[$uuid] ?? self::$idCounter++;
 
         $dom = new DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
@@ -184,7 +179,7 @@ class DBUnitFixtureXML extends XMLDocument
             list($namespacePrefix, $name) = $parts;
         }
 
-        $namespace = isset($this->namespaces[$namespacePrefix]) ? $this->namespaces[$namespacePrefix] : '';
+        $namespace = $this->namespaces[$namespacePrefix] ?? '';
 
         if ('jcr' === $namespacePrefix && 'root' === $name) {
             $id = 1;
@@ -391,12 +386,12 @@ class DBUnitFixtureXML extends XMLDocument
     {
         $this->ensureTableExists($tableName, array_keys($data));
 
-        $row = $this->createElement('row');
+        $row = $this->dom->createElement('row');
         foreach ($data as $value) {
             if (null === $value) {
-                $row->appendChild($this->createElement('null'));
+                $row->appendChild($this->dom->createElement('null'));
             } else {
-                $row->appendChild($this->createElement('value', htmlspecialchars($value)));
+                $row->appendChild($this->dom->createElement('value', htmlspecialchars($value)));
             }
         }
 
@@ -408,14 +403,14 @@ class DBUnitFixtureXML extends XMLDocument
     protected function ensureTableExists($tableName, $columns)
     {
         if (!isset($this->tables[$tableName])) {
-            $table = $this->createElement('table');
+            $table = $this->dom->createElement('table');
             $table->setAttribute('name', $tableName);
 
             foreach ($columns as $k) {
-                $table->appendChild($this->createElement('column', $k));
+                $table->appendChild($this->dom->createElement('column', $k));
             }
 
-            $this->documentElement->appendChild($table);
+            $this->dom->documentElement->appendChild($table);
 
             $this->tables[$tableName] = $table;
         }

@@ -2,6 +2,11 @@
 
 namespace Jackalope;
 
+use Doctrine\DBAL\ColumnCase;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\OraclePlatform;
+use Doctrine\DBAL\Portability\Connection as PortabilityConnection;
+use Doctrine\DBAL\Portability\Middleware as PortabilityMiddleware;
 use Jackalope\Transport\DoctrineDBAL\CachedClient;
 use Jackalope\Transport\DoctrineDBAL\Client;
 use Jackalope\Transport\DoctrineDBAL\LoggingClient;
@@ -85,6 +90,10 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         }
 
         $dbConn = $parameters['jackalope.doctrine_dbal_connection'];
+        \assert($dbConn instanceof Connection);
+        if ($dbConn->getDatabasePlatform() instanceof OraclePlatform) {
+            $this->ensureLowerCaseMiddleware($dbConn);
+        }
 
         $transport = isset($parameters['jackalope.data_caches'])
             ? $factory->get(CachedClient::class, [$dbConn, $parameters['jackalope.data_caches']])
@@ -119,5 +128,24 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
     public function getConfigurationKeys()
     {
         return array_merge(self::$required, self::$optional);
+    }
+
+    /**
+     * Add the lowercase portability middleware if it is not already part of the configuration.
+     */
+    private function ensureLowerCaseMiddleware(Connection $dbConn): void
+    {
+        $configuration = $dbConn->getConfiguration();
+        if (!$configuration) {
+            return;
+        }
+        foreach ($configuration->getMiddlewares() as $middleware) {
+            if ($middleware instanceof PortabilityMiddleware) {
+                return;
+            }
+        }
+        $middlewares = $configuration->getMiddlewares();
+        $middlewares[] = new PortabilityMiddleware(PortabilityConnection::PORTABILITY_FIX_CASE, ColumnCase::LOWER);
+        $configuration->setMiddlewares($middlewares);
     }
 }
