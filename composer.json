@@ -44,11 +44,6 @@
         }
     },
     "bin": ["bin/jackalope"],
-    "extra": {
-        "branch-alias": {
-            "dev-master": "1.x-dev"
-        }
-    },
     "config": {
         "allow-plugins": {
             "composer/package-versions-deprecated": true
