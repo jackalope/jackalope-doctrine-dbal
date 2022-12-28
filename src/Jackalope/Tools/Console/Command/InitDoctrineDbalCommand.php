@@ -4,9 +4,7 @@ namespace Jackalope\Tools\Console\Command;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
-use InvalidArgumentException;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
-use PDOException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\InvalidArgumentException as CliInvalidArgumentException;
 use Symfony\Component\Console\Input\InputInterface;
@@ -30,7 +28,7 @@ class InitDoctrineDbalCommand extends Command
      * @see Command
      *
      * @throws CliInvalidArgumentException
-     * @throws PDOException
+     * @throws \PDOException
      */
     protected function configure()
     {
@@ -70,8 +68,8 @@ EOT
      * {@inheritDoc}
      *
      * @throws CliInvalidArgumentException
-     * @throws InvalidArgumentException
-     * @throws PDOException
+     * @throws \InvalidArgumentException
+     * @throws \PDOException
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
@@ -80,7 +78,7 @@ EOT
         if (!$connection instanceof Connection) {
             $output->write(PHP_EOL.'<error>The provided connection is not an instance of the Doctrine DBAL connection.</error>'.PHP_EOL);
 
-            throw new InvalidArgumentException('The provided connection is not an instance of the Doctrine DBAL connection.');
+            throw new \InvalidArgumentException('The provided connection is not an instance of the Doctrine DBAL connection.');
         }
 
         if (true !== $input->getOption('dump-sql') && !$input->getOption('force')) {
@@ -115,7 +113,7 @@ EOT
                     $connection->executeStatement($sql);
                 }
             }
-        } catch (PDOException $e) {
+        } catch (\PDOException $e) {
             if ('42S01' === $e->getCode()) {
                 $output->write(PHP_EOL.'<error>The tables already exist. Nothing was changed.</error>'.PHP_EOL.PHP_EOL);
 

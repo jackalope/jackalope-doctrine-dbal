@@ -2,9 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
-use BadMethodCallException;
-use DateTime;
-use DateTimeZone;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
@@ -280,7 +277,7 @@ class QOMWalker
     /**
      * @return string the alias on the right side of a join
      *
-     * @throws BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
+     * @throws \BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
      */
     private function getRightJoinSelector(QOM\JoinConditionInterface $right)
     {
@@ -291,7 +288,7 @@ class QOMWalker
         } elseif ($right instanceof QOM\SameNodeJoinConditionInterface || $right instanceof QOM\EquiJoinConditionInterface) {
             return $right->getSelector2Name();
         }
-        throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+        throw new \BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
 
     /**
@@ -299,7 +296,7 @@ class QOMWalker
      *
      * @return string the alias on the left side of a join
      *
-     * @throws BadMethodCallException if the provided JoinCondition has no valid way of getting the left selector
+     * @throws \BadMethodCallException if the provided JoinCondition has no valid way of getting the left selector
      */
     private function getLeftJoinSelector(QOM\JoinConditionInterface $left)
     {
@@ -310,7 +307,7 @@ class QOMWalker
         } elseif ($left instanceof QOM\SameNodeJoinConditionInterface || $left instanceof QOM\EquiJoinConditionInterface) {
             return $left->getSelector1Name();
         }
-        throw new BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
+        throw new \BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
 
     /**
@@ -874,9 +871,9 @@ class QOMWalker
         /*
          * Normalize Dates to UTC
          */
-        if ($value instanceof DateTime) {
+        if ($value instanceof \DateTime) {
             $valueUTC = clone $value;
-            $valueUTC->setTimezone(new DateTimeZone('UTC'));
+            $valueUTC->setTimezone(new \DateTimeZone('UTC'));
 
             return $valueUTC->format('c');
         }
@@ -961,9 +958,6 @@ class QOMWalker
     }
 
     /**
-     * @param $alias
-     * @param $property
-     * @param $value
      * @param string $operator
      *
      * @return string

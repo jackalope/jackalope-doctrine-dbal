@@ -2,10 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use DateTime;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
-use DOMDocument;
-use DOMXPath;
 use Jackalope\Test\FunctionalTestCase;
 use PHPCR\PropertyType;
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
@@ -14,7 +11,6 @@ use PHPCR\Util\NodeHelper;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\QOM\QueryBuilder;
 use PHPCR\ValueFormatException;
-use ReflectionClass;
 
 class ClientTest extends FunctionalTestCase
 {
@@ -252,7 +248,7 @@ class ClientTest extends FunctionalTestCase
             'long' => [42,                            PropertyType::LONG,     2],
             'double' => [3.1415,                        PropertyType::DOUBLE,   6],
             'decimal' => [3.141592,                      PropertyType::DECIMAL,  8],
-            'date' => [new DateTime('now'),          PropertyType::DATE,     29],
+            'date' => [new \DateTime('now'),          PropertyType::DATE,     29],
             'booleanTrue' => [true,                          PropertyType::BOOLEAN,  1],
             'booleanFalse' => [false,                         PropertyType::BOOLEAN,  0],
             'name' => ['nt:unstructured',             PropertyType::NAME,     15],
@@ -281,10 +277,10 @@ class ClientTest extends FunctionalTestCase
                     continue;
                 }
 
-                $doc = new DOMDocument('1.0', 'utf-8');
+                $doc = new \DOMDocument('1.0', 'utf-8');
                 $doc->loadXML($propXml);
 
-                $xpath = new DOMXPath($doc);
+                $xpath = new \DOMXPath($doc);
                 $propertyElement = $xpath->query(sprintf('sv:property[@sv:name="%s"]', $propertyName));
 
                 if ($propertyElement->length > 0) {
@@ -312,7 +308,7 @@ class ClientTest extends FunctionalTestCase
 
     public function testUuid(): void
     {
-        $class = new ReflectionClass(Client::class);
+        $class = new \ReflectionClass(Client::class);
         $method = $class->getMethod('generateUuid');
         $method->setAccessible(true);
 
@@ -697,7 +693,7 @@ class ClientTest extends FunctionalTestCase
     {
         $rootNode = $this->session->getNode('/');
         $child1 = $rootNode->addNode('child1');
-        $date = new DateTime();
+        $date = new \DateTime();
         $before = $date->format('c');
         $child1->setProperty('date', $date);
         $this->session->save();
