@@ -2,8 +2,6 @@
 
 namespace Jackalope\Test\Fixture;
 
-use DOMDocument;
-
 /**
  * Base for Jackalope Document or System Views and PHPUnit DBUnit Fixture XML classes.
  *
@@ -13,7 +11,7 @@ use DOMDocument;
 abstract class XMLDocument
 {
     /**
-     * @var DOMDocument
+     * @var \DOMDocument
      */
     protected $dom;
 
@@ -39,7 +37,7 @@ abstract class XMLDocument
      */
     public function __construct(string $file)
     {
-        $this->dom = new DOMDocument('1.0', 'UTF-8');
+        $this->dom = new \DOMDocument('1.0', 'UTF-8');
         $this->dom->preserveWhiteSpace = false;
         $this->dom->formatOutput = true;
         $this->dom->strictErrorChecking = true;

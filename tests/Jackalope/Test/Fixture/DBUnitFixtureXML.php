@@ -2,9 +2,6 @@
 
 namespace Jackalope\Test\Fixture;
 
-use DOMDocument;
-use DOMElement;
-use InvalidArgumentException;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\UUIDHelper;
 
@@ -145,14 +142,14 @@ class DBUnitFixtureXML extends XMLDocument
         ]);
     }
 
-    public function addNode($workspaceName, DOMElement $node)
+    public function addNode($workspaceName, \DOMElement $node)
     {
         $properties = $this->getAttributes($node);
         $uuid = isset($properties['jcr:uuid']['value'][0])
             ? (string) $properties['jcr:uuid']['value'][0] : UUIDHelper::generateUUID();
         $this->ids[$uuid] = $id = $this->expectedNodes[$uuid] ?? self::$idCounter++;
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
+        $dom = new \DOMDocument('1.0', 'UTF-8');
         $phpcrNode = $dom->createElement('sv:node');
         foreach ($this->namespaces as $namespacePrefix => $uri) {
             $phpcrNode->setAttribute('xmlns:'.$namespacePrefix, $uri);
@@ -165,7 +162,7 @@ class DBUnitFixtureXML extends XMLDocument
             }
 
             if (!isset($this->jcrTypes[$propertyData['type']])) {
-                throw new InvalidArgumentException('"'.$propertyData['type'].'" is not a valid JCR type.');
+                throw new \InvalidArgumentException('"'.$propertyData['type'].'" is not a valid JCR type.');
             }
 
             $phpcrNode->appendChild($this->createPropertyNode($workspaceName, $propertyName, $propertyData, $id, $dom));
@@ -226,12 +223,12 @@ class DBUnitFixtureXML extends XMLDocument
         return $this;
     }
 
-    public function getAttributes(DOMElement $node)
+    public function getAttributes(\DOMElement $node)
     {
         $properties = [];
 
         foreach ($node->childNodes as $child) {
-            if ($child instanceof DOMElement && 'sv:property' === $child->tagName) {
+            if ($child instanceof \DOMElement && 'sv:property' === $child->tagName) {
                 list($name, $propertyNameibute) = $this->getChildAttribute($child);
                 $properties[$name] = $propertyNameibute;
             }
@@ -240,7 +237,7 @@ class DBUnitFixtureXML extends XMLDocument
         return $properties;
     }
 
-    public function getChildAttribute(DOMElement $node)
+    public function getChildAttribute(\DOMElement $node)
     {
         $name = $node->getAttributeNS($this->namespaces['sv'], 'name');
         $type = strtolower($node->getAttributeNS($this->namespaces['sv'], 'type'));
@@ -265,7 +262,7 @@ class DBUnitFixtureXML extends XMLDocument
         return [$name, ['type' => $type, 'value' => $values, 'multiValued' => $isMultiValue]];
     }
 
-    public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, DOMDocument $dom)
+    public function createPropertyNode($workspaceName, $propertyName, $propertyData, $id, \DOMDocument $dom)
     {
         $propertyNode = $dom->createElement('sv:property');
         $propertyNode->setAttribute('sv:name', $propertyName);
@@ -280,7 +277,7 @@ class DBUnitFixtureXML extends XMLDocument
         return $propertyNode;
     }
 
-    public function createValueNodeByType($workspaceName, $type, $value, $id, $propertyName, $binaryDataIdx, DOMDocument $dom)
+    public function createValueNodeByType($workspaceName, $type, $value, $id, $propertyName, $binaryDataIdx, \DOMDocument $dom)
     {
         $length = is_scalar($value) ? strlen($value) : null;
         switch ($type) {
@@ -319,7 +316,7 @@ class DBUnitFixtureXML extends XMLDocument
         return $this->createValueNode($value, $dom, $length);
     }
 
-    public function createValueNode($value, DOMDocument $dom, $length)
+    public function createValueNode($value, \DOMDocument $dom, $length)
     {
         $valueNode = $dom->createElement('sv:value');
 
@@ -338,7 +335,7 @@ class DBUnitFixtureXML extends XMLDocument
         return $valueNode;
     }
 
-    public function getPath(DOMElement $node)
+    public function getPath(\DOMElement $node)
     {
         $childPath = '';
 
@@ -348,7 +345,7 @@ class DBUnitFixtureXML extends XMLDocument
                 $childPath = '/'.$parent->getAttributeNS($this->namespaces['sv'], 'name').$childPath;
             }
             $parent = $parent->parentNode;
-        } while ($parent instanceof DOMElement);
+        } while ($parent instanceof \DOMElement);
 
         $parentPath = implode('/', array_slice(explode('/', $childPath), 0, -1));
         if (empty($parentPath)) {

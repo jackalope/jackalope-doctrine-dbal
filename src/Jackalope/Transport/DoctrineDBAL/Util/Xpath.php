@@ -11,8 +11,6 @@ namespace Jackalope\Transport\DoctrineDBAL\Util;
 class Xpath
 {
     /**
-     * @param $query
-     *
      * @return string
      */
     public static function escapeBackslashes($query)

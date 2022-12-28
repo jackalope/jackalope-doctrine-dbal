@@ -2,8 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use ArrayObject;
-use Closure;
 use Doctrine\DBAL\Connection;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
@@ -27,9 +25,9 @@ class CachedClient extends Client
     private array $caches;
 
     /**
-     * @var Closure that accepts a cache key as argument and returns a cleaned up version of the key
+     * @var \Closure that accepts a cache key as argument and returns a cleaned up version of the key
      */
-    private Closure $keySanitizer;
+    private \Closure $keySanitizer;
 
     /**
      * @param CacheInterface[] $caches
@@ -57,7 +55,7 @@ class CachedClient extends Client
         };
     }
 
-    public function setKeySanitizer(Closure $sanitizer): void
+    public function setKeySanitizer(\Closure $sanitizer): void
     {
         $this->keySanitizer = $sanitizer;
     }
@@ -188,7 +186,7 @@ class CachedClient extends Client
      */
     public function getNamespaces(): array
     {
-        if ($this->namespaces instanceof ArrayObject) {
+        if ($this->namespaces instanceof \ArrayObject) {
             return parent::getNamespaces();
         }
 

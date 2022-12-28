@@ -3,10 +3,6 @@
 namespace Jackalope\Test\Tester;
 
 use Doctrine\DBAL\Connection;
-use ImplementationLoader;
-
-use function implode;
-
 use PHPCR\Test\FixtureLoaderInterface;
 
 /**
@@ -64,7 +60,7 @@ class Generic implements FixtureLoaderInterface
             $fixture = $this->fixturePath.DIRECTORY_SEPARATOR.'10_Writing/copy.xml';
             $this->dataSet = new XmlDataSet($fixture);
 
-            $loader = ImplementationLoader::getInstance();
+            $loader = \ImplementationLoader::getInstance();
             $workspaceName = $loader->getOtherWorkspaceName();
 
             $this->dataSet->addRow('phpcr_workspaces', ['name' => $workspaceName]);
@@ -92,8 +88,8 @@ class Generic implements FixtureLoaderInterface
         foreach ($this->dataSet->getTables() as $table) {
             foreach ($this->dataSet->getRows($table->getName()) as $row) {
                 $sql = 'INSERT INTO '.$platform->quoteIdentifier($table->getName()).
-                    ' ('.implode(',', array_keys($row)).') VALUES ('.
-                    implode(',', array_fill(0, count($row), '?')).')';
+                    ' ('.\implode(',', array_keys($row)).') VALUES ('.
+                    \implode(',', array_fill(0, count($row), '?')).')';
 
                 $this->connection->executeStatement($sql, array_values($row));
             }

@@ -8,7 +8,6 @@ use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
 use Jackalope\Tools\Console\Command\InitDoctrineDbalCommand;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
-use PDOException;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Helper\HelperSet;
@@ -128,7 +127,7 @@ class InitDoctrineDbalCommandTest extends TestCase
     }
 }
 
-class MockPDOException extends PDOException
+class MockPDOException extends \PDOException
 {
     public function __construct($msg, $code)
     {
