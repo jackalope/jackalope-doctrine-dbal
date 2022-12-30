@@ -19,17 +19,18 @@ use Symfony\Component\Console\Helper\HelperSet;
  */
 
 /*
- * configuration
+ * Configuration
  */
 $workspace  = 'default'; // phpcr workspace to use
-// jackalope-doctrine-dbal does not verify credentials. $user is recorded as node creator but otherwise unused
-// see the `getDoctrineDbalConnection` method for the DBAL database credentials
-$user       = 'admin';
-$pass       = 'admin';
+
+// jackalope-doctrine-dbal does not verify credentials. $user is recorded as node creator.
+// See the `getDoctrineDbalConnection` method for the DBAL database credentials.
+$user = 'admin';
 
 function getDoctrineDbalConnection(): Connection
 {
-    /* Additional Doctrine DBAL configuration.
+    /*
+     * Additional Doctrine DBAL configuration.
      *
      * For further details, please see Doctrine configuration page.
      * http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details
@@ -55,18 +56,17 @@ function bootstrapDoctrineDbal(Connection $connection): RepositoryInterface
 {
     return (new RepositoryFactoryDoctrineDBAL())
         ->getRepository([
-            'jackalope.doctrine_dbal_connection' => getDoctrineDbalConnection()
+            'jackalope.doctrine_dbal_connection' => $connection,
         ]);
 }
 
-/* only create a session if this is not about the server control command */
-if (isset($argv[1])
-    && $argv[1] != 'jackalope:init:dbal'
-    && $argv[1] != 'list'
-    && $argv[1] != 'help'
-) {
+/* Only create a session if this is neither the help nor the initialization command. */
+if (!array_key_exists(1, $argv[1])) {
+    return;
+}
+if(!in_array($argv[1], ['jackalope:init:dbal', 'list', 'help'], true)) {
     $repository = bootstrapDoctrineDbal(getDoctrineDbalConnection());
-    $credentials = new SimpleCredentials($user, $pass);
+    $credentials = new SimpleCredentials($user, null); // password is not used by jackalope-doctrine-dbal
     $session = $repository->login($credentials, $workspace);
 
     $helperSet = new HelperSet([
@@ -79,7 +79,7 @@ if (isset($argv[1])
         // legacy support for old Symfony versions
         $helperSet->set(new DialogHelper(), 'dialog');
     }
-} else if (isset($argv[1]) && $argv[1] == 'jackalope:init:dbal') {
+} elseif ('jackalope:init:dbal' === $argv[1]) {
     $dbConn = getDoctrineDbalConnection();
     // special case: the init command needs the db connection, but a session is impossible if the db is not yet initialized
     $helperSet = new HelperSet([
