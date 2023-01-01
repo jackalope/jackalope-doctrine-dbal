@@ -38,7 +38,14 @@ class CachedClient extends Client
     {
         parent::__construct($factory, $conn);
 
-        $caches['meta'] = $caches['meta'] ?? new ArrayCache();
+        if (!isset($caches['meta'])) {
+            if (!class_exists(ArrayCache::class)) {
+                throw new \RuntimeException('No meta cache has been configured. Please either configure the meta cache explicitly or downgrade doctrine/cache to version 1.');
+            }
+
+            $caches['meta'] = new ArrayCache();
+        }
+
         $this->caches = $caches;
         $this->keySanitizer = static function ($cacheKey) {
             return str_replace(' ', '_', $cacheKey);
