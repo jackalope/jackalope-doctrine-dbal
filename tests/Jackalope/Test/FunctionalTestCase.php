@@ -18,20 +18,9 @@ use PHPCR\SimpleCredentials;
  */
 class FunctionalTestCase extends TestCase
 {
-    /**
-     * @var Client
-     */
-    protected $transport;
-
-    /**
-     * @var Repository
-     */
-    protected $repository;
-
-    /**
-     * @var Session
-     */
-    protected $session;
+    protected TransportInterface $transport;
+    protected Repository $repository;
+    protected Session $session;
 
     public function setUp(): void
     {

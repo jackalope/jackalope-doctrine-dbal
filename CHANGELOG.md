@@ -4,6 +4,8 @@ Changelog
 2.0.0 (unreleased)
 ------------------
 
+* Added static typing whereever possible. This should not change anything, but the added strictness
+  might trigger errors where it was more tolerant for incorrect types before.
 * Renamed cli-config.php.dist to cli-config.dist.php and cleaned up to be better documented.
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide a cache instance, as CachedClient does not know which implementation to pick.

@@ -63,7 +63,7 @@ jobs:
 
     steps:
       - name: Checkout project
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install and configure PHP
         uses: shivammathur/setup-php@v2
@@ -73,10 +73,15 @@ jobs:
           tools: 'composer:v2'
 
       - name: Install dependencies with Composer
-        uses: ramsey/composer-install@v1
+        uses: ramsey/composer-install@v2
         with:
           dependency-versions: ${{ matrix.dependencies }}
           composer-options: --prefer-dist
+
+      - name: Get source version of phpcr-utils
+        run: |
+          rm -rf vendor/phpcr/phpcr-utils
+          composer update phpcr/phpcr-utils --prefer-source
 
       - name: Prepare test config
         run: |

@@ -4,6 +4,7 @@ namespace Jackalope\Tools\Console\Command;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
+use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Exception\InvalidArgumentException as CliInvalidArgumentException;
@@ -65,15 +66,15 @@ EOT
     }
 
     /**
-     * {@inheritDoc}
-     *
      * @throws CliInvalidArgumentException
      * @throws \InvalidArgumentException
      * @throws \PDOException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        $connection = $this->getHelper('jackalope-doctrine-dbal')->getConnection();
+        $dbalHelper = $this->getHelper('jackalope-doctrine-dbal');
+        \assert($dbalHelper instanceof DoctrineDbalHelper);
+        $connection = $dbalHelper->getConnection();
 
         if (!$connection instanceof Connection) {
             $output->write(PHP_EOL.'<error>The provided connection is not an instance of the Doctrine DBAL connection.</error>'.PHP_EOL);
