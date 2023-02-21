@@ -4,6 +4,11 @@ Changelog
 1.x
 ===
 
+1.8.1
+-----
+
+* Bugfix: Use single quotes for SQL queries. Double quotes are not part of ANSI SQL.
+
 1.8.0
 -----
 
