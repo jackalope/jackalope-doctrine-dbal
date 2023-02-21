@@ -758,7 +758,7 @@ class QOMWalker
 
         if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
             return sprintf(
-                '0 != FIND_IN_SET("%s", REPLACE(EXTRACTVALUE(%s.props, \'//sv:property[@sv:name=%s]/sv:value\'), " ", ","))',
+                "0 != FIND_IN_SET('%s', REPLACE(EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value'), ' ', ','))",
                 $literalOperand->getLiteralValue(),
                 $alias,
                 Xpath::escape($property)
