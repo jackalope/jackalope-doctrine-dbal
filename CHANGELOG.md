@@ -4,6 +4,12 @@ Changelog
 1.x
 ===
 
+1.9.0
+-----
+
+* Allow installation with doctrine/cache `2.*`. Cache `1.*` is EOL.
+  If you use doctrine/cache 2, you need a PSR implementation, e.g. symfony/cache, and need to pass a cache instance to the CachedClient.
+
 1.8.1
 -----
 
