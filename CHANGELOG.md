@@ -8,10 +8,22 @@ Changelog
   might trigger errors where it was more tolerant for incorrect types before.
 * Renamed cli-config.php.dist to cli-config.dist.php and cleaned up to be better documented.
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
-  When instantiating the client, you need to provide a cache instance, as CachedClient does not know which implementation to pick.
+  When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
 
 1.x
 ===
+
+1.10.0 (unreleased)
+-------------------
+
+* CachedClient also supports PSR-16 simple cache instances instead of the doctrine cache.
+  Support for doctrine/cache will be removed in version 2.
+
+1.9.0
+-----
+
+* Allow installation with doctrine/cache `2.*`. Cache `1.*` is EOL.
+  If you use doctrine/cache 2, you need a PSR implementation, e.g. symfony/cache, and need to pass a cache instance to the CachedClient.
 
 1.8.1
 -----
