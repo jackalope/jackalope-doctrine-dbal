@@ -30,10 +30,10 @@
     },
     "require-dev": {
         "ext-json": "*",
-        "psr/log": "^1.0",
-        "phpcr/phpcr-api-tests": "2.1.24",
+        "psr/log": "^1 || ^2 || ^3",
+        "phpcr/phpcr-api-tests": "2.1.22",
         "phpunit/phpunit": "^9.0",
-        "symfony/cache": "^5.3",
+        "symfony/cache": "^5.4 || ^6.2",
         "phpstan/phpstan": "1.10.x-dev"
     },
     "autoload": {

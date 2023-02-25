@@ -67,7 +67,7 @@ class CachedClient extends Client
     {
         $caches = $caches ?: ['nodes', 'query'];
         foreach ($caches as $cache) {
-            if (isset($this->caches[$cache])) {
+            if (array_key_exists($cache, $this->caches)) {
                 $this->caches[$cache]->clear();
             }
         }
@@ -210,7 +210,7 @@ class CachedClient extends Client
 
     public function getNode(string $path): \stdClass
     {
-        if (empty($this->caches['nodes'])) {
+        if (!array_key_exists('nodes', $this->caches)) {
             return parent::getNode($path);
         }
 
@@ -230,7 +230,7 @@ class CachedClient extends Client
         try {
             $node = parent::getNode($path);
         } catch (ItemNotFoundException $e) {
-            if (isset($this->caches['nodes'])) {
+            if (array_key_exists('nodes', $this->caches)) {
                 $this->caches['nodes']->set($cacheKey, 'ItemNotFoundException');
             }
 
@@ -244,7 +244,7 @@ class CachedClient extends Client
 
     public function getNodes(array $paths): array
     {
-        if (empty($this->caches['nodes'])) {
+        if (!array_key_exists('nodes', $this->caches)) {
             return parent::getNodes($paths);
         }
 
@@ -345,7 +345,7 @@ class CachedClient extends Client
 
     public function getNodePathForIdentifier($uuid, $workspace = null): string
     {
-        if (empty($this->caches['nodes']) || null !== $workspace) {
+        if (!array_key_exists('nodes', $this->caches) || null !== $workspace) {
             return parent::getNodePathForIdentifier($uuid);
         }
 
@@ -365,7 +365,7 @@ class CachedClient extends Client
         try {
             $path = parent::getNodePathForIdentifier($uuid);
         } catch (ItemNotFoundException $e) {
-            if (isset($this->caches['nodes'])) {
+            if (array_key_exists('nodes', $this->caches)) {
                 $this->caches['nodes']->set($cacheKey, 'ItemNotFoundException');
             }
 
@@ -400,7 +400,7 @@ class CachedClient extends Client
 
     public function getReferences($path, $name = null): array
     {
-        if (empty($this->caches['nodes'])) {
+        if (!array_key_exists('nodes', $this->caches)) {
             return parent::getReferences($path, $name);
         }
 
@@ -420,7 +420,7 @@ class CachedClient extends Client
 
     public function getWeakReferences($path, $name = null): array
     {
-        if (empty($this->caches['nodes'])) {
+        if (!array_key_exists('nodes', $this->caches)) {
             return parent::getWeakReferences($path, $name);
         }
 
@@ -440,7 +440,7 @@ class CachedClient extends Client
 
     public function query(Query $query): array
     {
-        if (empty($this->caches['query'])) {
+        if (!array_key_exists('query', $this->caches)) {
             return parent::query($query);
         }
 
