@@ -4,6 +4,12 @@ Changelog
 1.x
 ===
 
+1.10.0 (unreleased)
+-------------------
+
+* CachedClient also supports PSR-16 simple cache instances instead of the doctrine cache.
+  Support for doctrine/cache will be removed in version 2.
+
 1.9.0
 -----
 
