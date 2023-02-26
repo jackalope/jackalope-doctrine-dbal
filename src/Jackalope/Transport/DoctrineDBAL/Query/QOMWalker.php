@@ -91,8 +91,8 @@ class QOMWalker
     {
         $selectorAlias = $this->getSelectorAlias($selectorName);
 
-        if (!isset($this->alias[$selectorAlias])) {
-            $this->alias[$selectorAlias] = 'n' . count($this->alias);
+        if (!array_key_exists($selectorAlias, $this->alias)) {
+            $this->alias[$selectorAlias] = 'n'.count($this->alias);
         }
 
         return $this->alias[$selectorAlias];
@@ -688,8 +688,8 @@ class QOMWalker
                 $literal = $literalOperand->getLiteralValue();
                 if (false !== strpos($literal, ':')) {
                     $parts = explode(':', $literal);
-                    if (!isset($this->namespaces[$parts[0]])) {
-                        throw new NamespaceException('The namespace ' . $parts[0] . ' was not registered.');
+                    if (!array_key_exists($parts[0], $this->namespaces)) {
+                        throw new NamespaceException('The namespace '.$parts[0].' was not registered.');
                     }
 
                     $parts[0] = $this->namespaces[$parts[0]];

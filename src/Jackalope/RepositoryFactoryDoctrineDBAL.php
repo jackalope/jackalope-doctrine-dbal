@@ -31,6 +31,14 @@ use PHPCR\RepositoryFactoryInterface;
  */
 class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
 {
+    public const JACKALOPE_FACTORY = 'jackalope.factory';
+    public const JACKALOPE_DOCTRINE_DBAL_CONNECTION = 'jackalope.doctrine_dbal_connection';
+    public const JACKALOPE_DATA_CACHES = 'jackalope.data_caches';
+    public const JACKALOPE_CHECK_LOGIN_ON_SERVER = 'jackalope.check_login_on_server';
+    public const JACKALOPE_UUID_GENERATOR = 'jackalope.uuid_generator';
+    public const JACKALOPE_LOGGER = 'jackalope.logger';
+    public const JACKALOPE_DISABLE_TRANSACTIONS = 'jackalope.disable_transactions';
+    public const JACKALOPE_DISABLE_STREAM_WRAPPER = 'jackalope.disable_stream_wrapper';
     /**
      * List of required parameters for doctrine dbal.
      *
@@ -39,7 +47,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      * @var array
      */
     private static $required = [
-        'jackalope.doctrine_dbal_connection' => 'Doctrine\\DBAL\\Connection (required): connection instance',
+        self::JACKALOPE_DOCTRINE_DBAL_CONNECTION => 'Doctrine\\DBAL\\Connection (required): connection instance',
     ];
 
     /**
@@ -48,12 +56,12 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      * @var array
      */
     private static $optional = [
-        'jackalope.factory' => 'string or object: Use a custom factory class for Jackalope objects',
-        'jackalope.check_login_on_server' => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
-        'jackalope.disable_transactions' => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
-        'jackalope.disable_stream_wrapper' => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
-        'jackalope.data_caches' => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
-        'jackalope.logger' => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
+        self::JACKALOPE_FACTORY => 'string or object: Use a custom factory class for Jackalope objects',
+        self::JACKALOPE_CHECK_LOGIN_ON_SERVER => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
+        self::JACKALOPE_DISABLE_TRANSACTIONS => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
+        self::JACKALOPE_DISABLE_STREAM_WRAPPER => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
+        self::JACKALOPE_DATA_CACHES => 'array: an array of \Doctrine\Common\Cache\Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
+        self::JACKALOPE_LOGGER => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
         Session::OPTION_AUTO_LASTMODIFIED => 'boolean: Whether to automatically update nodes having mix:lastModified. Defaults to true.',
     ];
 
@@ -82,38 +90,39 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
             throw new ConfigurationException('Additional unknown parameters found: ' . implode(', ', array_keys(array_diff_key($parameters, self::$required, self::$optional))));
         }
 
-        if (isset($parameters['jackalope.factory'])) {
-            $factory = $parameters['jackalope.factory'] instanceof FactoryInterface
-                ? $parameters['jackalope.factory'] : new $parameters['jackalope.factory'];
+        if (array_key_exists(self::JACKALOPE_FACTORY, $parameters)) {
+            $factory = $parameters[self::JACKALOPE_FACTORY] instanceof FactoryInterface
+                ? $parameters[self::JACKALOPE_FACTORY]
+                : new $parameters[self::JACKALOPE_FACTORY];
         } else {
             $factory = new Factory();
         }
 
-        $dbConn = $parameters['jackalope.doctrine_dbal_connection'];
+        $dbConn = $parameters[self::JACKALOPE_DOCTRINE_DBAL_CONNECTION];
         \assert($dbConn instanceof Connection);
         if ($dbConn->getDatabasePlatform() instanceof OraclePlatform) {
             $this->ensureLowerCaseMiddleware($dbConn);
         }
 
-        $transport = isset($parameters['jackalope.data_caches'])
-            ? $factory->get(CachedClient::class, [$dbConn, $parameters['jackalope.data_caches']])
+        $transport = array_key_exists(self::JACKALOPE_DATA_CACHES, $parameters)
+            ? $factory->get(CachedClient::class, [$dbConn, $parameters[self::JACKALOPE_DATA_CACHES]])
             : $factory->get(Client::class, [$dbConn]);
 
-        if (isset($parameters['jackalope.check_login_on_server'])) {
-            $transport->setCheckLoginOnServer($parameters['jackalope.check_login_on_server']);
+        if (array_key_exists(self::JACKALOPE_CHECK_LOGIN_ON_SERVER, $parameters)) {
+            $transport->setCheckLoginOnServer($parameters[self::JACKALOPE_CHECK_LOGIN_ON_SERVER]);
         }
 
-        if (isset($parameters['jackalope.uuid_generator'])) {
-            $transport->setUuidGenerator($parameters['jackalope.uuid_generator']);
+        if (array_key_exists(self::JACKALOPE_UUID_GENERATOR, $parameters)) {
+            $transport->setUuidGenerator($parameters[self::JACKALOPE_UUID_GENERATOR]);
         }
 
-        if (isset($parameters['jackalope.logger'])) {
-            $transport = $factory->get(LoggingClient::class, [$transport, $parameters['jackalope.logger']]);
+        if (array_key_exists(self::JACKALOPE_LOGGER, $parameters)) {
+            $transport = $factory->get(LoggingClient::class, [$transport, $parameters[self::JACKALOPE_LOGGER]]);
         }
 
-        $options['transactions'] = empty($parameters['jackalope.disable_transactions']);
-        $options['stream_wrapper'] = empty($parameters['jackalope.disable_stream_wrapper']);
-        if (isset($parameters[Session::OPTION_AUTO_LASTMODIFIED])) {
+        $options['transactions'] = empty($parameters[self::JACKALOPE_DISABLE_TRANSACTIONS]);
+        $options['stream_wrapper'] = empty($parameters[self::JACKALOPE_DISABLE_STREAM_WRAPPER]);
+        if (array_key_exists(Session::OPTION_AUTO_LASTMODIFIED, $parameters)) {
             $options[Session::OPTION_AUTO_LASTMODIFIED] = $parameters[Session::OPTION_AUTO_LASTMODIFIED];
         }
 
