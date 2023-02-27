@@ -2,6 +2,7 @@
 
 namespace Jackalope;
 
+use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\ColumnCase;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\OraclePlatform;
@@ -104,7 +105,12 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
             $this->ensureLowerCaseMiddleware($dbConn);
         }
 
-        $transport = array_key_exists(self::JACKALOPE_DATA_CACHES, $parameters)
+        $canUseCache = array_key_exists(self::JACKALOPE_DATA_CACHES, $parameters)
+            && (array_key_exists('meta', $parameters[self::JACKALOPE_DATA_CACHES])
+                || class_exists(ArrayCache::class)
+            )
+        ;
+        $transport = $canUseCache
             ? $factory->get(CachedClient::class, [$dbConn, $parameters[self::JACKALOPE_DATA_CACHES]])
             : $factory->get(Client::class, [$dbConn]);
 
