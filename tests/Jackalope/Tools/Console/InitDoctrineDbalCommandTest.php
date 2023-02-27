@@ -44,6 +44,10 @@ class InitDoctrineDbalCommandTest extends TestCase
     public function setUp(): void
     {
         $this->connection = $this->createMock(Connection::class);
+        $this->connection
+            ->method('getParams')
+            ->willReturn([])
+        ;
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
 
         $this->platform = new MySQLPlatform();

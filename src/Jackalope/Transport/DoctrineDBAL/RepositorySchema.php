@@ -27,6 +27,11 @@ class RepositorySchema extends Schema
     private $maxIndexLength = -1;
 
     /**
+     * @var array
+     */
+    protected $options;
+
+    /**
      * @param array $options The options could be use to make the table
      *                               names configurable.
      * @param Connection $connection
@@ -257,6 +262,6 @@ class RepositorySchema extends Schema
 
         $databaseParameters = $this->connection->getParams();
 
-        return isset($databaseParameters['charset']) && 'utf8mb4' === strtolower($databaseParameters['charset']);
+        return array_key_exists('charset', $databaseParameters) && 'utf8mb4' === strtolower($databaseParameters['charset']);
     }
 }
