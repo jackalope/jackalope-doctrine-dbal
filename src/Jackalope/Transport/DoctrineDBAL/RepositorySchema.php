@@ -258,6 +258,6 @@ class RepositorySchema extends Schema
 
         $databaseParameters = $this->connection->getParams();
 
-        return isset($databaseParameters['charset']) && 'utf8mb4' === strtolower($databaseParameters['charset']);
+        return array_key_exists('charset', $databaseParameters) && 'utf8mb4' === strtolower($databaseParameters['charset']);
     }
 }
