@@ -2,7 +2,6 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use ArrayObject;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDO\Connection as PDOConnection;
 use Doctrine\DBAL\Exception as DBALException;
@@ -29,7 +28,6 @@ use Jackalope\Transport\StandardNodeTypes;
 use Jackalope\Transport\TransactionInterface;
 use Jackalope\Transport\WorkspaceManagementInterface;
 use Jackalope\Transport\WritingInterface;
-use PDO;
 use PHPCR\AccessDeniedException;
 use PHPCR\CredentialsInterface;
 use PHPCR\ItemExistsException;
@@ -60,7 +58,6 @@ use PHPCR\Util\PathHelper;
 use PHPCR\Util\QOM\Sql2ToQomQueryConverter;
 use PHPCR\Util\UUIDHelper;
 use PHPCR\Util\ValueConverter;
-use stdClass;
 
 /**
  * Class to handle the communication between Jackalope and RDBMS via Doctrine DBAL.
@@ -958,7 +955,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Convert the node XML to stdClass node representation containing all properties.
+     * Convert the node XML to \stdClass node representation containing all properties.
      *
      * @throws \InvalidArgumentException
      */
@@ -973,7 +970,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Convert the node XML to stdClass node representation containing only the given properties.
+     * Convert the node XML to \stdClass node representation containing only the given properties.
      *
      * @param string[] $propertyNames
      *
@@ -1217,7 +1214,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Convert a node result row to the stdClass representing all raw data.
+     * Convert a node result row to the \stdClass representing all raw data.
      *
      * @return \stdClass raw node data
      */
@@ -1338,7 +1335,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $stmt = $this->getConnection()->executeQuery($query, $params);
 
-        // emulate old $stmt->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_GROUP)
+        // emulate old $stmt->fetchAll(\PDO::FETCH_UNIQUE | \PDO::FETCH_GROUP)
         $all = [];
         while ($row = $stmt->fetchAssociative()) {
             $index = array_shift($row);
@@ -1787,7 +1784,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $this->nodeProcessor = new NodeProcessor(
-            $this->credentials->getUserID(),
+            $this->credentials?->getUserID(),
             $this->getNamespacesObject(),
             $this->getAutoLastModified()
         );

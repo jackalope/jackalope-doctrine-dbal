@@ -10,6 +10,8 @@ Changelog
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
 * Drop support for PHP 7.
+* Fixed: While it is allowed to call `Repository::login` with `null` credentials, there used to be an error. It now correctly works.
+  If you use `jcr:createdBy` or `jcr:lastModifiedBy` in node types, those properties are not set if the credentials are `null`.
 
 1.x
 ===
