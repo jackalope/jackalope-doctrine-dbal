@@ -639,7 +639,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                     'values' => $values,
                 ];
 
-                if (isset($resultSetUuids[$referenceEl->nodeValue])) {
+                if (array_key_exists($referenceEl->nodeValue, $resultSetUuids)) {
                     $referenceElsToRemap[] = [$referenceEl, $newPath, $row['type'], $propsData];
                 }
             }
@@ -699,7 +699,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $namespaces = $this->getNamespaces();
 
-        if (!isset($namespaces[$alias])) {
+        if (!array_key_exists($alias, $namespaces)) {
             throw new NamespaceException("the namespace $alias was not registered.");
         }
 
@@ -766,16 +766,15 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if ($e instanceof DBALException) {
                     if (false !== strpos($e->getMessage(), 'SQLSTATE[23')) {
                         throw new ItemExistsException('Item '.$path.' already exists in the database');
-                    } else {
-                        throw new RepositoryException(
-                            'Unknown database error while inserting item '.$path.': '.$e->getMessage(),
-                            0,
-                            $e
-                        );
                     }
-                } else {
-                    throw $e;
+                    throw new RepositoryException(
+                        'Unknown database error while inserting item '.$path.': '.$e->getMessage(),
+                        0,
+                        $e
+                    );
+
                 }
+                throw $e;
             }
 
             $nodeId = $this->getConnection()->lastInsertId($this->sequenceNodeName);
@@ -797,7 +796,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $this->nodeIdentifiers[$path] = $uuid;
 
-        if (!empty($propsData['binaryData'])) {
+        if (array_key_exists('binaryData', $propsData) && count($propsData['binaryData'])) {
             $this->syncBinaryData($nodeId, $propsData['binaryData']);
         }
 
@@ -933,7 +932,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             if ($missingTargets) {
                 $paths = [];
                 foreach ($missingTargets as $id) {
-                    if (isset($this->referencesToDelete[$id])) {
+                    if (array_key_exists($id, $this->referencesToDelete)) {
                         $paths[] = $this->referencesToDelete[$id];
                     }
                 }
@@ -1134,7 +1133,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 foreach ((array) $property['values'] as $key => $value) {
                     $element = $propertyNode->appendChild($dom->createElement('sv:value'));
                     $element->appendChild($dom->createTextNode($value));
-                    if (isset($lengths[$key])) {
+                    if (array_key_exists($key, $lengths)) {
                         $lengthAttribute = $dom->createAttribute('length');
                         $lengthAttribute->value = $lengths[$key];
                         $element->appendChild($lengthAttribute);
@@ -1209,7 +1208,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function nestNode(\stdClass $ancestor, \stdClass $node, array $nodeNames): void
     {
         while ($name = array_shift($nodeNames)) {
-            if (empty($nodeNames)) {
+            if (0 === count($nodeNames)) {
                 $ancestor->{$name} = $node;
 
                 return;
@@ -1449,7 +1448,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $pathByUuid[$node->{'jcr:uuid'}] = $path;
             }
             foreach ($identifiers as $identifier) {
-                if (isset($pathByUuid[$identifier])) {
+                if (array_key_exists($identifier, $pathByUuid)) {
                     $nodes[$pathByUuid[$identifier]] = $nodesData[$pathByUuid[$identifier]];
                 }
             }
@@ -1816,7 +1815,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $this->storeNode($operation->srcPath, $properties);
         }
 
-        if (!empty($additionalAddOperations)) {
+        if (count($additionalAddOperations)) {
             $this->storeNodes($additionalAddOperations);
         }
     }
@@ -1845,7 +1844,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function getIdentifier(string $path, $properties): string
     {
-        if (isset($this->nodeIdentifiers[$path])) {
+        if (array_key_exists($path, $this->nodeIdentifiers)) {
             return $this->nodeIdentifiers[$path];
         }
 
@@ -1916,7 +1915,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
         while ($row = $stmtResult->fetchAssociative()) {
             $nodeName = $row['node_name'];
 
-            if (!isset($result[$nodeName])) {
+            if (!array_key_exists($nodeName, $result)) {
                 $result[$nodeName] = [
                     'name' => $nodeName,
                     'isAbstract' => (bool) $row['node_abstract'],
@@ -1979,7 +1978,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         /* @var $type NodeTypeDefinition */
         foreach ($types as $type) {
-            if (isset($builtinTypes[$type->getName()])) {
+            if (array_key_exists($type->getName(), $builtinTypes)) {
                 throw new RepositoryException(sprintf('%s: can\'t reregister built-in node type.', $type->getName()));
             }
 
@@ -2155,7 +2154,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             /** @var SelectorInterface $selector */
             foreach ($selectors as $selector) {
                 $selectorName = $selector->getSelectorName() ?: $selector->getNodeTypeName();
-                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName].'_' : $selectorAliases[''].'_';
+                $columnPrefix = array_key_exists($selectorName, $selectorAliases) ? $selectorAliases[$selectorName].'_' : $selectorAliases[''].'_';
 
                 if ($primaryType === $selector->getNodeTypeName()) {
                     $result[] = [
@@ -2180,7 +2179,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                     ];
                 }
 
-                if (isset($row[$columnPrefix.'props'])) {
+                if (array_key_exists($columnPrefix.'props', $row) && is_string($row[$columnPrefix.'props'])) {
                     $propertyNames = [];
                     $columns = $qom->getColumns();
 
@@ -2196,7 +2195,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                         }
                     }
 
-                    $properties[$selectorName] = (array) $this->xmlToColumns(
+                    $properties[$selectorName] = (array)$this->xmlToColumns(
                         $row[$columnPrefix.'props'],
                         $propertyNames
                     );
@@ -2219,7 +2218,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             foreach ($qom->getColumns() as $column) {
                 $selectorName = $column->getSelectorName();
                 $columnName = $column->getPropertyName();
-                $columnPrefix = isset($selectorAliases[$selectorName]) ? $selectorAliases[$selectorName].'_' : $selectorAliases[''].'_';
+                $columnPrefix = array_key_exists($selectorName, $selectorAliases) ? $selectorAliases[$selectorName].'_' : $selectorAliases[''].'_';
 
                 if (in_array($column->getColumnName(), $reservedNames, true)) {
                     throw new InvalidQueryException(
@@ -2231,16 +2230,17 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
                     );
                 }
 
-                $dcrValue = 'jcr:uuid' === $columnName ? $row[$columnPrefix.'identifier'] : (isset($properties[$selectorName][$columnName]) ? $properties[$selectorName][$columnName] : '');
+                $dcrValue = 'jcr:uuid' === $columnName ? $row[$columnPrefix.'identifier'] : ($properties[$selectorName][$columnName] ?? '');
 
-                if (isset($standardColumns[$selectorName][$columnName])) {
-                    unset($standardColumns[$selectorName][$columnName]);
-                }
+                unset($standardColumns[$selectorName][$columnName]);
 
+                $dcrName = $column->getColumnName() === $columnName
+                    && isset($properties[$selectorName][$columnName])
+                    ? $selectorName.'.'.$columnName
+                    : $column->getColumnName()
+                ;
                 $result[] = [
-                    'dcr:name' => $column->getColumnName(
-                    ) === $columnName && isset($properties[$selectorName][$columnName]) ? $selectorName.'.'.$columnName : $column->getColumnName(
-                    ),
+                    'dcr:name' => $dcrName,
                     'dcr:value' => $dcrValue,
                     'dcr:selectorName' => $selectorName ?: $primaryType,
                 ];
@@ -2295,12 +2295,12 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
     public function registerNamespace(string $prefix, string $uri): void
     {
-        if (isset($this->namespaces[$prefix])) {
+        if ($this->namespaces && $this->namespaces->offsetExists($prefix)) {
             if ($this->namespaces[$prefix] === $uri) {
                 return;
             }
 
-            if (isset($this->coreNamespaces[$prefix])) {
+            if (array_key_exists($prefix, $this->coreNamespaces)) {
                 throw new NamespaceException(
                     "Cannot overwrite JCR core namespace prefix '$prefix' to a new uri '$uri'."
                 );
@@ -2320,14 +2320,14 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             ]
         );
 
-        if (!empty($this->namespaces)) {
+        if (null !== $this->namespaces) {
             $this->namespaces[$prefix] = $uri;
         }
     }
 
     public function unregisterNamespace(string $prefix): void
     {
-        if (isset($this->coreNamespaces[$prefix])) {
+        if (array_key_exists($prefix, $this->coreNamespaces)) {
             throw new NamespaceException("Cannot unregister JCR core namespace prefix '$prefix'.");
         }
 
@@ -2335,7 +2335,7 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
 
         $this->getConnection()->delete('phpcr_namespaces', ['prefix' => $prefix]);
 
-        if (!empty($this->namespaces)) {
+        if (null !== $this->namespaces) {
             unset($this->namespaces[$prefix]);
         }
     }
