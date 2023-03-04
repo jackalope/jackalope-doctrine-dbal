@@ -9,6 +9,7 @@ Changelog
 * Renamed cli-config.php.dist to cli-config.dist.php and cleaned up to be better documented.
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
+* Drop support for PHP 7.
 
 1.x
 ===

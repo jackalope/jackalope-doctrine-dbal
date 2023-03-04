@@ -20,7 +20,6 @@ jobs:
 
       matrix:
         php-version:
-          - '7.4'
           - '8.0'
           - '8.1'
           - '8.2'
@@ -31,13 +30,13 @@ jobs:
         dependencies:
           - highest
         include:
-          - php-version: '7.4'
+          - php-version: '8.0'
             dependencies: lowest
             db: sqlite
-          - php-version: '7.4'
+          - php-version: '8.0'
             dependencies: lowest
             db: mysql
-          - php-version: '7.4'
+          - php-version: '8.0'
             dependencies: lowest
             db: pgsql
 
