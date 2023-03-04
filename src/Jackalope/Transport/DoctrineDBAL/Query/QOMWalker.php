@@ -567,7 +567,7 @@ class QOMWalker
                 $literal = $literalOperand->getLiteralValue();
                 if (false !== strpos($literal, ':')) {
                     $parts = explode(':', $literal);
-                    if (!isset($this->namespaces[$parts[0]])) {
+                    if (!array_key_exists($parts[0], $this->namespaces)) {
                         throw new NamespaceException('The namespace '.$parts[0].' was not registered.');
                     }
 
