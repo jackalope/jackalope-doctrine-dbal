@@ -61,7 +61,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         self::JACKALOPE_CHECK_LOGIN_ON_SERVER => 'boolean: if set to empty or false, skip initial check whether repository exists. Enabled by default, disable to gain a few milliseconds off each repository instantiation.',
         self::JACKALOPE_DISABLE_TRANSACTIONS => 'boolean: if set and not empty, transactions are disabled, otherwise transactions are enabled. If transactions are enabled but not actively used, every save operation is wrapped into a transaction.',
         self::JACKALOPE_DISABLE_STREAM_WRAPPER => 'boolean: if set and not empty, stream wrapper is disabled, otherwise the stream wrapper is enabled and streams are only fetched when reading from for the first time. If your code always uses all binary properties it reads, you can disable this for a small performance gain.',
-        self::JACKALOPE_DATA_CACHES => 'array: an array of PSR-16 SimpleCache or Doctrine Cache instances. keys can be "meta" and "nodes", should be separate namespaces for best performance.',
+        self::JACKALOPE_DATA_CACHES => 'array: an array of PSR-16 SimpleCache. Keys can be "meta" and "nodes", should be separate namespaces for best performance.',
         self::JACKALOPE_LOGGER => 'Psr\Log\LoggerInterface: Use the LoggingClient to wrap the default transport Client',
         Session::OPTION_AUTO_LASTMODIFIED => 'boolean: Whether to automatically update nodes having mix:lastModified. Defaults to true.',
     ];
