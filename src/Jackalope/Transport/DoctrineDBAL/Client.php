@@ -1548,7 +1548,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $nodeId = $this->getSystemIdForNode($nodePath);
             if (!$nodeId) {
                 // no we really don't know that path
-                throw new ItemNotFoundException('No item found at '.$path);
+                throw new ItemNotFoundException('No item found at '.$nodePath);
             }
             if (!array_key_exists($nodeId, $nodesById)) {
                 $nodesById[$nodeId] = [];
@@ -1587,10 +1587,10 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * Removes a list of properties from a given node
+     * Removes a list of properties from a given node.
      *
      * @param string|int $nodeId
-     * @param array<string> $paths  Path belonging to that node that should be deleted
+     * @param array<string> $paths Path belonging to that node that should be deleted
      */
     private function removePropertiesFromNode(string|int $nodeId, array $paths): void
     {
@@ -1602,7 +1602,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $xpath = new \DOMXPath($dom);
 
         $found = false;
-        foreach($paths as $path) {
+        foreach ($paths as $path) {
             $propertyName = PathHelper::getNodeName($path);
             $tablesToDeleteReferencesFrom = [];
             foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
@@ -1615,6 +1615,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 if (in_array($type, ['reference', 'weakreference'])) {
                     $tablesToDeleteReferencesFrom[] = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
                 }
+
+                // Doing the XML removal
+                $propertyNode->parentNode->removeChild($propertyNode);
             }
 
             if (!$found) {
@@ -1623,21 +1626,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             }
 
             // Deleting the references
-            foreach(array_unique($tablesToDeleteReferencesFrom) as $table) {
+            foreach (array_unique($tablesToDeleteReferencesFrom) as $table) {
                 try {
                     $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
                     $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
                 } catch (DBALException $e) {
                     throw new RepositoryException(
-                        'Unexpected exception while cleaning up deleted nodes',
+                        "Can not delete references for property $propertyName from `$table`",
                         $e->getCode(),
                         $e
                     );
                 }
             }
-
-            // Doing the XML removal
-            $propertyNode->parentNode->removeChild($propertyNode);
         }
 
         $xml = $dom->saveXML();
@@ -1648,7 +1648,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->executeQuery($query, $params);
         } catch (DBALException $e) {
-            throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
+            throw new RepositoryException(
+                "Unexpected exception while updating properties of node with id $nodeId",
+                $e->getCode(),
+                $e
+            );
         }
     }
 
