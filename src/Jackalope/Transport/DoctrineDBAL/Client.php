@@ -1541,7 +1541,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
-        // Building a table describing which properties need to be deleted from which nodes so that we only have to parse contents once
+        // Building a table describing which properties need to be deleted from which nodes so that we only have to parse contents of each node once
         $nodesById = [];
         foreach ($operations as $op) {
             $nodePath = PathHelper::getParentPath($op->srcPath);
