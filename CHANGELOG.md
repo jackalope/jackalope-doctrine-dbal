@@ -12,6 +12,7 @@ Changelog
 * Drop support for PHP 7.
 * Fixed: While it is allowed to call `Repository::login` with `null` credentials, there used to be an error. It now correctly works.
   If you use `jcr:createdBy` or `jcr:lastModifiedBy` in node types, those properties are not set if the credentials are `null`.
+* Improving the performance of `deleteProperties` (#421)
 
 1.x
 ===
