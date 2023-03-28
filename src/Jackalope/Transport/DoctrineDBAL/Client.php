@@ -1557,7 +1557,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         // Doing the actual removal
-        foreach($nodesById as $nodeId => $pathsToDelete) {
+        foreach ($nodesById as $nodeId => $pathsToDelete) {
             $this->removePropertiesFromNode($nodeId, $pathsToDelete);
         }
     }
@@ -1589,7 +1589,6 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Removes a list of properties from a given node.
      *
-     * @param string|int $nodeId
      * @param array<string> $paths Path belonging to that node that should be deleted
      */
     private function removePropertiesFromNode(string|int $nodeId, array $paths): void
@@ -1609,7 +1608,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $found = true;
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
-                if (!$propertyNode->hasAttribute('sv:type')) { continue; }
+                if (!$propertyNode->hasAttribute('sv:type')) {
+                    continue;
+                }
 
                 $type = strtolower($propertyNode->getAttribute('sv:type'));
                 if (in_array($type, ['reference', 'weakreference'])) {
