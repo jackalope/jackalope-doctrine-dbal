@@ -1541,8 +1541,24 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $this->assertLoggedIn();
 
+        // Building a table describing which properties need to be deleted from which nodes so that we only have to parse contents of each node once
+        $nodesById = [];
         foreach ($operations as $op) {
-            $this->deleteProperty($op->srcPath);
+            $nodePath = PathHelper::getParentPath($op->srcPath);
+            $nodeId = $this->getSystemIdForNode($nodePath);
+            if (!$nodeId) {
+                // no we really don't know that path
+                throw new ItemNotFoundException('No item found at '.$nodePath);
+            }
+            if (!array_key_exists($nodeId, $nodesById)) {
+                $nodesById[$nodeId] = [];
+            }
+            $nodesById[$nodeId][] = $op->srcPath;
+        }
+
+        // Doing the actual removal
+        foreach ($nodesById as $nodeId => $pathsToDelete) {
+            $this->removePropertiesFromNode($nodeId, $pathsToDelete);
         }
     }
 
@@ -1567,7 +1583,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             // no we really don't know that path
             throw new ItemNotFoundException('No item found at '.$path);
         }
+        $this->removePropertiesFromNode($nodeId, [$path]);
+    }
 
+    /**
+     * Removes a list of properties from a given node.
+     *
+     * @param array<string> $paths Path belonging to that node that should be deleted
+     */
+    private function removePropertiesFromNode(string|int $nodeId, array $paths): void
+    {
         $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
         $xml = $this->getConnection()->fetchOne($query, [$nodeId]);
 
@@ -1576,33 +1601,44 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $xpath = new \DOMXPath($dom);
 
         $found = false;
-        $propertyName = PathHelper::getNodeName($path);
-        foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
-            $found = true;
-            // would be nice to have the property object to ask for type
-            // but its in state deleted, would mean lots of refactoring
-            if ($propertyNode->hasAttribute('sv:type')) {
+        foreach ($paths as $path) {
+            $propertyName = PathHelper::getNodeName($path);
+            $tablesToDeleteReferencesFrom = [];
+            foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
+                $found = true;
+                // would be nice to have the property object to ask for type
+                // but its in state deleted, would mean lots of refactoring
+                if (!$propertyNode->hasAttribute('sv:type')) {
+                    continue;
+                }
+
                 $type = strtolower($propertyNode->getAttribute('sv:type'));
                 if (in_array($type, ['reference', 'weakreference'])) {
-                    $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
-                    try {
-                        $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
-                        $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
-                    } catch (DBALException $e) {
-                        throw new RepositoryException(
-                            'Unexpected exception while cleaning up deleted nodes',
-                            $e->getCode(),
-                            $e
-                        );
-                    }
+                    $tablesToDeleteReferencesFrom[] = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
                 }
+
+                // Doing the XML removal
+                $propertyNode->parentNode->removeChild($propertyNode);
             }
 
-            $propertyNode->parentNode->removeChild($propertyNode);
-        }
+            if (!$found) {
+                $nodePath = PathHelper::getParentPath($path);
+                throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
+            }
 
-        if (!$found) {
-            throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
+            // Deleting the references
+            foreach (array_unique($tablesToDeleteReferencesFrom) as $table) {
+                try {
+                    $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
+                    $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
+                } catch (DBALException $e) {
+                    throw new RepositoryException(
+                        "Can not delete references for property $propertyName from `$table`",
+                        $e->getCode(),
+                        $e
+                    );
+                }
+            }
         }
 
         $xml = $dom->saveXML();
@@ -1613,7 +1649,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->executeQuery($query, $params);
         } catch (DBALException $e) {
-            throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
+            throw new RepositoryException(
+                "Unexpected exception while updating properties of node with id $nodeId",
+                $e->getCode(),
+                $e
+            );
         }
     }
 
