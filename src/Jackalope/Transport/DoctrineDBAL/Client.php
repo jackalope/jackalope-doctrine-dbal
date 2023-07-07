@@ -1542,22 +1542,22 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $this->assertLoggedIn();
 
         // Building a table describing which properties need to be deleted from which nodes so that we only have to parse contents of each node once
-        $nodesById = [];
+        $nodesByPath = [];
         foreach ($operations as $op) {
             $nodePath = PathHelper::getParentPath($op->srcPath);
+            if (!array_key_exists($nodePath, $nodesByPath)) {
+                $nodesByPath[$nodePath] = [];
+            }
+            $nodesByPath[$nodePath][] = $op->srcPath;
+        }
+
+        // Doing the actual removal
+        foreach ($nodesByPath as $nodePath => $pathsToDelete) {
             $nodeId = $this->getSystemIdForNode($nodePath);
             if (!$nodeId) {
                 // no we really don't know that path
                 throw new ItemNotFoundException('No item found at '.$nodePath);
             }
-            if (!array_key_exists($nodeId, $nodesById)) {
-                $nodesById[$nodeId] = [];
-            }
-            $nodesById[$nodeId][] = $op->srcPath;
-        }
-
-        // Doing the actual removal
-        foreach ($nodesById as $nodeId => $pathsToDelete) {
             $this->removePropertiesFromNode($nodeId, $pathsToDelete);
         }
     }
