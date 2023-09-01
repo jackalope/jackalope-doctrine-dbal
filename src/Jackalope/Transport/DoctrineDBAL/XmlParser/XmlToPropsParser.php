@@ -28,36 +28,30 @@ final class XmlToPropsParser
     /**
      * @var string|null
      */
-    private $lastPropertyName = null;
+    private $lastPropertyName;
 
     /**
      * @var string|null
      */
-    private $lastPropertyType = null;
+    private $lastPropertyType;
 
     /**
      * @var string|null
      */
-    private $lastPropertyMultiValued = null;
+    private $lastPropertyMultiValued;
 
     /**
      * @var string|null
      */
-    private $currentTag = null;
+    private $currentTag;
 
     /**
      * @var mixed[]
      */
     private $currentValues = [];
 
-    /**
-     * @var mixed
-     */
     private $currentValueData = '';
 
-    /**
-     * @var mixed
-     */
     private $currentPropData = '';
 
     /**

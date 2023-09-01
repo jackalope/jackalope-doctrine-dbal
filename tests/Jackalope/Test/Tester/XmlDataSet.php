@@ -162,8 +162,6 @@ class XmlDataSet
      * Returns the table with the matching name. If the table does not exist
      * an empty one is created.
      *
-     * @param mixed $tableColumns
-     *
      * @return Table
      */
     protected function getOrCreateTable(string $tableName, $tableColumns)

@@ -317,7 +317,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
     }
 
-    public function login(?CredentialsInterface $credentials = null, ?string $workspaceName = null): string
+    public function login(CredentialsInterface $credentials = null, string $workspaceName = null): string
     {
         $this->credentials = $credentials;
 
