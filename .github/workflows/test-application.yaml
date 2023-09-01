@@ -72,6 +72,11 @@ jobs:
           extensions: "pdo, pdo_sqlite, pdo_mysql, mysql, pdo_pgsql"
           tools: 'composer:v2'
 
+      - name: PHP 8.0 simple cache
+        # Symfony 5 is not compatible with SimpleCache 3 but does not declare a conflict. Symfony 6 can not be installed on PHP 8.0.
+        if: ${{ '8.0' == matrix.php-version }}
+        run: composer require psr/simple-cache "^2.0" --no-update
+
       - name: Install dependencies with Composer
         uses: ramsey/composer-install@v2
         with:
