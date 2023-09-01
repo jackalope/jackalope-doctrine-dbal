@@ -625,6 +625,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
             $references = [];
             foreach ($referenceEls as $referenceEl) {
+                \assert($referenceEl instanceof \DOMElement);
                 $propName = $referenceEl->getAttribute('sv:name');
                 $values = [];
                 foreach ($xpath->query('./sv:value', $referenceEl) as $valueEl) {
@@ -1605,6 +1606,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $propertyName = PathHelper::getNodeName($path);
             $tablesToDeleteReferencesFrom = [];
             foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
+                \assert($propertyNode instanceof \DOMElement);
                 $found = true;
                 // would be nice to have the property object to ask for type
                 // but its in state deleted, would mean lots of refactoring
