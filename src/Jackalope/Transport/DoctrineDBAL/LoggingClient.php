@@ -46,7 +46,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
      *
      * Will improve error reporting at the cost of some round trips.
      */
-    public function setCheckLoginOnServer($bool): void
+    public function setCheckLoginOnServer(bool $bool): void
     {
         $this->transport->setCheckLoginOnServer($bool);
     }

@@ -16,20 +16,9 @@ use PHPCR\RepositoryException;
  */
 class RepositorySchema extends Schema
 {
-    /**
-     * @var Connection
-     */
-    private $connection;
-
-    /**
-     * @var int
-     */
-    private $maxIndexLength = -1;
-
-    /**
-     * @var array
-     */
-    private $options;
+    private ?Connection $connection;
+    private ?int $maxIndexLength = -1;
+    private array $options;
 
     /**
      * @param array $options the options could be use to make the table names configurable
@@ -37,7 +26,7 @@ class RepositorySchema extends Schema
     public function __construct(array $options = [], Connection $connection = null)
     {
         $this->connection = $connection;
-        $schemaConfig = null === $connection ? null : $connection->getSchemaManager()->createSchemaConfig();
+        $schemaConfig = $connection?->getSchemaManager()->createSchemaConfig();
 
         parent::__construct([], [], $schemaConfig);
 
@@ -58,7 +47,7 @@ class RepositorySchema extends Schema
     /**
      * Merges Jackalope schema with the given schema.
      */
-    public function addToSchema(Schema $schema)
+    public function addToSchema(Schema $schema): void
     {
         foreach ($this->getTables() as $table) {
             $schema->_addTable($table);
@@ -69,7 +58,7 @@ class RepositorySchema extends Schema
         }
     }
 
-    protected function addNamespacesTable()
+    protected function addNamespacesTable(): void
     {
         $namespace = $this->createTable('phpcr_namespaces');
         $namespace->addColumn('prefix', 'string', ['length' => $this->getMaxIndexLength()]);
@@ -77,17 +66,14 @@ class RepositorySchema extends Schema
         $namespace->setPrimaryKey(['prefix']);
     }
 
-    protected function addWorkspacesTable()
+    protected function addWorkspacesTable(): void
     {
         $workspace = $this->createTable('phpcr_workspaces');
         $workspace->addColumn('name', 'string', ['length' => $this->getMaxIndexLength()]);
         $workspace->setPrimaryKey(['name']);
     }
 
-    /**
-     * @return Table
-     */
-    protected function addNodesTable()
+    protected function addNodesTable(): Table
     {
         // TODO increase the size of 'path' and 'parent' but this causes issues on MySQL due to key length
         $nodes = $this->createTable('phpcr_nodes');
@@ -113,7 +99,7 @@ class RepositorySchema extends Schema
         return $nodes;
     }
 
-    protected function addInternalIndexTypesTable()
+    protected function addInternalIndexTypesTable(): void
     {
         $indexJcrTypes = $this->createTable('phpcr_internal_index_types');
         $indexJcrTypes->addColumn('type', 'string', ['length' => $this->getMaxIndexLength()]);
@@ -121,7 +107,7 @@ class RepositorySchema extends Schema
         $indexJcrTypes->setPrimaryKey(['type', 'node_id']);
     }
 
-    protected function addBinaryDataTable()
+    protected function addBinaryDataTable(): void
     {
         $binary = $this->createTable('phpcr_binarydata');
         $binary->addColumn('id', 'integer', ['autoincrement' => true]);
@@ -134,7 +120,7 @@ class RepositorySchema extends Schema
         $binary->addUniqueIndex(['node_id', 'property_name', 'workspace_name', 'idx']);
     }
 
-    protected function addNodesReferencesTable(Table $nodes)
+    protected function addNodesReferencesTable(Table $nodes): void
     {
         $references = $this->createTable('phpcr_nodes_references');
         $references->addColumn('source_id', 'integer');
@@ -149,7 +135,7 @@ class RepositorySchema extends Schema
         }
     }
 
-    protected function addNodesWeakreferencesTable(Table $nodes)
+    protected function addNodesWeakreferencesTable(Table $nodes): void
     {
         $weakreferences = $this->createTable('phpcr_nodes_weakreferences');
         $weakreferences->addColumn('source_id', 'integer');
@@ -163,7 +149,7 @@ class RepositorySchema extends Schema
         }
     }
 
-    protected function addTypeNodesTable()
+    protected function addTypeNodesTable(): void
     {
         $types = $this->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', ['autoincrement' => true]);
@@ -178,7 +164,7 @@ class RepositorySchema extends Schema
         $types->addUniqueIndex(['name']);
     }
 
-    protected function addTypePropsTable()
+    protected function addTypePropsTable(): void
     {
         $propTypes = $this->createTable('phpcr_type_props');
         $propTypes->addColumn('node_type_id', 'integer');
@@ -196,7 +182,7 @@ class RepositorySchema extends Schema
         $propTypes->setPrimaryKey(['node_type_id', 'name']);
     }
 
-    protected function addTypeChildsTable()
+    protected function addTypeChildsTable(): void
     {
         $childTypes = $this->createTable('phpcr_type_childs');
         $childTypes->addColumn('id', 'integer', ['autoincrement' => true]);
@@ -211,7 +197,7 @@ class RepositorySchema extends Schema
         $childTypes->setPrimaryKey(['id']);
     }
 
-    public function reset()
+    public function reset(): void
     {
         if (null === $this->connection) {
             throw new RepositoryException('Do not use RepositorySchema::reset when not instantiated with a connection');
@@ -250,7 +236,7 @@ class RepositorySchema extends Schema
         return $this->maxIndexLength;
     }
 
-    private function isConnectionCharsetUtf8mb4()
+    private function isConnectionCharsetUtf8mb4(): bool
     {
         if (!$this->connection) {
             return false;

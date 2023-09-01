@@ -762,7 +762,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 );
             } catch (\Exception $e) {
                 if ($e instanceof DBALException) {
-                    if (false !== strpos($e->getMessage(), 'SQLSTATE[23')) {
+                    if (str_contains($e->getMessage(), 'SQLSTATE[23')) {
                         throw new ItemExistsException('Item '.$path.' already exists in the database');
                     }
                     throw new RepositoryException(
@@ -1532,7 +1532,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         unset($this->nodeIdentifiers[$root]);
         foreach (array_keys($this->nodeIdentifiers) as $path) {
-            if (0 === strpos($path, "$root/")) {
+            if (str_starts_with($path, "$root/")) {
                 unset($this->nodeIdentifiers[$path]);
             }
         }

@@ -2,7 +2,6 @@
 
 namespace Jackalope;
 
-use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\DBAL\ColumnCase;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\OraclePlatform;
@@ -13,6 +12,7 @@ use Jackalope\Transport\DoctrineDBAL\Client;
 use Jackalope\Transport\DoctrineDBAL\LoggingClient;
 use PHPCR\ConfigurationException;
 use PHPCR\RepositoryFactoryInterface;
+use PHPCR\RepositoryInterface;
 
 /**
  * This factory creates repositories with the Doctrine DBAL transport.
@@ -77,7 +77,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      *
      * @api
      */
-    public function getRepository(array $parameters = null)
+    public function getRepository(array $parameters = null): RepositoryInterface
     {
         if (null === $parameters) {
             throw new ConfigurationException('Jackalope-doctrine-dbal needs parameters');
@@ -106,9 +106,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
         }
 
         $canUseCache = array_key_exists(self::JACKALOPE_DATA_CACHES, $parameters)
-            && (array_key_exists('meta', $parameters[self::JACKALOPE_DATA_CACHES])
-                || class_exists(ArrayCache::class)
-            )
+            && array_key_exists('meta', $parameters[self::JACKALOPE_DATA_CACHES])
         ;
         $transport = $canUseCache
             ? $factory->get(CachedClient::class, [$dbConn, $parameters[self::JACKALOPE_DATA_CACHES]])

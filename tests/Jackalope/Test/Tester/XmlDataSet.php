@@ -12,36 +12,24 @@ use Doctrine\DBAL\Types\Types;
 
 class XmlDataSet
 {
-    /**
-     * @var array
-     */
-    protected $tables;
+    private array $tables;
 
-    /**
-     * @var \SimpleXMLElement
-     */
-    protected $xmlFileContents;
-
-    /**
-     * @var array
-     */
-    private $rows = [];
+    private \SimpleXMLElement $xmlFileContents;
+    private array $rows = [];
 
     /**
      * Creates a new dataset using the given tables.
-     *
-     * @param string $xmlFile
      */
-    public function __construct($xmlFile)
+    public function __construct(string $xmlFile)
     {
         if (!\is_file($xmlFile)) {
             throw new \InvalidArgumentException("Could not find xml file: $xmlFile");
         }
 
         $libxmlErrorReporting = \libxml_use_internal_errors(true);
-        $this->xmlFileContents = simplexml_load_string(file_get_contents($xmlFile), 'SimpleXMLElement', LIBXML_COMPACT | LIBXML_PARSEHUGE);
+        $contents = simplexml_load_string(file_get_contents($xmlFile), 'SimpleXMLElement', LIBXML_COMPACT | LIBXML_PARSEHUGE);
 
-        if (!$this->xmlFileContents) {
+        if (!$contents) {
             $message = '';
 
             foreach (\libxml_get_errors() as $error) {
@@ -50,6 +38,7 @@ class XmlDataSet
 
             throw new \RuntimeException($message);
         }
+        $this->xmlFileContents = $contents;
 
         \libxml_clear_errors();
         \libxml_use_internal_errors($libxmlErrorReporting);
@@ -74,12 +63,12 @@ class XmlDataSet
         return $this->rows[$tableName] ?? [];
     }
 
-    public function addRow(string $tableName, array $values)
+    public function addRow(string $tableName, array $values): void
     {
         $this->rows[$tableName][] = $values;
     }
 
-    protected function createTables(array &$tableColumns, array &$tableValues): void
+    private function createTables(array &$tableColumns, array &$tableValues): void
     {
         foreach ($tableValues as $tableName => $values) {
             $this->getOrCreateTable($tableName, $tableColumns[$tableName]);
@@ -90,7 +79,7 @@ class XmlDataSet
         }
     }
 
-    protected function getTableInfo(array &$tableColumns, array &$tableValues): void
+    private function getTableInfo(array &$tableColumns, array &$tableValues): void
     {
         if ('dataset' !== $this->xmlFileContents->getName()) {
             throw new \RuntimeException('The root element of an xml data set file must be called <dataset>');
@@ -161,10 +150,8 @@ class XmlDataSet
     /**
      * Returns the table with the matching name. If the table does not exist
      * an empty one is created.
-     *
-     * @return Table
      */
-    protected function getOrCreateTable(string $tableName, $tableColumns)
+    private function getOrCreateTable(string $tableName, $tableColumns): Table
     {
         if (empty($this->tables[$tableName])) {
             $table = new Table($tableName, array_map(static function (string $columnName): Column {
