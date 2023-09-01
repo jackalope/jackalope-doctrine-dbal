@@ -25,7 +25,7 @@ use Symfony\Component\Cache\Psr16Cache;
  */
 class ImplementationLoader extends AbstractLoader
 {
-    private static $instance = null;
+    private static $instance;
 
     public static function getInstance()
     {

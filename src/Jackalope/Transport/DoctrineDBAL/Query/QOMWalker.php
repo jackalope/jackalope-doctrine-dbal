@@ -74,14 +74,14 @@ class QOMWalker
             } else { // Currently no aliases, use an empty string as index
                 $selectorAlias = '';
             }
-        } elseif (false === strpos($selectorName, '.')) {
+        } elseif (!str_contains($selectorName, '.')) {
             $selectorAlias = $selectorName;
         } else {
             $parts = explode('.', $selectorName);
             $selectorAlias = reset($parts);
         }
 
-        if (0 === strpos($selectorAlias, '[')) {
+        if (str_starts_with($selectorAlias, '[')) {
             $selectorAlias = substr($selectorAlias, 1, -1);
         }
 
@@ -128,10 +128,7 @@ class QOMWalker
         return [$selectors, $this->alias, $sql];
     }
 
-    /**
-     * @return string
-     */
-    public function getColumns(QueryObjectModel $qom)
+    public function getColumns(QueryObjectModel $qom): string
     {
         // TODO we should actually build Xpath statements for each column we actually need in the result and not fetch all 'props'
         $sqlColumns = ['path', 'identifier', 'props'];
@@ -247,15 +244,18 @@ class QOMWalker
      *
      * @throws \BadMethodCallException if the provided JoinCondition has no valid way of getting the right selector
      */
-    private function getRightJoinSelector(QOM\JoinConditionInterface $right)
+    private function getRightJoinSelector(QOM\JoinConditionInterface $right): string
     {
         if ($right instanceof QOM\ChildNodeJoinConditionInterface) {
             return $right->getParentSelectorName();
-        } elseif ($right instanceof QOM\DescendantNodeJoinConditionInterface) {
+        }
+        if ($right instanceof QOM\DescendantNodeJoinConditionInterface) {
             return $right->getAncestorSelectorName();
-        } elseif ($right instanceof QOM\SameNodeJoinConditionInterface || $right instanceof QOM\EquiJoinConditionInterface) {
+        }
+        if ($right instanceof QOM\SameNodeJoinConditionInterface || $right instanceof QOM\EquiJoinConditionInterface) {
             return $right->getSelector2Name();
         }
+
         throw new \BadMethodCallException('Supplied join type should implement getSelector2Name() or be an instance of ChildNodeJoinConditionInterface or DescendantNodeJoinConditionInterface');
     }
 
@@ -478,7 +478,7 @@ class QOMWalker
         $ancestorPath = $constraint->getAncestorPath();
         if ('/' === $ancestorPath) {
             $ancestorPath = '';
-        } elseif ('/' === substr($ancestorPath, -1)) {
+        } elseif (str_ends_with($ancestorPath, '/')) {
             throw new InvalidQueryException("Trailing slash in $ancestorPath");
         }
 
@@ -565,7 +565,7 @@ class QOMWalker
                 $alias = $this->getTableAlias($selectorName);
 
                 $literal = $literalOperand->getLiteralValue();
-                if (false !== strpos($literal, ':')) {
+                if (str_contains($literal, ':')) {
                     $parts = explode(':', $literal);
                     if (!array_key_exists($parts[0], $this->namespaces)) {
                         throw new NamespaceException('The namespace '.$parts[0].' was not registered.');

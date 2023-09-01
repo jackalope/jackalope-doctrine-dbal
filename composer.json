@@ -30,6 +30,8 @@
     },
     "require-dev": {
         "ext-json": "*",
+        "ext-libxml":  "*",
+        "ext-simplexml":  "*",
         "psr/log": "^1 || ^2 || ^3",
         "phpcr/phpcr-api-tests": "2.1.22",
         "phpunit/phpunit": "^9.0",

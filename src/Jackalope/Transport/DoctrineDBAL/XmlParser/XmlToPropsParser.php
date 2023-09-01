@@ -10,60 +10,27 @@ use PHPCR\Util\ValueConverter;
  */
 final class XmlToPropsParser
 {
-    /**
-     * @var string
-     */
-    private $xml;
+    private string $xml;
 
     /**
      * @var string[]|null
      */
-    private $propertyNames;
+    private ?array $propertyNames;
 
-    /**
-     * @var ValueConverter
-     */
-    private $valueConverter;
-
-    /**
-     * @var string|null
-     */
-    private $lastPropertyName = null;
-
-    /**
-     * @var string|null
-     */
-    private $lastPropertyType = null;
-
-    /**
-     * @var string|null
-     */
-    private $lastPropertyMultiValued = null;
-
-    /**
-     * @var string|null
-     */
-    private $currentTag = null;
+    private ValueConverter $valueConverter;
+    private ?string $lastPropertyName = null;
+    private ?int $lastPropertyType = null;
+    private ?bool $lastPropertyMultiValued = null;
+    private ?string $currentTag = null;
 
     /**
      * @var mixed[]
      */
-    private $currentValues = [];
+    private array $currentValues = [];
 
-    /**
-     * @var mixed
-     */
-    private $currentValueData = '';
-
-    /**
-     * @var mixed
-     */
-    private $currentPropData = '';
-
-    /**
-     * @var \stdClass
-     */
-    private $data;
+    private string $currentValueData = '';
+    private string $currentPropData = '';
+    private \stdClass $data;
 
     /**
      * @param string[] $propertyNames
@@ -101,11 +68,9 @@ final class XmlToPropsParser
     }
 
     /**
-     * @param \XmlParser $parser
-     * @param string     $name
-     * @param mixed[]    $attrs
+     * @param array<mixed> $attrs
      */
-    private function startHandler($parser, $name, $attrs): void
+    private function startHandler(\XMLParser $parser, string $name, array $attrs): void
     {
         $this->currentTag = $name;
 
@@ -122,7 +87,7 @@ final class XmlToPropsParser
         $this->lastPropertyMultiValued = $attrs['SV:MULTI-VALUED'];
     }
 
-    private function endHandler($parser, $name): void
+    private function endHandler(\XMLParser $parser, string $name): void
     {
         $this->currentTag = null;
 
@@ -164,7 +129,7 @@ final class XmlToPropsParser
         $this->lastPropertyMultiValued = null;
     }
 
-    private function dataHandler($parser, $data): void
+    private function dataHandler(\XMLParser $parser, string $data): void
     {
         if (!$this->lastPropertyName) {
             return;
@@ -199,8 +164,6 @@ final class XmlToPropsParser
                 $this->currentValues[] = (bool) $value;
                 break;
             case PropertyType::LONG:
-                $this->currentValues[] = (int) $value;
-                break;
             case PropertyType::BINARY:
                 $this->currentValues[] = (int) $value;
                 break;

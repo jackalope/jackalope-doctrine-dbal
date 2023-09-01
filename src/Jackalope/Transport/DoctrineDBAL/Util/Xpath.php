@@ -10,10 +10,7 @@ namespace Jackalope\Transport\DoctrineDBAL\Util;
  */
 class Xpath
 {
-    /**
-     * @return string
-     */
-    public static function escapeBackslashes($query)
+    public static function escapeBackslashes($query): string
     {
         return str_replace('\\', '\\\\', $query);
 
@@ -33,27 +30,21 @@ class Xpath
      * Example:
      *   query: Foo isn't bar
      *   result: concat("Foo isn", "'", "t bar")
-     *
-     * @param string $query
-     * @param string $enclosure
-     * @param bool   $doubleEscapeSingleQuote
-     *
-     * @return string
      */
-    public static function escape($query, $enclosure = '"', $doubleEscapeSingleQuote = true)
+    public static function escape(string $query, string $enclosure = '"', bool $doubleEscapeSingleQuote = true): string
     {
         $escapeSingleQuote = $doubleEscapeSingleQuote ? '"\'%s"' : '"%s"';
         $escapeDoubleQuote = $doubleEscapeSingleQuote ? "''%s''" : "'%s'";
 
-        if ((false !== strpos($query, '\''))
-            || (false !== strpos($query, '"'))
+        if (str_contains($query, '\'')
+            || str_contains($query, '"')
         ) {
             $quotechars = ['\'', '"'];
             $parts = [];
             $current = '';
 
             foreach (str_split($query) as $character) {
-                if (in_array($character, $quotechars)) {
+                if (in_array($character, $quotechars, true)) {
                     if ('' !== $current) {
                         $parts[] = $enclosure.$current.$enclosure;
                     }
@@ -90,10 +81,8 @@ class Xpath
     /**
      * Because not all concat() implementations support more then 2 arguments,
      * we need this recursive function.
-     *
-     * @return string
      */
-    public static function concatBy2(array $parts)
+    public static function concatBy2(array $parts): string
     {
         if (2 === count($parts)) {
             return sprintf('concat(%s, %s)', $parts[0], $parts[1]);
