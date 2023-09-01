@@ -4,11 +4,12 @@ Changelog
 2.0.0 (unreleased)
 ------------------
 
-* Added static typing whereever possible. This should not change anything, but the added strictness
+* Added static typing wherever possible. This should not change anything, but the added strictness
   might trigger errors where it was more tolerant for incorrect types before.
 * Renamed cli-config.php.dist to cli-config.dist.php and cleaned up to be better documented.
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
+* If you are on PHP 8.0 and install Jackalope with `symfony/cache`, you need to restrict `psr/simple-cache` to `^1.0 || ^2.0` in your application because Symfony 5 does not declare a conflict with it, but fails at runtime.
 * Drop support for PHP 7.
 * Fixed: While it is allowed to call `Repository::login` with `null` credentials, there used to be an error. It now correctly works.
   If you use `jcr:createdBy` or `jcr:lastModifiedBy` in node types, those properties are not set if the credentials are `null`.
