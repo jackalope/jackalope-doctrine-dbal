@@ -46,7 +46,7 @@ class FunctionalTestCase extends TestCase
 
     protected function loadFixtures(Connection $conn): void
     {
-        $options = ['disable_fks' => $conn->getDatabasePlatform() instanceof SqlitePlatform];
+        $options = ['disable_fk' => $conn->getDatabasePlatform() instanceof SqlitePlatform];
         $schema = new RepositorySchema($options, $conn);
         $tables = $schema->getTables();
 

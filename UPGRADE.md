@@ -11,6 +11,12 @@ Upgrade
 - `cli-config.php.dist` has been renamed to `cli-config.dist.php` - if you automate usage of the cli
   config file, you will need to adjust.
 
+- We changed the database schema to cascade delete the binary data when a node is deleted. To
+  upgrade the schema, delete all dangling references and add the foreign key to the database:
+
+  `DELETE FROM phpcr_binarydata where node_id NOT IN (SELECT id FROM phpcr_nodes)`
+  `ALTER TABLE phpcr_binarydata ADD CONSTRAINT fk_nodes FOREIGN KEY (node_id) REFERENCES phpcr_nodes(id) ON DELETE CASCADE`
+
 1.5
 ---
 

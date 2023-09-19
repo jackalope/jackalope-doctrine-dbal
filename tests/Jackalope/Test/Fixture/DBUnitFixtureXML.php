@@ -43,6 +43,7 @@ class DBUnitFixtureXML extends XMLDocument
     public function __construct(string $file)
     {
         parent::__construct($file);
+        $this->dom->appendChild($this->dom->createComment(' This fixture is generated from the PHPCR fixtures. Do not edit manually '));
 
         $this->tables = [];
         $this->ids = [];
@@ -50,11 +51,10 @@ class DBUnitFixtureXML extends XMLDocument
         $this->expectedNodes = [];
     }
 
-    public function addDataset()
+    public function save()
     {
-        $this->dom->appendChild($this->dom->createElement('dataset'));
-
         // purge binary in case no binary properties are in fixture
+        // do this at the very end to make sure the binary table comes after the nodes table to avoid referencial integrity issues.
         $this->ensureTableExists('phpcr_binarydata', [
             'node_id',
             'property_name',
@@ -62,6 +62,13 @@ class DBUnitFixtureXML extends XMLDocument
             'idx',
             'data',
         ]);
+
+        return parent::save();
+    }
+
+    public function addDataset()
+    {
+        $this->dom->appendChild($this->dom->createElement('dataset'));
 
         return $this;
     }
