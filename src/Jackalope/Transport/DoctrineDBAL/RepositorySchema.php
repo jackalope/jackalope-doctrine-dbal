@@ -26,7 +26,11 @@ class RepositorySchema extends Schema
     public function __construct(array $options = [], Connection $connection = null)
     {
         $this->connection = $connection;
-        $schemaConfig = $connection?->getSchemaManager()->createSchemaConfig();
+        $schemaConfig = null;
+        if ($connection) {
+            $schemaManager = method_exists($connection, 'createSchemaManager') ? $connection->createSchemaManager() : $connection->getSchemaManager();
+            $schemaConfig = $schemaManager->createSchemaConfig();
+        }
 
         parent::__construct([], [], $schemaConfig);
 
@@ -118,6 +122,9 @@ class RepositorySchema extends Schema
         $binary->addColumn('data', 'blob');
         $binary->setPrimaryKey(['id']);
         $binary->addUniqueIndex(['node_id', 'property_name', 'workspace_name', 'idx']);
+        if (!array_key_exists('disable_fk', $this->options) || !$this->options['disable_fk']) {
+            $binary->addForeignKeyConstraint('phpcr_nodes', ['node_id'], ['id'], ['onDelete' => 'CASCADE']);
+        }
     }
 
     protected function addNodesReferencesTable(Table $nodes): void
@@ -128,7 +135,7 @@ class RepositorySchema extends Schema
         $references->addColumn('target_id', 'integer');
         $references->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $references->addIndex(['target_id']);
-        if (!empty($this->options['disable_fk'])) {
+        if (!array_key_exists('disable_fk', $this->options) || !$this->options['disable_fk']) {
             $references->addForeignKeyConstraint($nodes, ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
             // TODO: this should be reenabled on RDBMS with deferred FK support
             // $references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
@@ -143,7 +150,7 @@ class RepositorySchema extends Schema
         $weakreferences->addColumn('target_id', 'integer');
         $weakreferences->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $weakreferences->addIndex(['target_id']);
-        if (!empty($this->options['disable_fk'])) {
+        if (!array_key_exists('disable_fk', $this->options) || !$this->options['disable_fk']) {
             $weakreferences->addForeignKeyConstraint($nodes, ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
             $weakreferences->addForeignKeyConstraint($nodes, ['target_id'], ['id'], ['onDelete' => 'CASCADE']);
         }

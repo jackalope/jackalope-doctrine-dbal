@@ -14,6 +14,7 @@ Changelog
 * Fixed: While it is allowed to call `Repository::login` with `null` credentials, there used to be an error. It now correctly works.
   If you use `jcr:createdBy` or `jcr:lastModifiedBy` in node types, those properties are not set if the credentials are `null`.
 * Improving the performance of `deleteProperties` (#421)
+* Deleting dangling binary references when a property is removed or the whole node with a binary property is deleted (#426) - See UPGRADE.md for the recommended database changes.
 
 1.x
 ===

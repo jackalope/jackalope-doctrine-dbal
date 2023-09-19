@@ -6,8 +6,6 @@ use Jackalope\Test\FunctionalTestCase;
 
 class PrefetchTest extends FunctionalTestCase
 {
-    protected $conn;
-
     public function setUp(): void
     {
         parent::setUp();

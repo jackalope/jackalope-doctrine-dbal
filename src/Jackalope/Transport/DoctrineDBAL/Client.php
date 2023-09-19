@@ -142,6 +142,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         PropertyType::REFERENCE => 'phpcr_nodes_references',
         PropertyType::WEAKREFERENCE => 'phpcr_nodes_weakreferences',
     ];
+    private string $binaryTable = 'phpcr_binarydata';
 
     private array $referencesToDelete = [];
 
@@ -1605,6 +1606,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         foreach ($paths as $path) {
             $propertyName = PathHelper::getNodeName($path);
             $tablesToDeleteReferencesFrom = [];
+            $deleteBinary = false;
             foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
                 \assert($propertyNode instanceof \DOMElement);
                 $found = true;
@@ -1615,8 +1617,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 }
 
                 $type = strtolower($propertyNode->getAttribute('sv:type'));
-                if (in_array($type, ['reference', 'weakreference'])) {
-                    $tablesToDeleteReferencesFrom[] = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
+                switch ($type) {
+                    case 'reference':
+                        $tablesToDeleteReferencesFrom[] = $this->referenceTables[PropertyType::REFERENCE];
+                        break;
+                    case 'weakreference':
+                        $tablesToDeleteReferencesFrom[] = $this->referenceTables[PropertyType::WEAKREFERENCE];
+                        break;
+                    case 'binary':
+                        $deleteBinary = true;
+                        break;
+                    default:
+                        // nothing to do
                 }
 
                 // Doing the XML removal
@@ -1636,6 +1648,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 } catch (DBALException $e) {
                     throw new RepositoryException(
                         "Can not delete references for property $propertyName from `$table`",
+                        $e->getCode(),
+                        $e
+                    );
+                }
+            }
+            if ($deleteBinary) {
+                try {
+                    $query = "DELETE FROM {$this->binaryTable} WHERE node_id = ? AND property_name = ?";
+                    $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
+                } catch (DBALException $e) {
+                    throw new RepositoryException(
+                        "Can not delete binaries for property $propertyName from `{$this->binaryTable}`",
                         $e->getCode(),
                         $e
                     );

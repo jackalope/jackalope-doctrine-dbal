@@ -18,5 +18,3 @@ phpcr_tests.db-journal
 
 vendor/
 composer.lock
-
-/test
