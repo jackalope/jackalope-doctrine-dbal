@@ -31,7 +31,7 @@ class InitDoctrineDbalCommand extends Command
      * @throws CliInvalidArgumentException
      * @throws \PDOException
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this
             ->setName('jackalope:init:dbal')
