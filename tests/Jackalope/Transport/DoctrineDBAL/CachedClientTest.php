@@ -30,6 +30,14 @@ class CachedClientTest extends FunctionalTestCase
         self::assertIsArray($namespaces);
     }
 
+    public function testCacheHit()
+    {
+        $cache = new \stdClass();
+        $this->cache->set('nodes:_/test,_tests', $cache);
+
+        $this->assertSame($cache, $this->transport->getNode('/test'));
+    }
+
     /**
      * The default key sanitizer replaces spaces with underscores.
      */
@@ -52,8 +60,6 @@ class CachedClientTest extends FunctionalTestCase
             return strrev($cacheKey);
         });
 
-        /** @var CachedClient $cachedClient */
-        $cachedClient = $this->transport;
         $cachedClient->getNodeTypes();
 
         $this->assertTrue($this->cache->has('sepyt_edon'));
