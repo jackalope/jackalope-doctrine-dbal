@@ -2,7 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\Common\Cache\ArrayCache;
+use Doctrine\Common\Cache\Cache;
 use Doctrine\DBAL\Connection;
 use Jackalope\Factory;
 use Jackalope\Test\FunctionalTestCase;
@@ -11,13 +11,13 @@ use PHPUnit\Framework\MockObject\MockObject;
 class CachedClientTest extends FunctionalTestCase
 {
     /**
-     * @var ArrayCache|MockObject
+     * @var Cache|MockObject
      */
     private $cacheMock;
 
     protected function getClient(Connection $conn)
     {
-        $this->cacheMock = $this->createMock(ArrayCache::class);
+        $this->cacheMock = $this->createMock(Cache::class);
 
         return new CachedClient(new Factory(), $conn, ['nodes' => $this->cacheMock, 'meta' => $this->cacheMock]);
     }
@@ -26,6 +26,14 @@ class CachedClientTest extends FunctionalTestCase
     {
         $namespaces = $this->transport->getNamespaces();
         self::assertIsArray($namespaces);
+    }
+
+    public function testCacheHit()
+    {
+        $cache = new \stdClass();
+        $this->cacheMock->method('fetch')->with('nodes:_/test,_tests')->willReturn($cache);
+
+        $this->assertSame($cache, $this->transport->getNode('/test'));
     }
 
     /**
@@ -67,8 +75,6 @@ class CachedClientTest extends FunctionalTestCase
                 return true;
             }));
 
-        /** @var CachedClient $cachedClient */
-        $cachedClient = $this->transport;
         $cachedClient->getNodeTypes();
     }
 }
