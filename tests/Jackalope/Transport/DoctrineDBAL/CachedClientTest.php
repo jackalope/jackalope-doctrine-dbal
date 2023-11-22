@@ -33,9 +33,9 @@ class CachedClientTest extends FunctionalTestCase
     public function testCacheHit()
     {
         $cache = new \stdClass();
+        $cache->foo = 'bar';
         $this->cache->set('nodes:_/test,_tests', $cache);
-
-        $this->assertSame($cache, $this->transport->getNode('/test'));
+        $this->assertEquals($cache, $this->transport->getNode('/test'));
     }
 
     /**
