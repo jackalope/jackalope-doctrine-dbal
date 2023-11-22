@@ -20,6 +20,11 @@ Changelog
 1.x
 ===
 
+1.10.1
+------
+
+* Bugfix: Correctly handle cache fetches in CachedClient BC layer.
+
 1.10.0
 ------
 
