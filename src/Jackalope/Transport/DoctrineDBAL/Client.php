@@ -1409,6 +1409,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $nestedNodes = $this->getNodesData($rows);
         $node = array_shift($nestedNodes);
+
         foreach ($nestedNodes as $nestedPath => $nested) {
             $relativePath = PathHelper::relativizePath($nestedPath, $path);
             $this->nestNode($node, $nested, explode('/', $relativePath));
