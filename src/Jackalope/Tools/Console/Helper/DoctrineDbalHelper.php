@@ -13,22 +13,19 @@ use Symfony\Component\Console\Helper\Helper;
  */
 class DoctrineDbalHelper extends Helper
 {
-    /**
-     * @var Connection
-     */
-    protected $connection;
+    private Connection $connection;
 
     public function __construct(Connection $connection)
     {
         $this->connection = $connection;
     }
 
-    public function getConnection()
+    public function getConnection(): Connection
     {
         return $this->connection;
     }
 
-    public function getName()
+    public function getName(): string
     {
         return 'jackalope-doctrine-dbal';
     }

@@ -196,24 +196,24 @@ class ClientTest extends FunctionalTestCase
         $this->addToAssertionCount(1);
     }
 
-    public function provideTestOutOfRangeCharacters(): array
+    public static function provideTestOutOfRangeCharacters(): array
     {
         return [
-            ['This is valid too!'.$this->translateCharFromCode('\u0009'), true],
+            ['This is valid too!'.self::translateCharFromCode('\u0009'), true],
             ['This is valid', true],
-            [$this->translateCharFromCode('\uD7FF'), true],
-            ['This is on the edge, but valid too.'.$this->translateCharFromCode('\uFFFD'), true],
-            [$this->translateCharFromCode('\u10000'), true],
-            [$this->translateCharFromCode('\u10FFFF'), true],
-            [$this->translateCharFromCode('\u0001'), false],
-            [$this->translateCharFromCode('\u0002'), false],
-            [$this->translateCharFromCode('\u0003'), false],
-            [$this->translateCharFromCode('\u0008'), false],
-            [$this->translateCharFromCode('\uFFFF'), false],
+            [self::translateCharFromCode('\uD7FF'), true],
+            ['This is on the edge, but valid too.'.self::translateCharFromCode('\uFFFD'), true],
+            [self::translateCharFromCode('\u10000'), true],
+            [self::translateCharFromCode('\u10FFFF'), true],
+            [self::translateCharFromCode('\u0001'), false],
+            [self::translateCharFromCode('\u0002'), false],
+            [self::translateCharFromCode('\u0003'), false],
+            [self::translateCharFromCode('\u0008'), false],
+            [self::translateCharFromCode('\uFFFF'), false],
         ];
     }
 
-    private function translateCharFromCode($char)
+    private static function translateCharFromCode($char)
     {
         return json_decode('"'.$char.'"', true, 512, JSON_THROW_ON_ERROR);
     }
@@ -421,7 +421,7 @@ class ClientTest extends FunctionalTestCase
         }
     }
 
-    public function provideOrder(): iterable
+    public static function provideOrder(): iterable
     {
         yield 'string' => [
             [
