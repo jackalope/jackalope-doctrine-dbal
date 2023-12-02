@@ -16,6 +16,7 @@ Changelog
   If you use `jcr:createdBy` or `jcr:lastModifiedBy` in node types, those properties are not set if the credentials are `null`.
 * Improving the performance of `deleteProperties` (#421)
 * Deleting dangling binary references when a property is removed or the whole node with a binary property is deleted (#426) - See UPGRADE.md for the recommended database changes.
+* Allow installation with Symfony 7.
 
 1.x
 ===
