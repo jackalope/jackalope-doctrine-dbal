@@ -119,7 +119,10 @@ class XmlPropsRemover
 
         $tag = '<' . \strtolower($name);
         foreach ($attrs as $key => $value) {
-            $tag .= ' ' . \strtolower($key) . '="' . $value . '"'; // TODO escaping
+            $tag .= ' ' . \strtolower($key) // there is no case key which requires escaping for performance reasons we avoid it so
+                . '="'
+                . \htmlspecialchars($value, ENT_COMPAT, 'UTF-8')
+                . '"';
         }
         $tag .= '>';
 
@@ -159,7 +162,7 @@ class XmlPropsRemover
         if ($data !== '') {
             $this->newXml .= $this->newStartTag; // none empty data means no self closing tag so render tag now
             $this->newStartTag = '';
-            $this->newXml .= \htmlspecialchars($data, ENT_XML1);
+            $this->newXml .= htmlspecialchars($data, ENT_XML1, 'UTF-8');
         }
     }
 }
