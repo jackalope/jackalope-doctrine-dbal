@@ -27,6 +27,7 @@ class XmlPropsRemoverTest extends TestCase
 		<sv:value length="8">My Title</sv:value>
 	</sv:property>
 	<sv:property sv:name="ampersand" sv:type="String" sv:multi-valued="0"><sv:value length="13">foo &amp; bar&amp;baz</sv:value></sv:property>
+	<sv:property sv:name="äüö?ß&lt;&gt;''&quot;=&quot;test" sv:type="String" sv:multi-valued="0"><sv:value length="15">&lt;&gt;:&amp;|öäü"?"ß'='</sv:value></sv:property>
 	<sv:property sv:name="block_1_ref" sv:type="reference" sv:multi-valued="0">1922ec03-b5ed-40cf-856c-ecfb8eac12e2</sv:property>
 	<sv:property sv:name="block_2_ref" sv:type="reference" sv:multi-valued="0">94c9aefe-faaa-4896-816b-5bfc575681f0</sv:property>
 	<sv:property sv:name="block_3_ref" sv:type="weakreference" sv:multi-valued="0">a8ae4420-095b-4045-8775-b731cbae2fe1</sv:property>
@@ -44,6 +45,9 @@ EOT;
         ]);
         [$xml, $references] = $xmlPropsRemover->removeProps();
 
+        $this->assertStringContainsString('äüö?ß&lt;&gt;\'\'&quot;=&quot;test', $xml, 'Not correctly escaped special chars property name, after removing props.');
+        $this->assertStringContainsString('&lt;&gt;:&amp;|öäü"?"ß\'=\'', $xml, 'Not correctly escaped special chars property value, after removing props.');
+
         $xmlParser = $this->createXmlToPropsParser($xml);
         $data = $xmlParser->parse();
         $this->assertSame([
@@ -55,6 +59,8 @@ EOT;
             ':jcr:uuid' => 1,
             'ampersand' => 'foo & bar&baz',
             ':ampersand' => 1,
+            'äüö?ß<>\'\'"="test' => '<>:&|öäü"?"ß\'=\'',
+            ':äüö?ß<>\'\'"="test' => 1,
             'block_1_ref' => '1922ec03-b5ed-40cf-856c-ecfb8eac12e2',
             ':block_1_ref' => 9,
         ], (array) $data);
