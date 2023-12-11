@@ -1811,6 +1811,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         // Doing the actual removal
+        $this->assertLoggedIn();
         foreach ($nodesByPath as $nodePath => $propertiesToDelete) {
             $this->removePropertiesFromNode($nodePath, $propertiesToDelete);
         }
@@ -1840,18 +1841,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $nodePath = PathHelper::getParentPath($path);
         $propertyName = PathHelper::getNodeName($path);
+        $this->assertLoggedIn();
         $this->removePropertiesFromNode($nodePath, [$propertyName]);
     }
 
     /**
      * Removes a list of properties from a given node.
      *
-     * @param string $nodeId
-     * @param array<string> $paths Path belonging to that node that should be deleted
+     * @param string $nodePath
+     * @param array<string> $propertiesToDelete Path belonging to that node that should be deleted
      */
     private function removePropertiesFromNode($nodePath, array $propertiesToDelete): void
     {
-        $this->assertLoggedIn();
         $nodeId = $this->getSystemIdForNode($nodePath);
         if (!$nodeId) {
             // no we really don't know that path

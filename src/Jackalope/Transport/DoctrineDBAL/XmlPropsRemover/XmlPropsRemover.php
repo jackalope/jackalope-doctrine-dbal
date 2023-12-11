@@ -43,13 +43,15 @@ class XmlPropsRemover
     }
 
     /**
+     * @example [$xml, $references] = $xmlPropsRemover->removeProps($xml, $propertiesToDelete);
+     *
      * @return array{
      *     0: string,
      *     1: array{
      *         reference: string[],
      *         weakreference: string[],
      *     },
-     * }
+     * } An array with the new xml (0) and the references (1) which requires to be removed.
      */
     public function removeProps(): array
     {
@@ -143,7 +145,7 @@ class XmlPropsRemover
         }
 
         if ($this->newStartTag) {
-            // if the tag is not rendered to newXml it can be a self closing tag
+            // if the tag is not rendered to newXml it can be a self-closing tag
             $this->newXml .= \substr($this->newStartTag, 0.0, -1) . '/>';
             $this->newStartTag = '';
 
@@ -160,9 +162,9 @@ class XmlPropsRemover
         }
 
         if ($data !== '') {
-            $this->newXml .= $this->newStartTag; // none empty data means no self closing tag so render tag now
+            $this->newXml .= $this->newStartTag; // non-empty data means no self closing tag so render tag now
             $this->newStartTag = '';
-            $this->newXml .= htmlspecialchars($data, ENT_XML1, 'UTF-8');
+            $this->newXml .= \htmlspecialchars($data, ENT_XML1, 'UTF-8');
         }
     }
 }
