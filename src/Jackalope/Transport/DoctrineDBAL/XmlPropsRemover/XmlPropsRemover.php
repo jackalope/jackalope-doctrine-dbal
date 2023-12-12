@@ -101,18 +101,12 @@ class XmlPropsRemover
 
             if (\in_array($svName, $this->propertyNames)) {
                 $this->skipCurrentTag = true;
+                $svType = $attrs['SV:TYPE'];
 
-                if (\in_array($svName, $this->propertyNames)) {
-                    $this->skipCurrentTag = true;
-                    $svType = $attrs['SV:TYPE'];
-
-                    if ($svType === 'reference') {
-                        $this->references[] = $svName;
-                    } elseif ($svType === 'weakreference') {
-                        $this->weakReferences[] = $svName;
-                    }
-
-                    return;
+                if ($svType === 'reference') {
+                    $this->references[] = $svName;
+                } elseif ($svType === 'weakreference') {
+                    $this->weakReferences[] = $svName;
                 }
 
                 return;
