@@ -1839,9 +1839,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     protected function deleteProperty($path)
     {
+        $this->assertLoggedIn();
         $nodePath = PathHelper::getParentPath($path);
         $propertyName = PathHelper::getNodeName($path);
-        $this->assertLoggedIn();
         $this->removePropertiesFromNode($nodePath, [$propertyName]);
     }
 

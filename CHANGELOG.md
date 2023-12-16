@@ -4,6 +4,8 @@ Changelog
 1.x
 ===
 
+* Improve delete properties performance by replace DOMDocument with xml_parse
+
 1.10.1
 ------
 
