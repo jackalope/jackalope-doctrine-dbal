@@ -4,6 +4,9 @@ Changelog
 1.x
 ===
 
+1.11.0 (unreleased)
+-------------------
+
 * Improve delete properties performance by replace DOMDocument with xml_parse
 
 1.10.1
