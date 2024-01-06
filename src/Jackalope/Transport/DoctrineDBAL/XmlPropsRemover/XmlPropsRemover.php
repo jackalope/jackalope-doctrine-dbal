@@ -30,6 +30,11 @@ class XmlPropsRemover
     /**
      * @var string[]
      */
+    private array $binaries = [];
+
+    /**
+     * @var string[]
+     */
     private array $references = [];
 
     public function __construct(string $xml, array $propertyNames)
@@ -39,7 +44,7 @@ class XmlPropsRemover
     }
 
     /**
-     * @example [$xml, $references] = $xmlPropsRemover->removeProps($xml, $propertiesToDelete);
+     * @example [$xml, $references, $binaries] = $xmlPropsRemover->removeProps($xml, $propertiesToDelete);
      *
      * @return array{
      *     0: string,
@@ -47,6 +52,7 @@ class XmlPropsRemover
      *         reference: string[],
      *         weakreference: string[],
      *     },
+     *     2: string[]
      * } An array with the new xml (0) and the references (1) which requires to be removed
      */
     public function removeProps(): array
@@ -54,6 +60,7 @@ class XmlPropsRemover
         $this->newXml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
         $this->references = [];
         $this->weakReferences = [];
+        $this->binaries = [];
         $this->newStartTag = '';
         $this->skipCurrentTag = false;
 
@@ -78,6 +85,7 @@ class XmlPropsRemover
                 'reference' => $this->references,
                 'weakreference' => $this->weakReferences,
             ],
+            $this->binaries,
         ];
     }
 
@@ -102,6 +110,9 @@ class XmlPropsRemover
                         break;
                     case PropertyType::WEAKREFERENCE:
                         $this->weakReferences[] = $svName;
+                        break;
+                    case PropertyType::BINARY:
+                        $this->binaries[] = $svName;
                         break;
                 }
 

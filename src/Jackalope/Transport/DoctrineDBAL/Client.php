@@ -1598,7 +1598,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $xml = $this->getConnection()->fetchOne($query, [$nodeId]);
 
         $xmlPropsRemover = new XmlPropsRemover($xml, $propertiesToDelete);
-        [$xml, $references] = $xmlPropsRemover->removeProps();
+        [$xml, $references, $binaries] = $xmlPropsRemover->removeProps();
 
         foreach ($references as $type => $propertyNames) {
             $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
@@ -1613,6 +1613,18 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                         $e
                     );
                 }
+            }
+        }
+        foreach ($binaries as $propertyName) {
+            try {
+                $query = "DELETE FROM {$this->binaryTable} WHERE node_id = ? AND property_name = ?";
+                $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
+            } catch (DBALException $e) {
+                throw new RepositoryException(
+                    "Can not delete binaries for property $propertyName from `{$this->binaryTable}`",
+                    $e->getCode(),
+                    $e
+                );
             }
         }
 
