@@ -4,10 +4,10 @@ Changelog
 1.x
 ===
 
-1.11.0 (unreleased)
--------------------
+1.11.0
+------
 
-* Improve delete properties performance by replace DOMDocument with xml_parse
+* Improve delete properties performance by replace DOMDocument with `xml_parse`.
 
 1.10.1
 ------
