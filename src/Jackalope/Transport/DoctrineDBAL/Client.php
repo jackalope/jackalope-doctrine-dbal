@@ -1584,10 +1584,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Removes a list of properties from a given node.
      *
-     * @param string $nodePath
      * @param array<string> $propertiesToDelete Path belonging to that node that should be deleted
      */
-    private function removePropertiesFromNode($nodePath, array $propertiesToDelete): void
+    private function removePropertiesFromNode(string $nodePath, array $propertiesToDelete): void
     {
         $nodeId = $this->getSystemIdForNode($nodePath);
         if (!$nodeId) {
@@ -1606,7 +1605,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             foreach ($propertyNames as $propertyName) {
                 try {
                     $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
-                    $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
+                    $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
                 } catch (DBALException $e) {
                     throw new RepositoryException(
                         'Unexpected exception while cleaning up deleted nodes',

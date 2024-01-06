@@ -7,7 +7,6 @@ use Jackalope\Test\FunctionalTestCase;
 use PHPCR\PropertyType;
 use PHPCR\Query\QOM\QueryObjectModelConstantsInterface;
 use PHPCR\Query\QueryInterface;
-use PHPCR\SimpleCredentials;
 use PHPCR\Util\NodeHelper;
 use PHPCR\Util\PathHelper;
 use PHPCR\Util\QOM\QueryBuilder;
@@ -241,14 +240,14 @@ class ClientTest extends FunctionalTestCase
     {
         $root = $this->session->getNode('/');
         $node = $root->addNode('delete-properties');
-        for ($i = 0; $i <= 1000; $i++) {
+        for ($i = 0; $i <= 1000; ++$i) {
             $node->setProperty('property-'.$i, 'value-'.$i);
         }
 
         $this->session->save();
         $this->assertSame(1002, \count($node->getProperties()));
 
-        for ($i = 501; $i <= 1000; $i++) {
+        for ($i = 501; $i <= 1000; ++$i) {
             $node->setProperty('property-'.$i, null);
         }
 
@@ -256,7 +255,7 @@ class ClientTest extends FunctionalTestCase
         $this->session->refresh(false);
         $node = $this->session->getNode('/delete-properties');
 
-        for ($i = 0; $i <= 1000; $i++) {
+        for ($i = 0; $i <= 1000; ++$i) {
             $this->assertSame(
                 $i < 501,
                 $node->hasProperty('property-'.$i),

@@ -9,34 +9,28 @@ use PHPCR\PropertyType;
  */
 class XmlPropsRemover
 {
-    /**
-     * @var string
-     */
-    private $xml;
+    private string $xml;
 
     /**
      * @var string[]
      */
-    private $propertyNames;
+    private array $propertyNames;
+
+    private bool $skipCurrentTag = false;
+
+    private string $newXml = '';
+
+    private string $newStartTag = '';
 
     /**
-     * @var bool
+     * @var string[]
      */
-    private $skipCurrentTag = false;
+    private array $weakReferences = [];
 
     /**
-     * @var string
+     * @var string[]
      */
-    private $newXml = '';
-
-    /**
-     * @var string
-     */
-    private $newStartTag = '';
-
-    private $weakReferences = [];
-
-    private $references = [];
+    private array $references = [];
 
     public function __construct(string $xml, array $propertyNames)
     {
@@ -53,11 +47,11 @@ class XmlPropsRemover
      *         reference: string[],
      *         weakreference: string[],
      *     },
-     * } An array with the new xml (0) and the references (1) which requires to be removed.
+     * } An array with the new xml (0) and the references (1) which requires to be removed
      */
     public function removeProps(): array
     {
-        $this->newXml = '<?xml version="1.0" encoding="UTF-8"?>' . PHP_EOL;
+        $this->newXml = '<?xml version="1.0" encoding="UTF-8"?>'.PHP_EOL;
         $this->references = [];
         $this->weakReferences = [];
         $this->newStartTag = '';
@@ -79,7 +73,7 @@ class XmlPropsRemover
         unset($parser);
 
         return [
-            $this->newXml . PHP_EOL,
+            $this->newXml.PHP_EOL,
             [
                 'reference' => $this->references,
                 'weakreference' => $this->weakReferences,
@@ -88,17 +82,15 @@ class XmlPropsRemover
     }
 
     /**
-     * @param \XmlParser $parser
-     * @param string $name
      * @param mixed[] $attrs
      */
-    private function startHandler($parser, $name, $attrs): void
+    private function startHandler(\XMLParser $parser, string $name, array $attrs): void
     {
         if ($this->skipCurrentTag) {
             return;
         }
 
-        if ($name === 'SV:PROPERTY') {
+        if ('SV:PROPERTY' === $name) {
             $svName = $attrs['SV:NAME'];
 
             if (\in_array((string) $svName, $this->propertyNames, true)) {
@@ -117,12 +109,12 @@ class XmlPropsRemover
             }
         }
 
-        $tag = '<' . \strtolower($name);
+        $tag = '<'.\strtolower($name);
         foreach ($attrs as $key => $value) {
-            $tag .= ' ' . \strtolower($key) // there is no case key which requires escaping for performance reasons we avoid it so
-                . '="'
-                . \htmlspecialchars($value, ENT_COMPAT, 'UTF-8')
-                . '"';
+            $tag .= ' '.\strtolower($key) // there is no case key which requires escaping for performance reasons we avoid it so
+                .'="'
+                .\htmlspecialchars($value, ENT_COMPAT, 'UTF-8')
+                .'"';
         }
         $tag .= '>';
 
@@ -130,9 +122,9 @@ class XmlPropsRemover
         $this->newStartTag = $tag; // handling self closing tags in endHandler
     }
 
-    private function endHandler($parser, $name): void
+    private function endHandler(\XMLParser $parser, string $name): void
     {
-        if ($name === 'SV:PROPERTY' && $this->skipCurrentTag) {
+        if ('SV:PROPERTY' === $name && $this->skipCurrentTag) {
             $this->skipCurrentTag = false;
 
             return;
@@ -144,22 +136,22 @@ class XmlPropsRemover
 
         if ($this->newStartTag) {
             // if the tag is not rendered to newXml it can be a self-closing tag
-            $this->newXml .= \substr($this->newStartTag, 0.0, -1) . '/>';
+            $this->newXml .= \substr($this->newStartTag, 0.0, -1).'/>';
             $this->newStartTag = '';
 
             return;
         }
 
-        $this->newXml .= '</' . \strtolower($name) . '>';
+        $this->newXml .= '</'.\strtolower($name).'>';
     }
 
-    private function dataHandler($parser, $data): void
+    private function dataHandler(\XMLParser $parser, string $data): void
     {
         if ($this->skipCurrentTag) {
             return;
         }
 
-        if ($data !== '') {
+        if ('' !== $data) {
             $this->newXml .= $this->newStartTag; // non-empty data means no self closing tag so render tag now
             $this->newStartTag = '';
             $this->newXml .= \htmlspecialchars($data, ENT_XML1, 'UTF-8');
