@@ -31,6 +31,7 @@ use Jackalope\Query\Query;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\Transport\DoctrineDBAL\XmlParser\XmlToPropsParser;
+use Jackalope\Transport\DoctrineDBAL\XmlPropsRemover\XmlPropsRemover;
 use Jackalope\Transport\MoveNodeOperation;
 use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
@@ -1408,6 +1409,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $nestedNodes = $this->getNodesData($rows);
         $node = array_shift($nestedNodes);
+
         foreach ($nestedNodes as $nestedPath => $nested) {
             $relativePath = PathHelper::relativizePath($nestedPath, $path);
             $this->nestNode($node, $nested, explode('/', $relativePath));
@@ -1798,10 +1800,20 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     public function deleteProperties(array $operations)
     {
-        $this->assertLoggedIn();
-
+        $nodesByPath = [];
         foreach ($operations as $op) {
-            $this->deleteProperty($op->srcPath);
+            $nodePath = PathHelper::getParentPath($op->srcPath);
+            $propertyName = PathHelper::getNodeName($op->srcPath);
+            if (!array_key_exists($nodePath, $nodesByPath)) {
+                $nodesByPath[$nodePath] = [];
+            }
+            $nodesByPath[$nodePath][$propertyName] = $propertyName;
+        }
+
+        // Doing the actual removal
+        $this->assertLoggedIn();
+        foreach ($nodesByPath as $nodePath => $propertiesToDelete) {
+            $this->removePropertiesFromNode($nodePath, $propertiesToDelete);
         }
 
         return true;
@@ -1828,52 +1840,46 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     protected function deleteProperty($path)
     {
         $this->assertLoggedIn();
-
         $nodePath = PathHelper::getParentPath($path);
+        $propertyName = PathHelper::getNodeName($path);
+        $this->removePropertiesFromNode($nodePath, [$propertyName]);
+    }
+
+    /**
+     * Removes a list of properties from a given node.
+     *
+     * @param string $nodePath
+     * @param array<string> $propertiesToDelete Path belonging to that node that should be deleted
+     */
+    private function removePropertiesFromNode($nodePath, array $propertiesToDelete): void
+    {
         $nodeId = $this->getSystemIdForNode($nodePath);
         if (!$nodeId) {
             // no we really don't know that path
-            throw new ItemNotFoundException("No item found at " . $path);
+            throw new ItemNotFoundException('No item found at ' . $nodePath);
         }
 
         $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
         $xml = $this->getConnection()->fetchOne($query, [$nodeId]);
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->loadXML($xml);
-        $xpath = new DomXpath($dom);
+        $xmlPropsRemover = new XmlPropsRemover($xml, $propertiesToDelete);
+        [$xml, $references] = $xmlPropsRemover->removeProps();
 
-        $found = false;
-        $propertyName = PathHelper::getNodeName($path);
-        foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
-            $found = true;
-            // would be nice to have the property object to ask for type
-            // but its in state deleted, would mean lots of refactoring
-            if ($propertyNode->hasAttribute('sv:type')) {
-                $type = strtolower($propertyNode->getAttribute('sv:type'));
-                if (in_array($type, ['reference', 'weakreference'])) {
-                    $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
-                    try {
-                        $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
-                        $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
-                    } catch (DBALException $e) {
-                        throw new RepositoryException(
-                            'Unexpected exception while cleaning up deleted nodes',
-                            $e->getCode(),
-                            $e
-                        );
-                    }
+        foreach ($references as $type => $propertyNames) {
+            $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
+            foreach ($propertyNames as $propertyName) {
+                try {
+                    $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
+                    $this->getConnection()->executeUpdate($query, [$nodeId, $propertyName]);
+                } catch (DBALException $e) {
+                    throw new RepositoryException(
+                        'Unexpected exception while cleaning up deleted nodes',
+                        $e->getCode(),
+                        $e
+                    );
                 }
             }
-
-            $propertyNode->parentNode->removeChild($propertyNode);
         }
-
-        if (!$found) {
-            throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
-        }
-
-        $xml = $dom->saveXML();
 
         $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
         $params = [$xml, $nodeId];
@@ -1881,7 +1887,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->executeUpdate($query, $params);
         } catch (DBALException $e) {
-            throw new RepositoryException("Unexpected exception while updating properties of $path", $e->getCode(), $e);
+            throw new RepositoryException("Unexpected exception while updating properties of $nodePath", $e->getCode(), $e);
         }
     }
 
