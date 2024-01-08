@@ -22,6 +22,7 @@ use Jackalope\Query\Query;
 use Jackalope\Transport\BaseTransport;
 use Jackalope\Transport\DoctrineDBAL\Query\QOMWalker;
 use Jackalope\Transport\DoctrineDBAL\XmlParser\XmlToPropsParser;
+use Jackalope\Transport\DoctrineDBAL\XmlPropsRemover\XmlPropsRemover;
 use Jackalope\Transport\NodeTypeManagementInterface;
 use Jackalope\Transport\QueryInterface as QueryTransport;
 use Jackalope\Transport\StandardNodeTypes;
@@ -1190,6 +1191,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $nestedNodes = $this->getNodesData($rows);
         $node = array_shift($nestedNodes);
+
         foreach ($nestedNodes as $nestedPath => $nested) {
             $relativePath = PathHelper::relativizePath($nestedPath, $path);
             $this->nestNode($node, $nested, explode('/', $relativePath));
@@ -1547,20 +1549,16 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $nodesByPath = [];
         foreach ($operations as $op) {
             $nodePath = PathHelper::getParentPath($op->srcPath);
+            $propertyName = PathHelper::getNodeName($op->srcPath);
             if (!array_key_exists($nodePath, $nodesByPath)) {
                 $nodesByPath[$nodePath] = [];
             }
-            $nodesByPath[$nodePath][] = $op->srcPath;
+            $nodesByPath[$nodePath][$propertyName] = $propertyName;
         }
 
         // Doing the actual removal
-        foreach ($nodesByPath as $nodePath => $pathsToDelete) {
-            $nodeId = $this->getSystemIdForNode($nodePath);
-            if (!$nodeId) {
-                // no we really don't know that path
-                throw new ItemNotFoundException('No item found at '.$nodePath);
-            }
-            $this->removePropertiesFromNode($nodeId, $pathsToDelete);
+        foreach ($nodesByPath as $nodePath => $propertiesToDelete) {
+            $this->removePropertiesFromNode($nodePath, $propertiesToDelete);
         }
     }
 
@@ -1578,96 +1576,57 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     private function deleteProperty(string $path): void
     {
         $this->assertLoggedIn();
-
         $nodePath = PathHelper::getParentPath($path);
-        $nodeId = $this->getSystemIdForNode($nodePath);
-        if (!$nodeId) {
-            // no we really don't know that path
-            throw new ItemNotFoundException('No item found at '.$path);
-        }
-        $this->removePropertiesFromNode($nodeId, [$path]);
+        $propertyName = PathHelper::getNodeName($path);
+        $this->removePropertiesFromNode($nodePath, [$propertyName]);
     }
 
     /**
      * Removes a list of properties from a given node.
      *
-     * @param array<string> $paths Path belonging to that node that should be deleted
+     * @param array<string> $propertiesToDelete Path belonging to that node that should be deleted
      */
-    private function removePropertiesFromNode(string|int $nodeId, array $paths): void
+    private function removePropertiesFromNode(string $nodePath, array $propertiesToDelete): void
     {
+        $nodeId = $this->getSystemIdForNode($nodePath);
+        if (!$nodeId) {
+            // no we really don't know that path
+            throw new ItemNotFoundException("No item found at $nodePath");
+        }
+
         $query = 'SELECT props FROM phpcr_nodes WHERE id = ?';
         $xml = $this->getConnection()->fetchOne($query, [$nodeId]);
 
-        $dom = new \DOMDocument('1.0', 'UTF-8');
-        $dom->loadXML($xml);
-        $xpath = new \DOMXPath($dom);
+        $xmlPropsRemover = new XmlPropsRemover($xml, $propertiesToDelete);
+        [$xml, $references, $binaries] = $xmlPropsRemover->removeProps();
 
-        $found = false;
-        foreach ($paths as $path) {
-            $propertyName = PathHelper::getNodeName($path);
-            $tablesToDeleteReferencesFrom = [];
-            $deleteBinary = false;
-            foreach ($xpath->query(sprintf('//*[@sv:name="%s"]', $propertyName)) as $propertyNode) {
-                \assert($propertyNode instanceof \DOMElement);
-                $found = true;
-                // would be nice to have the property object to ask for type
-                // but its in state deleted, would mean lots of refactoring
-                if (!$propertyNode->hasAttribute('sv:type')) {
-                    continue;
-                }
-
-                $type = strtolower($propertyNode->getAttribute('sv:type'));
-                switch ($type) {
-                    case 'reference':
-                        $tablesToDeleteReferencesFrom[] = $this->referenceTables[PropertyType::REFERENCE];
-                        break;
-                    case 'weakreference':
-                        $tablesToDeleteReferencesFrom[] = $this->referenceTables[PropertyType::WEAKREFERENCE];
-                        break;
-                    case 'binary':
-                        $deleteBinary = true;
-                        break;
-                    default:
-                        // nothing to do
-                }
-
-                // Doing the XML removal
-                $propertyNode->parentNode->removeChild($propertyNode);
-            }
-
-            if (!$found) {
-                $nodePath = PathHelper::getParentPath($path);
-                throw new ItemNotFoundException("Node $nodePath has no property $propertyName");
-            }
-
-            // Deleting the references
-            foreach (array_unique($tablesToDeleteReferencesFrom) as $table) {
+        foreach ($references as $type => $propertyNames) {
+            $table = $this->referenceTables['reference' === $type ? PropertyType::REFERENCE : PropertyType::WEAKREFERENCE];
+            foreach ($propertyNames as $propertyName) {
                 try {
                     $query = "DELETE FROM $table WHERE source_id = ? AND source_property_name = ?";
                     $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
                 } catch (DBALException $e) {
                     throw new RepositoryException(
-                        "Can not delete references for property $propertyName from `$table`",
-                        $e->getCode(),
-                        $e
-                    );
-                }
-            }
-            if ($deleteBinary) {
-                try {
-                    $query = "DELETE FROM {$this->binaryTable} WHERE node_id = ? AND property_name = ?";
-                    $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
-                } catch (DBALException $e) {
-                    throw new RepositoryException(
-                        "Can not delete binaries for property $propertyName from `{$this->binaryTable}`",
+                        'Unexpected exception while cleaning up deleted nodes',
                         $e->getCode(),
                         $e
                     );
                 }
             }
         }
-
-        $xml = $dom->saveXML();
+        foreach ($binaries as $propertyName) {
+            try {
+                $query = "DELETE FROM {$this->binaryTable} WHERE node_id = ? AND property_name = ?";
+                $this->getConnection()->executeQuery($query, [$nodeId, $propertyName]);
+            } catch (DBALException $e) {
+                throw new RepositoryException(
+                    "Can not delete binaries for property $propertyName from `{$this->binaryTable}`",
+                    $e->getCode(),
+                    $e
+                );
+            }
+        }
 
         $query = 'UPDATE phpcr_nodes SET props = ? WHERE id = ?';
         $params = [$xml, $nodeId];
@@ -1675,11 +1634,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         try {
             $this->getConnection()->executeQuery($query, $params);
         } catch (DBALException $e) {
-            throw new RepositoryException(
-                "Unexpected exception while updating properties of node with id $nodeId",
-                $e->getCode(),
-                $e
-            );
+            throw new RepositoryException("Unexpected exception while updating properties of $nodePath", $e->getCode(), $e);
         }
     }
 
