@@ -108,7 +108,7 @@ EOT;
 		<sv:value length="15">nt:unstructured</sv:value>
 	</sv:property>
 	<sv:property sv:name="block_1_ref" sv:type="reference" sv:multi-valued="0">1922ec03-b5ed-40cf-856c-ecfb8eac12e2</sv:property>
-	<sv:property sv:name="block_2_ref" sv:type="reference" sv:multi-valued="0">94c9aefe-faaa-4896-816b-5bfc575681f0</sv:property>
+	<sv:property sv:name="block_2_ref" sv:type="Reference" sv:multi-valued="0">94c9aefe-faaa-4896-816b-5bfc575681f0</sv:property>
 	<sv:property sv:name="block_3_ref" sv:type="weakreference" sv:multi-valued="0">a8ae4420-095b-4045-8775-b731cbae2fe1</sv:property>
 	<sv:property sv:name="external_reference" sv:type="reference" sv:multi-valued="0">
 		<sv:value length="36">842e61c0-09ab-42a9-87c0-308ccc90e6f6</sv:value>

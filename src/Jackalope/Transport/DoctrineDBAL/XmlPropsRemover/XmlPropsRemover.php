@@ -2,6 +2,8 @@
 
 namespace Jackalope\Transport\DoctrineDBAL\XmlPropsRemover;
 
+use PHPCR\PropertyType;
+
 /**
  * @internal
  */
@@ -99,14 +101,16 @@ class XmlPropsRemover
         if ($name === 'SV:PROPERTY') {
             $svName = $attrs['SV:NAME'];
 
-            if (\in_array($svName, $this->propertyNames)) {
+            if (\in_array((string) $svName, $this->propertyNames, true)) {
                 $this->skipCurrentTag = true;
-                $svType = $attrs['SV:TYPE'];
-
-                if ($svType === 'reference') {
-                    $this->references[] = $svName;
-                } elseif ($svType === 'weakreference') {
-                    $this->weakReferences[] = $svName;
+                // use PHPCR PropertyType to avoid encoding issues
+                switch (PropertyType::valueFromName($attrs['SV:TYPE'])) {
+                    case PropertyType::REFERENCE:
+                        $this->references[] = $svName;
+                        break;
+                    case PropertyType::WEAKREFERENCE:
+                        $this->weakReferences[] = $svName;
+                        break;
                 }
 
                 return;

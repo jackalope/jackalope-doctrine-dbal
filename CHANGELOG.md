@@ -4,6 +4,11 @@ Changelog
 1.x
 ===
 
+1.11.1
+------
+
+* Fix regression of 1.11.0: Reference deletion should work regardless of upper or lowercase of the type names in XML data.
+
 1.11.0
 ------
 
