@@ -49,18 +49,18 @@ final class XmlToPropsParser
     {
         $this->data = new \stdClass();
 
-        $parser = xml_parser_create();
+        $parser = \xml_parser_create();
 
-        xml_set_element_handler(
+        \xml_set_element_handler(
             $parser,
             [$this, 'startHandler'],
             [$this, 'endHandler']
         );
 
-        xml_set_character_data_handler($parser, [$this, 'dataHandler']);
+        \xml_set_character_data_handler($parser, [$this, 'dataHandler']);
 
-        xml_parse($parser, $this->xml, true);
-        xml_parser_free($parser);
+        \xml_parse($parser, $this->xml, true);
+        \xml_parser_free($parser);
         // avoid memory leaks and unset the parser see: https://www.php.net/manual/de/function.xml-parser-free.php
         unset($parser);
 
