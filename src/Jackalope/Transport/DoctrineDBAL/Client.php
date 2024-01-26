@@ -1709,6 +1709,9 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         $updateSortOrderCase = 'sort_order = CASE ';
         $updateDepthCase = 'depth = CASE ';
 
+        // TODO: Find a better way to do this
+        // Calculate CAST type for CASE statement
+
         $intType = 'integer';
         if ($this->getConnection()->getDatabasePlatform() instanceof MySQLPlatform) {
             $intType = 'unsigned';
