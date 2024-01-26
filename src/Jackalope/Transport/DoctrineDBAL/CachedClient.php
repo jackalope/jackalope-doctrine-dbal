@@ -121,7 +121,7 @@ class CachedClient extends Client
         parent::createWorkspace($name, $srcWorkspace = null);
 
         $this->caches['meta']->delete('workspaces');
-        $this->set('meta',$this->sanitizeKey("workspace: $name"), 1);
+        $this->set('meta', $this->sanitizeKey("workspace: $name"), 1);
     }
 
     /**
