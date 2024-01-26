@@ -6,6 +6,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Schema\AbstractSchemaManager;
+use Doctrine\DBAL\Schema\SchemaConfig;
 use Jackalope\Tools\Console\Command\InitDoctrineDbalCommand;
 use Jackalope\Tools\Console\Helper\DoctrineDbalHelper;
 use PHPUnit\Framework\TestCase;
@@ -36,6 +37,11 @@ class InitDoctrineDbalCommandTest extends TestCase
     protected $schemaManager;
 
     /**
+     * @var SchemaConfig
+     */
+    protected $schemaConfig;
+
+    /**
      * @var Application
      */
     protected $application;
@@ -48,6 +54,7 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->willReturn([])
         ;
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
+        $this->schemaConfig = new SchemaConfig();
 
         $this->platform = new MySQLPlatform();
 
@@ -57,10 +64,10 @@ class InitDoctrineDbalCommandTest extends TestCase
 
         $this->schemaManager
             ->method('createSchemaConfig')
-            ->willReturn(null);
+            ->willReturn($this->schemaConfig);
 
         $this->connection
-            ->method('getSchemaManager')
+            ->method('createSchemaManager')
             ->willReturn($this->schemaManager);
 
         $this->helperSet = new HelperSet([
