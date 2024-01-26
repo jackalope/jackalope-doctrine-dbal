@@ -28,7 +28,7 @@ class RepositorySchema extends Schema
         $this->connection = $connection;
         $schemaConfig = null;
         if ($connection) {
-            $schemaManager = method_exists($connection, 'createSchemaManager') ? $connection->createSchemaManager() : $connection->getSchemaManager();
+            $schemaManager = $connection->createSchemaManager();
             $schemaConfig = $schemaManager->createSchemaConfig();
         }
 
