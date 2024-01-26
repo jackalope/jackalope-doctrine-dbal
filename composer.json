@@ -19,7 +19,7 @@
         "ext-dom": "*",
         "ext-pdo": "*",
         "ext-xml": "*",
-        "doctrine/dbal": "^3.0 || ^4.0",
+        "doctrine/dbal": "^3.6 || ^4.0",
         "phpcr/phpcr": "~2.1.5",
         "phpcr/phpcr-utils": "^1.8 || ^2.0",
         "jackalope/jackalope": "^2.0.0-RC1",

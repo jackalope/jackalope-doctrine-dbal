@@ -2,6 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDO\Connection as PDOConnection;
 use Doctrine\DBAL\Exception as DBALException;
@@ -543,7 +544,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function executeChunkedUpdate(string $query, array $params): void
     {
-        $types = [Connection::PARAM_INT_ARRAY];
+        $types = [ArrayParameterType::INTEGER];
 
         if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
             foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
@@ -921,11 +922,11 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
                 $missingTargets = [];
                 foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
-                    $stmt = $this->getConnection()->executeQuery($query, [$chunk], [Connection::PARAM_INT_ARRAY]);
+                    $stmt = $this->getConnection()->executeQuery($query, [$chunk], [ArrayParameterType::INTEGER]);
                     $missingTargets = array_merge($missingTargets, array_column($stmt->fetchAllNumeric(), 0));
                 }
             } else {
-                $stmt = $this->getConnection()->executeQuery($query, [$params], [Connection::PARAM_INT_ARRAY]);
+                $stmt = $this->getConnection()->executeQuery($query, [$params], [ArrayParameterType::INTEGER]);
                 $missingTargets = array_column($stmt->fetchAllNumeric(), 0);
             }
             if ($missingTargets) {
@@ -1257,14 +1258,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $childrenRows += $this->getConnection()->fetchAllAssociative(
                     $query,
                     [$chunk, $this->workspaceName],
-                    [Connection::PARAM_STR_ARRAY, null]
+                    [ArrayParameterType::STRING, null]
                 );
             }
         } else {
             $childrenRows = $this->getConnection()->fetchAllAssociative(
                 $query,
                 [$paths, $this->workspaceName],
-                [Connection::PARAM_STR_ARRAY, null]
+                [ArrayParameterType::STRING, null]
             );
         }
 
@@ -1428,14 +1429,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 $all += $this->getConnection()->fetchAllAssociative(
                     $query,
                     [$this->workspaceName, $chunk],
-                    [ParameterType::STRING, Connection::PARAM_STR_ARRAY]
+                    [ParameterType::STRING, ArrayParameterType::STRING]
                 );
             }
         } else {
             $all = $this->getConnection()->fetchAllAssociative(
                 $query,
                 [$this->workspaceName, $identifiers],
-                [ParameterType::STRING, Connection::PARAM_STR_ARRAY]
+                [ParameterType::STRING, ArrayParameterType::STRING]
             );
         }
 
