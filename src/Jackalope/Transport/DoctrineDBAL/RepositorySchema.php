@@ -136,7 +136,7 @@ class RepositorySchema extends Schema
         $references->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $references->addIndex(['target_id']);
         if (!array_key_exists('disable_fk', $this->options) || !$this->options['disable_fk']) {
-            $references->addForeignKeyConstraint($nodes, ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
+            $references->addForeignKeyConstraint($nodes->getName(), ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
             // TODO: this should be reenabled on RDBMS with deferred FK support
             // $references->addForeignKeyConstraint($nodes, array('target_id'), array('id'));
         }
@@ -151,8 +151,8 @@ class RepositorySchema extends Schema
         $weakreferences->setPrimaryKey(['source_id', 'source_property_name', 'target_id']);
         $weakreferences->addIndex(['target_id']);
         if (!array_key_exists('disable_fk', $this->options) || !$this->options['disable_fk']) {
-            $weakreferences->addForeignKeyConstraint($nodes, ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
-            $weakreferences->addForeignKeyConstraint($nodes, ['target_id'], ['id'], ['onDelete' => 'CASCADE']);
+            $weakreferences->addForeignKeyConstraint($nodes->getName(), ['source_id'], ['id'], ['onDelete' => 'CASCADE']);
+            $weakreferences->addForeignKeyConstraint($nodes->getName(), ['target_id'], ['id'], ['onDelete' => 'CASCADE']);
         }
     }
 
