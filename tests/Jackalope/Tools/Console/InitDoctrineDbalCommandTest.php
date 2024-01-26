@@ -54,7 +54,7 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->willReturn([])
         ;
         $this->schemaManager = $this->createMock(AbstractSchemaManager::class);
-        $this->schemaConfig = $this->createMock(SchemaConfig::class);
+        $this->schemaConfig = new SchemaConfig();
 
         $this->platform = new MySQLPlatform();
 
@@ -67,7 +67,7 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->willReturn($this->schemaConfig);
 
         $this->connection
-            ->method(method_exists($this->connection, 'createSchemaManager') ?  'createSchemaManager' : 'getSchemaManager')
+            ->method(method_exists($this->connection, 'createSchemaManager') ? 'createSchemaManager' : 'getSchemaManager')
             ->willReturn($this->schemaManager);
 
         $this->helperSet = new HelperSet([
