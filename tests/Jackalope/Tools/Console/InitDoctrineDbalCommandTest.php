@@ -55,14 +55,6 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->method('getDatabasePlatform')
             ->willReturn($this->platform);
 
-        $this->schemaManager
-            ->method('createSchemaConfig')
-            ->willReturn(null);
-
-        $this->connection
-            ->method('getSchemaManager')
-            ->willReturn($this->schemaManager);
-
         $this->helperSet = new HelperSet([
             'phpcr' => new DoctrineDbalHelper($this->connection),
         ]);

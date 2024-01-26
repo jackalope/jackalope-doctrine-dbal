@@ -9,7 +9,7 @@ on:
       - '[0-9]+.[0-9]+.x'
 jobs:
   test:
-    name: 'PHP ${{ matrix.php-version }}{{ matrix.composer-stability ? matrix.composer-stability : '' }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
+    name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
     runs-on: ubuntu-20.04
 
     env:
