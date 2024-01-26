@@ -1681,14 +1681,14 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Parent of the destination path '".$destAbsPath."' has to exist.");
         }
 
-        $forUpdate = ' FOR UPDATE'; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/AbstractPlatform.php#L1776
+        $forUpdateSql = ' FOR UPDATE'; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/AbstractPlatform.php#L1776
         if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
-            $forUpdate = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SqlitePlatform.php#L753
+            $forUpdateSql = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SqlitePlatform.php#L753
         } elseif ($this->getConnection()->getDatabasePlatform() instanceof SQLServerPlatform) {
-            $forUpdate = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SQLServerPlatform.php#L1625
+            $forUpdateSql = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SQLServerPlatform.php#L1625
         }
 
-        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? ' . $forUpdate;
+        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? '.$forUpdateSql;
         $stmt = $this->getConnection()->executeQuery($query, [$srcAbsPath.'/%', $srcAbsPath, $this->workspaceName]);
 
         /*
@@ -2147,15 +2147,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             $parser = new Sql2ToQomQueryConverter($this->factory->get(QueryObjectModelFactory::class));
             try {
                 $qom = $parser->parse($query->getStatement());
-
-                $limit = $query->getLimit();
-                if ($limit) {
-                    $qom->setLimit($limit);
-                }
-                $offset = $query->getOffset();
-                if ($offset) {
-                    $qom->setOffset($offset);
-                }
+                $qom->setLimit($query->getLimit());
+                $qom->setOffset($query->getOffset());
             } catch (\Exception $e) {
                 throw new InvalidQueryException('Invalid query: '.$query->getStatement(), 0, $e);
             }

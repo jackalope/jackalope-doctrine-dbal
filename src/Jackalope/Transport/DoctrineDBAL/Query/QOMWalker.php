@@ -123,7 +123,8 @@ class QOMWalker
         ) {
             $limit = PHP_INT_MAX;
         }
-        $sql = $this->platform->modifyLimitQuery($sql, $limit, $offset);
+
+        $sql = $this->platform->modifyLimitQuery($sql, $limit, $offset ?: 0);
 
         return [$selectors, $this->alias, $sql];
     }
