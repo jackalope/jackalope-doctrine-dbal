@@ -66,7 +66,7 @@ class RepositorySchema extends Schema
     {
         $namespace = $this->createTable('phpcr_namespaces');
         $namespace->addColumn('prefix', 'string', ['length' => $this->getMaxIndexLength()]);
-        $namespace->addColumn('uri', 'string');
+        $namespace->addColumn('uri', 'string', ['length' => 255]);
         $namespace->setPrimaryKey(['prefix']);
     }
 
@@ -161,12 +161,12 @@ class RepositorySchema extends Schema
         $types = $this->createTable('phpcr_type_nodes');
         $types->addColumn('node_type_id', 'integer', ['autoincrement' => true]);
         $types->addColumn('name', 'string', ['length' => $this->getMaxIndexLength()]);
-        $types->addColumn('supertypes', 'string');
+        $types->addColumn('supertypes', 'string', ['length' => 255]);
         $types->addColumn('is_abstract', 'boolean');
         $types->addColumn('is_mixin', 'boolean');
         $types->addColumn('queryable', 'boolean');
         $types->addColumn('orderable_child_nodes', 'boolean');
-        $types->addColumn('primary_item', 'string', ['notnull' => false]);
+        $types->addColumn('primary_item', 'string', ['length' => 255, 'notnull' => false]);
         $types->setPrimaryKey(['node_type_id']);
         $types->addUniqueIndex(['name']);
     }
@@ -185,7 +185,7 @@ class RepositorySchema extends Schema
         $propTypes->addcolumn('query_orderable', 'boolean');
         $propTypes->addColumn('required_type', 'integer');
         $propTypes->addColumn('query_operators', 'integer'); // BITMASK
-        $propTypes->addColumn('default_value', 'string', ['notnull' => false]);
+        $propTypes->addColumn('default_value', 'string', ['length' => 255, 'notnull' => false]);
         $propTypes->setPrimaryKey(['node_type_id', 'name']);
     }
 
@@ -194,13 +194,13 @@ class RepositorySchema extends Schema
         $childTypes = $this->createTable('phpcr_type_childs');
         $childTypes->addColumn('id', 'integer', ['autoincrement' => true]);
         $childTypes->addColumn('node_type_id', 'integer');
-        $childTypes->addColumn('name', 'string');
+        $childTypes->addColumn('name', 'string', ['length' => 255]);
         $childTypes->addColumn('protected', 'boolean');
         $childTypes->addColumn('auto_created', 'boolean');
         $childTypes->addColumn('mandatory', 'boolean');
         $childTypes->addColumn('on_parent_version', 'integer');
-        $childTypes->addColumn('primary_types', 'string');
-        $childTypes->addColumn('default_type', 'string', ['notnull' => false]);
+        $childTypes->addColumn('primary_types', 'string', ['length' => 255]);
+        $childTypes->addColumn('default_type', 'string', ['length' => 255, 'notnull' => false]);
         $childTypes->setPrimaryKey(['id']);
     }
 
@@ -226,7 +226,7 @@ class RepositorySchema extends Schema
     private function getMaxIndexLength($currentMaxLength = null)
     {
         if (-1 === $this->maxIndexLength) {
-            $this->maxIndexLength = null;
+            $this->maxIndexLength = 255;
 
             if ($this->isConnectionCharsetUtf8mb4()) {
                 $this->maxIndexLength = 191;
@@ -234,7 +234,7 @@ class RepositorySchema extends Schema
         }
 
         if ($currentMaxLength && (
-            null === $this->maxIndexLength
+            255 === $this->maxIndexLength
             || $currentMaxLength < $this->maxIndexLength
         )) {
             return $currentMaxLength;

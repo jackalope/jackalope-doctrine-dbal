@@ -67,7 +67,7 @@ class InitDoctrineDbalCommandTest extends TestCase
             ->willReturn($this->schemaConfig);
 
         $this->connection
-            ->method('createSchemaManager')
+            ->method(method_exists($this->connection, 'createSchemaManager') ?  'createSchemaManager' : 'getSchemaManager')
             ->willReturn($this->schemaManager);
 
         $this->helperSet = new HelperSet([
