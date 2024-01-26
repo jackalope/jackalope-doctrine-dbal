@@ -3,8 +3,8 @@
 namespace Jackalope\Transport\DoctrineDBAL\Query;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
@@ -119,7 +119,7 @@ class QOMWalker
         $offset = $qom->getOffset();
 
         if (null !== $offset && null === $limit
-            && ($this->platform instanceof MySQLPlatform || $this->platform instanceof SqlitePlatform)
+            && ($this->platform instanceof AbstractMySQLPlatform || $this->platform instanceof SqlitePlatform)
         ) {
             $limit = PHP_INT_MAX;
         }
@@ -628,7 +628,7 @@ class QOMWalker
         $alias = $this->getTableAlias($propertyOperand->getSelectorName().'.'.$propertyOperand->getPropertyName());
         $property = $propertyOperand->getPropertyName();
 
-        if ($this->platform instanceof MySQLPlatform && '=' === $operator) {
+        if ($this->platform instanceof AbstractMySQLPlatform && '=' === $operator) {
             return sprintf(
                 "0 != FIND_IN_SET('%s', REPLACE(EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value'), ' ', ','))",
                 $literalOperand->getLiteralValue(),
@@ -806,7 +806,7 @@ class QOMWalker
      */
     private function sqlXpathValueExists(string $alias, string $property): string
     {
-        if ($this->platform instanceof MySQLPlatform) {
+        if ($this->platform instanceof AbstractMySQLPlatform) {
             return sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[1])') = 1", $alias, Xpath::escape($property));
         }
 
@@ -826,7 +826,7 @@ class QOMWalker
      */
     private function sqlXpathExtractValue(string $alias, string $property, string $column = 'props'): string
     {
-        if ($this->platform instanceof MySQLPlatform) {
+        if ($this->platform instanceof AbstractMySQLPlatform) {
             return sprintf("EXTRACTVALUE(%s.%s, '//sv:property[@sv:name=%s]/sv:value[1]')", $alias, $column, Xpath::escape($property));
         }
 
@@ -852,7 +852,7 @@ class QOMWalker
 
     private function sqlXpathExtractValueAttribute(string $alias, string $property, string $attribute, int $valueIndex = 1): string
     {
-        if ($this->platform instanceof MySQLPlatform) {
+        if ($this->platform instanceof AbstractMySQLPlatform) {
             return sprintf("EXTRACTVALUE(%s.props, '//sv:property[@sv:name=%s]/sv:value[%d]/@%s')", $alias, Xpath::escape($property), $valueIndex, $attribute);
         }
 
@@ -875,7 +875,7 @@ class QOMWalker
     {
         $expression = null;
 
-        if ($this->platform instanceof MySQLPlatform) {
+        if ($this->platform instanceof AbstractMySQLPlatform) {
             $expression = sprintf("EXTRACTVALUE(%s.props, 'count(//sv:property[@sv:name=%s]/sv:value[text()%%s%%s]) > 0')", $alias, Xpath::escape($property));
             // mysql does not escape the backslashes for us, while postgres and sqlite do
             $value = Xpath::escapeBackslashes($value);

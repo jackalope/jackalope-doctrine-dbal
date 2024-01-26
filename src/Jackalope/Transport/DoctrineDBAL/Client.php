@@ -7,7 +7,7 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Driver\PDO\Connection as PDOConnection;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\ParameterType;
-use Doctrine\DBAL\Platforms\MySQLPlatform;
+use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
 use Doctrine\DBAL\Platforms\SqlitePlatform;
@@ -1385,7 +1385,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             $query = 'SELECT id FROM phpcr_nodes WHERE identifier = ? AND workspace_name = ?';
         } else {
             $platform = $this->getConnection()->getDatabasePlatform();
-            if ($platform instanceof MySQLPlatform) {
+            if ($platform instanceof AbstractMySQLPlatform) {
                 $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE '.$this->getCaseSensitiveEncoding().' = ? AND workspace_name = ?';
             } else {
                 $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
@@ -1713,7 +1713,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         // Calculate CAST type for CASE statement
 
         $intType = 'integer';
-        if ($this->getConnection()->getDatabasePlatform() instanceof MySQLPlatform) {
+        if ($this->getConnection()->getDatabasePlatform() instanceof AbstractMySQLPlatform) {
             $intType = 'unsigned';
         }
 
