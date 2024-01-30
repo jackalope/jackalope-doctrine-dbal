@@ -21,6 +21,11 @@ Changelog
 1.x
 ===
 
+1.11.2
+------
+
+* Fix: Sanitize cache key of entries with workspace name.
+
 1.11.1
 ------
 
