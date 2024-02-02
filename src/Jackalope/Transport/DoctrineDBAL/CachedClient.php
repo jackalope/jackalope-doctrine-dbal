@@ -63,7 +63,7 @@ class CachedClient extends Client
     /**
      * @param array|null $caches which caches to invalidate, null means all except meta
      */
-    private function clearCaches(array $caches = null): void
+    private function clearCaches(?array $caches = null): void
     {
         $caches = $caches ?: ['nodes', 'query'];
         foreach ($caches as $cache) {

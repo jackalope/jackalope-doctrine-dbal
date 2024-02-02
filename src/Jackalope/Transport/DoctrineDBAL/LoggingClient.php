@@ -80,7 +80,7 @@ class LoggingClient extends AbstractReadWriteLoggingWrapper implements QueryTran
         $this->transport->registerNodeTypes($types, $allowUpdate);
     }
 
-    public function createWorkspace(string $name, string $srcWorkspace = null): void
+    public function createWorkspace(string $name, ?string $srcWorkspace = null): void
     {
         $this->transport->createWorkspace($name, $srcWorkspace);
     }

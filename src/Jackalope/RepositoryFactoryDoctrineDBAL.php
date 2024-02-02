@@ -77,7 +77,7 @@ class RepositoryFactoryDoctrineDBAL implements RepositoryFactoryInterface
      *
      * @api
      */
-    public function getRepository(array $parameters = null): RepositoryInterface
+    public function getRepository(?array $parameters = null): RepositoryInterface
     {
         if (null === $parameters) {
             throw new ConfigurationException('Jackalope-doctrine-dbal needs parameters');

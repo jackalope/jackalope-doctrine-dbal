@@ -23,7 +23,7 @@ class RepositorySchema extends Schema
     /**
      * @param array $options the options could be use to make the table names configurable
      */
-    public function __construct(array $options = [], Connection $connection = null)
+    public function __construct(array $options = [], ?Connection $connection = null)
     {
         $this->connection = $connection;
         $schemaConfig = null;

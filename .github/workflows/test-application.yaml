@@ -9,7 +9,7 @@ on:
       - '[0-9]+.[0-9]+.x'
 jobs:
   test:
-    name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}, Composer ${{ matrix.composer-stability }}'
+    name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
     runs-on: ubuntu-20.04
 
     env:
@@ -30,9 +30,6 @@ jobs:
           - sqlite
         dependencies:
           - highest
-        composer-stability:
-          - dev
-          - stable
         include:
           - php-version: '8.0'
             dependencies: lowest
@@ -75,10 +72,6 @@ jobs:
           php-version: ${{ matrix.php-version }}
           extensions: "pdo, pdo_sqlite, pdo_mysql, mysql, pdo_pgsql"
           tools: 'composer:v2'
-
-      - name: Set composer stability
-        if: ${{ matrix.composer-stability }}
-        run: composer config minimum-stability ${{ matrix.composer-stability }}
 
       - name: PHP 8.0 simple cache
         # Symfony 5 is not compatible with SimpleCache 3 but does not declare a conflict. Symfony 6 can not be installed on PHP 8.0.

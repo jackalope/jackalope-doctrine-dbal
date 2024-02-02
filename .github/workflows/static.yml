@@ -18,8 +18,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Pull in optional dependencies
+        # also lock dbal to version 3 for now, as we need to stay compatible with it
         run: |
-          composer require --no-update psr/simple-cache
+          composer require --no-update psr/simple-cache doctrine/dbal:^3.8
           composer update --no-dev --no-progress
 
       - name: PHPStan
@@ -38,7 +39,9 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install dependencies
+        # also lock dbal to version 3 for now, as we need to stay compatible with it
         run: |
+          composer require --no-update doctrine/dbal:^3.8
           composer update --no-progress
 
       - name: PHPStan
