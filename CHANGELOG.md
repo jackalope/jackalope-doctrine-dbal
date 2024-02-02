@@ -10,6 +10,13 @@ Changelog
 * [BC Break]: CachedClient now expects a PSR-16 cache rather than the abandoned doctrine/cache.
   When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
 * Support for new Symfony versions.
+* Support for doctrine/dbal 4.
+* For MySQL/MariaDB, default to `utf8mb4` encoding instead of `utf8` if autodiscovery does not provide the encoding.
+  If you get errors about the collation, either upgrade your database to utf8mb4 or explicitly configure the encoding
+  with `Client::setCaseSensitiveEncoding('utf8_bin')`. The error on misconfiguration looks like this:
+
+      1253 COLLATION 'utf8_bin' is not valid for CHARACTER SET 'utf8mb4'
+
 * If you are on PHP 8.0 and install Jackalope with `symfony/cache`, you need to restrict `psr/simple-cache` to `^1.0 || ^2.0` in your application because Symfony 5 does not declare a conflict with it, but fails at runtime.
 * Drop support for PHP 7.
 * Fixed: While it is allowed to call `Repository::login` with `null` credentials, there used to be an error. It now correctly works.

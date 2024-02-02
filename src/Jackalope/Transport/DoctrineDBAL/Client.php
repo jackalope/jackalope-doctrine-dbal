@@ -365,7 +365,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * This will control the collate which is being used on MySQL when querying nodes. It will be autodetected by just
+     * This will control the collation which is being used on MySQL when querying nodes. It will be autodetected by just
      * appending _bin to the current charset, which is good enough in most cases.
      */
     public function setCaseSensitiveEncoding(string $encoding): void
@@ -376,17 +376,17 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     /**
      * Returns the collate which is being used on MySQL when querying nodes.
      */
-    private function getCaseSensitiveEncoding(): string
+    private function getMySQLCaseSensitiveEncoding(): string
     {
         if (null !== $this->caseSensitiveEncoding) {
             return $this->caseSensitiveEncoding;
         }
 
         $params = $this->conn->getParams();
-        $charset = $params['charset'] ?? 'utf8';
         if (isset($params['defaultTableOptions']['collate'])) {
             return $this->caseSensitiveEncoding = $params['defaultTableOptions']['collate'];
         }
+        $charset = $params['charset'] ?? 'utf8mb4';
 
         return $this->caseSensitiveEncoding = 'binary' === $charset ? $charset : $charset.'_bin';
     }
@@ -1386,7 +1386,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         } else {
             $platform = $this->getConnection()->getDatabasePlatform();
             if ($platform instanceof AbstractMySQLPlatform) {
-                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE '.$this->getCaseSensitiveEncoding().' = ? AND workspace_name = ?';
+                $query = 'SELECT id FROM phpcr_nodes WHERE path COLLATE '.$this->getMySQLCaseSensitiveEncoding().' = ? AND workspace_name = ?';
             } else {
                 $query = 'SELECT id FROM phpcr_nodes WHERE path = ? AND workspace_name = ?';
             }
@@ -1681,15 +1681,19 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             throw new PathNotFoundException("Parent of the destination path '".$destAbsPath."' has to exist.");
         }
 
-        $forUpdateSql = ' FOR UPDATE'; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/AbstractPlatform.php#L1776
-        if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
-            $forUpdateSql = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SqlitePlatform.php#L753
-        } elseif ($this->getConnection()->getDatabasePlatform() instanceof SQLServerPlatform) {
-            $forUpdateSql = ''; // https://github.com/doctrine/dbal/blob/79ea9d6eda8e8e8705f2db58439e9934d8c769da/src/Platforms/SQLServerPlatform.php#L1625
-        }
+        $sql = $this->getConnection()->createQueryBuilder()
+            ->select('path, id')
+            ->from('phpcr_nodes')
+            ->where('(path LIKE :path_prefix OR path = :path) AND workspace_name = :workspace')
+            ->forUpdate()
+            ->getSQL()
+        ;
 
-        $query = 'SELECT path, id FROM phpcr_nodes WHERE path LIKE ? OR path = ? AND workspace_name = ? '.$forUpdateSql;
-        $stmt = $this->getConnection()->executeQuery($query, [$srcAbsPath.'/%', $srcAbsPath, $this->workspaceName]);
+        $stmt = $this->getConnection()->executeQuery($sql, [
+            'path_prefix' => $srcAbsPath.'/%',
+            'path' => $srcAbsPath,
+            'workspace' => $this->workspaceName,
+            ]);
 
         /*
          * TODO: https://github.com/jackalope/jackalope-doctrine-dbal/pull/26/files#L0R1057
