@@ -104,7 +104,7 @@ class ImplementationLoader extends AbstractLoader
             'WorkspaceManagement\\WorkspaceManagementTest::testCreateWorkspaceWithInvalidSource',
         ];
 
-        if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SqlitePlatform) {
+        if ($connection->getDatabasePlatform() instanceof Doctrine\DBAL\Platforms\SQLitePlatform) {
             $this->unsupportedTests[] = 'Query\\QuerySql2OperationsTest::testQueryRightJoin';
 
             // there is some problem with whiping the sqlite database to test the imports

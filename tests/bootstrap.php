@@ -1,7 +1,7 @@
 <?php
 
 use Doctrine\DBAL\DriverManager;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Jackalope\Transport\DoctrineDBAL\RepositorySchema;
 
 /* Make sure we get ALL infos from php */
@@ -44,7 +44,7 @@ $dbConn = DriverManager::getConnection([
 
 /* Recreate database schema */
 if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {
-    $options = ['disable_fk' => $dbConn->getDatabasePlatform() instanceof SqlitePlatform];
+    $options = ['disable_fk' => $dbConn->getDatabasePlatform() instanceof SQLitePlatform];
     $repositorySchema = new RepositorySchema($options, $dbConn);
     $repositorySchema->reset();
 }

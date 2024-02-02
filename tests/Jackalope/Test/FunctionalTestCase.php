@@ -3,7 +3,7 @@
 namespace Jackalope\Test;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Jackalope\Factory;
 use Jackalope\Repository;
 use Jackalope\Session;
@@ -46,7 +46,7 @@ class FunctionalTestCase extends TestCase
 
     protected function loadFixtures(Connection $conn): void
     {
-        $options = ['disable_fk' => $conn->getDatabasePlatform() instanceof SqlitePlatform];
+        $options = ['disable_fk' => $conn->getDatabasePlatform() instanceof SQLitePlatform];
         $schema = new RepositorySchema($options, $conn);
         $tables = $schema->getTables();
 

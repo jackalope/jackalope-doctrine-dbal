@@ -2,7 +2,7 @@
 
 namespace Jackalope\Transport\DoctrineDBAL;
 
-use Doctrine\DBAL\Platforms\SqlitePlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Jackalope\Test\FunctionalTestCase;
 use PHPCR\PropertyType;
 
@@ -12,7 +12,7 @@ class DeleteCascadeTest extends FunctionalTestCase
     {
         parent::setUp();
 
-        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+        if ($this->conn->getDatabasePlatform() instanceof SQLitePlatform) {
             $this->markTestSkipped('Foreign keys are not supported with sqlite');
         }
 

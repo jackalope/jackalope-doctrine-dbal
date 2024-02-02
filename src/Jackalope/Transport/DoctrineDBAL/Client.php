@@ -10,8 +10,7 @@ use Doctrine\DBAL\ParameterType;
 use Doctrine\DBAL\Platforms\AbstractMySQLPlatform;
 use Doctrine\DBAL\Platforms\PostgreSQL94Platform;
 use Doctrine\DBAL\Platforms\PostgreSQLPlatform;
-use Doctrine\DBAL\Platforms\SqlitePlatform;
-use Doctrine\DBAL\Platforms\SQLServerPlatform;
+use Doctrine\DBAL\Platforms\SQLitePlatform;
 use Doctrine\DBAL\Statement;
 use Jackalope\FactoryInterface;
 use Jackalope\Node;
@@ -163,7 +162,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     }
 
     /**
-     * @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
+     * @TODO: move to "SQLitePlatform" and rename to "registerExtraFunctions"?
      */
     private function registerSqliteFunctions(\PDO $sqliteConnection): void
     {
@@ -547,7 +546,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
     {
         $types = [ArrayParameterType::INTEGER];
 
-        if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
+        if ($this->getConnection()->getDatabasePlatform() instanceof SQLitePlatform) {
             foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                 $this->getConnection()->executeQuery($query, [$chunk], $types);
             }
@@ -920,7 +919,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
                 LEFT OUTER JOIN phpcr_nodes n ON r.target_id = n.id
             WHERE r.target_id IN (?)';
 
-            if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
+            if ($this->getConnection()->getDatabasePlatform() instanceof SQLitePlatform) {
                 $missingTargets = [];
                 foreach (array_chunk($params, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                     $stmt = $this->getConnection()->executeQuery($query, [$chunk], [ArrayParameterType::INTEGER]);
@@ -1253,7 +1252,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
         }
 
         $query = 'SELECT path, parent FROM phpcr_nodes WHERE parent IN (?) AND workspace_name = ? ORDER BY sort_order ASC';
-        if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
+        if ($this->getConnection()->getDatabasePlatform() instanceof SQLitePlatform) {
             $childrenRows = [];
             foreach (array_chunk($paths, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                 $childrenRows += $this->getConnection()->fetchAllAssociative(
@@ -1424,7 +1423,7 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
 
         $query = 'SELECT id, path, parent, local_name, namespace, workspace_name, identifier, type, props, depth, sort_order
             FROM phpcr_nodes WHERE workspace_name = ? AND identifier IN (?)';
-        if ($this->getConnection()->getDatabasePlatform() instanceof SqlitePlatform) {
+        if ($this->getConnection()->getDatabasePlatform() instanceof SQLitePlatform) {
             $all = [];
             foreach (array_chunk($identifiers, self::SQLITE_MAXIMUM_IN_PARAM_COUNT) as $chunk) {
                 $all += $this->getConnection()->fetchAllAssociative(
@@ -2527,8 +2526,8 @@ phpcr_type_childs ON phpcr_type_nodes.node_type_id = phpcr_type_childs.node_type
             $this->sequenceTypeName = 'phpcr_type_nodes_node_type_id_seq';
         }
 
-        // @TODO: move to "SqlitePlatform" and rename to "registerExtraFunctions"?
-        if ($this->conn->getDatabasePlatform() instanceof SqlitePlatform) {
+        // @TODO: move to "SQLitePlatform" and rename to "registerExtraFunctions"?
+        if ($this->conn->getDatabasePlatform() instanceof SQLitePlatform) {
             if (method_exists($this->conn, 'getNativeConnection')) {
                 $connection = $this->conn->getNativeConnection();
             } else {
