@@ -52,9 +52,6 @@ jobs:
           MYSQL_DATABASE: phpcr_tests
         options: >-
           --health-cmd "mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=5
-        steps:
-          - name: start
-            run: docker run -d mysql:8.3 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
         ports:
           - 3306:3306
 
@@ -69,6 +66,9 @@ jobs:
           --health-cmd "pg_isready" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
+      - name: start
+        run: docker run -d mysql:8.3 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
       - name: Checkout project
         uses: actions/checkout@v3
 
