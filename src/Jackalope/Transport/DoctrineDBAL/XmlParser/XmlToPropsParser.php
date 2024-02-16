@@ -38,7 +38,7 @@ final class XmlToPropsParser
     public function __construct(
         string $xml,
         ValueConverter $valueConverter,
-        array $propertyNames = null
+        ?array $propertyNames = null
     ) {
         $this->xml = $xml;
         $this->propertyNames = $propertyNames;

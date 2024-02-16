@@ -147,7 +147,7 @@ EOT;
         $this->assertSame('foo & bar&baz', $data->{'ampersand'});
     }
 
-    private function createXmlToPropsParser(string $xml, array $propNames = null): XmlToPropsParser
+    private function createXmlToPropsParser(string $xml, ?array $propNames = null): XmlToPropsParser
     {
         return new XmlToPropsParser(
             $xml,

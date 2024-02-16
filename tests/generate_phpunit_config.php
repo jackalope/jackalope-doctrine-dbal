@@ -1,7 +1,7 @@
 <?php
 
 /**
- * create database specific phpunit.xml config file for travis.
+ * create database specific phpunit.xml config file for CI.
  * e.g. sqlite.phpunit.xml.
  *
  * @author  cryptocompress <cryptocompress@googlemail.com>
@@ -14,6 +14,8 @@ $config = [
         'phpcr.doctrine.dbal.username' => 'root',
         'phpcr.doctrine.dbal.password' => 'root',
         'phpcr.doctrine.dbal.dbname' => 'phpcr_tests',
+        'phpcr.doctrine.dbal.collate' => 'utf8mb4_bin',
+        'phpcr.doctrine.dbal.charset' => 'utf8mb4',
     ],
     'pgsql' => [
         'phpcr.doctrine.dbal.driver' => 'pdo_pgsql',
@@ -28,7 +30,7 @@ $config = [
     ],
 ];
 
-if (!in_array(@$argv[1], array_keys($config))) {
+if (!array_key_exists(@$argv[1], $config)) {
     exit('Error:'."\n\t".'Database "'.@$argv[1].'" not supported.'."\n".
         'Usage:'."\n\t".'php tests/'.basename(__FILE__).' ['.implode('|', array_keys($config)).']'."\n");
 }

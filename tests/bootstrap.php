@@ -32,7 +32,7 @@ generate_fixtures(
  * For further details, please see Doctrine configuration page.
  * http://docs.doctrine-project.org/projects/doctrine-dbal/en/latest/reference/configuration.html#connection-details.
  */
-$dbConn = DriverManager::getConnection([
+$params = [
     'driver' => @$GLOBALS['phpcr.doctrine.dbal.driver'],
     'path' => @$GLOBALS['phpcr.doctrine.dbal.path'],
     'host' => @$GLOBALS['phpcr.doctrine.dbal.host'],
@@ -40,7 +40,16 @@ $dbConn = DriverManager::getConnection([
     'user' => @$GLOBALS['phpcr.doctrine.dbal.username'],
     'password' => @$GLOBALS['phpcr.doctrine.dbal.password'],
     'dbname' => @$GLOBALS['phpcr.doctrine.dbal.dbname'],
-]);
+];
+if (array_key_exists('phpcr.doctrine.dbal.collate', $GLOBALS)) {
+    $params['defaultTableOptions'] = [
+        'collate' => $GLOBALS['phpcr.doctrine.dbal.collate'],
+    ];
+}
+if (array_key_exists('phpcr.doctrine.dbal.charset', $GLOBALS)) {
+    $params['charset'] = $GLOBALS['phpcr.doctrine.dbal.charset'];
+}
+$dbConn = DriverManager::getConnection($params);
 
 /* Recreate database schema */
 if (!getenv('JACKALOPE_NO_TEST_DB_INIT')) {

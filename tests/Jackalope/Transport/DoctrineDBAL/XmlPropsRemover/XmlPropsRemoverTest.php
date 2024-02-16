@@ -75,7 +75,7 @@ EOT;
         ], $references);
     }
 
-    private function createXmlPropsRemover(string $xml, array $propNames = null): XmlPropsRemover
+    private function createXmlPropsRemover(string $xml, ?array $propNames = null): XmlPropsRemover
     {
         return new XmlPropsRemover(
             $xml,
@@ -83,7 +83,7 @@ EOT;
         );
     }
 
-    private function createXmlToPropsParser(string $xml, array $propNames = null): XmlToPropsParser
+    private function createXmlToPropsParser(string $xml, ?array $propNames = null): XmlToPropsParser
     {
         $factory = new Factory();
 
