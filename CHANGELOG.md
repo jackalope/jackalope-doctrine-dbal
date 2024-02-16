@@ -11,7 +11,7 @@ Changelog
   When instantiating the client, you need to provide at least the cache instance for metadata, as CachedClient does not know which implementation to pick.
 * Support for new Symfony versions.
 * Support for doctrine/dbal 4.
-* For MySQL/MariaDB, it is now required to configure `collate` or `charset` in the Doctrine connection, or alternatively
+* For MySQL/MariaDB, it is now required to configure `defaultTableOptions`.`collate` or `charset` in the Doctrine connection, or alternatively
   set the encoding explicitly with `Client::setCaseSensitiveEncoding('')` (e.g. `utf8mb4_bin`).
 * If you are on PHP 8.0 and install Jackalope with `symfony/cache`, you need to restrict `psr/simple-cache` to `^1.0 || ^2.0` in your application because Symfony 5 does not declare a conflict with it, but fails at runtime.
 * Drop support for PHP 7.

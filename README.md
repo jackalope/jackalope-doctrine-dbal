@@ -56,6 +56,9 @@ Note that you need at least version 5.1.5 of MySQL, otherwise you will get ``SQL
 $ mysqladmin -u root -p  create database jackalope
 $ echo "grant all privileges on jackalope.* to 'jackalope'@'localhost' identified by '1234test'; flush privileges;" | mysql -u root -p
 ```
+
+Also note that with MySQL/MariaDB, you need to configure the encoding to be used (see "bootstrapping" below).
+
 ### PostgreSQL
 
 ```sh
@@ -136,10 +139,11 @@ $driver    = 'pdo_mysql'; // pdo_pgsql | pdo_sqlite
 $host      = 'localhost';
 $user      = 'admin'; // only used for recording information about the node creator
 $sqluser   = 'jackalope';
-$sqlpass   = '';
+$sqlpass   = 'xxxx';
 $database  = 'jackalope'; 
 // $path      = 'jackalope.db'; // for SQLite
 $workspace = 'default';
+$charset   = 'utf8mb4'; // only for MySQL/MariaDB
 
 // Bootstrap Doctrine
 $connection = DriverManager::getConnection([
@@ -149,6 +153,7 @@ $connection = DriverManager::getConnection([
     'password'  => $sqlpass,
     'dbname'    => $database,
     // 'path'   => $path, // for SQLite
+    'charset    => $charset, // only for MySQL/MariaDB
 ]);
 
 $factory = new RepositoryFactoryDoctrineDBAL();
