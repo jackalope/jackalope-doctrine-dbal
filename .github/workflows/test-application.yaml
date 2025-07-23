@@ -10,7 +10,7 @@ on:
 jobs:
   test:
     name: 'PHP ${{ matrix.php-version }}, Database ${{ matrix.db }} ${{ matrix.dependencies }}'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     env:
       SYMFONY_DEPRECATIONS_HELPER: ${{ matrix.symfony-deprecation-helper }}
