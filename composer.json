@@ -36,7 +36,7 @@
         "phpcr/phpcr-api-tests": "2.1.25",
         "phpunit/phpunit": "^9.0",
         "symfony/cache": "^5.4 || ^6.2 || ^7.0",
-        "phpstan/phpstan": "^1.10"
+        "phpstan/phpstan": "^2.0"
     },
     "autoload": {
         "files": [ "src/dbal2_compat.php" ],
