@@ -75,9 +75,6 @@ class XmlPropsRemover
         \xml_set_character_data_handler($parser, [$this, 'dataHandler']);
 
         \xml_parse($parser, $this->xml, true);
-        \xml_parser_free($parser);
-        // avoid memory leaks and unset the parser see: https://www.php.net/manual/de/function.xml-parser-free.php
-        unset($parser);
 
         return [
             $this->newXml.PHP_EOL,
