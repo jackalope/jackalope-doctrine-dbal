@@ -341,7 +341,10 @@ class ClientTest extends FunctionalTestCase
     {
         $class = new \ReflectionClass(Client::class);
         $method = $class->getMethod('generateUuid');
-        $method->setAccessible(true);
+        // remove when we drop PHP 8.0 support
+        if (PHP_VERSION_ID < 80100) {
+            $method->setAccessible(true);
+        }
 
         self::assertIsString($method->invoke($this->transport));
 

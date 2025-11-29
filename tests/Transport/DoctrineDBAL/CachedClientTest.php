@@ -47,7 +47,10 @@ class CachedClientTest extends FunctionalTestCase
         $client = $this->getClient($this->getConnection());
         $reflection = new \ReflectionClass($client);
         $keySanitizerProperty = $reflection->getProperty('keySanitizer');
-        $keySanitizerProperty->setAccessible(true);
+        // remove when we drop PHP 8.0 support
+        if (PHP_VERSION_ID < 80100) {
+            $keySanitizerProperty->setAccessible(true);
+        }
         $defaultKeySanitizer = $keySanitizerProperty->getValue($client);
 
         $result = $defaultKeySanitizer(' :{}().@/"\\'); // not allowed PSR16 keys
