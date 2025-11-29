@@ -1,6 +1,12 @@
 Changelog
 =========
 
+2.0.3
+-----
+
+* Allow installation with Symfony 8.
+* Test with PHP 8.5.
+
 2.0.2
 -----
 

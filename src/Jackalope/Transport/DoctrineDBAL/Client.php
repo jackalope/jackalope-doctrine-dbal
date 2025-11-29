@@ -166,7 +166,8 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
      */
     private function registerSqliteFunctions(\PDO $sqliteConnection): void
     {
-        $sqliteConnection->sqliteCreateFunction(
+        $this->sqliteCreateFunction(
+            $sqliteConnection,
             'EXTRACTVALUE',
             function ($string, $expression) {
                 if (null === $string) {
@@ -208,12 +209,27 @@ class Client extends BaseTransport implements QueryTransport, WritingInterface, 
             2
         );
 
-        $sqliteConnection->sqliteCreateFunction(
+        $this->sqliteCreateFunction(
+            $sqliteConnection,
             'CONCAT',
             function () {
                 return implode('', func_get_args());
             }
         );
+    }
+
+    /**
+     * BC hack for PHP < 8.4. After that version we always talk with a \Pdo\Sqlite object.
+     */
+    private function sqliteCreateFunction(\PDO $sqliteConnection, string $name, callable $function, int $numArgs = -1): void
+    {
+        if (class_exists(\Pdo\Sqlite::class) && $sqliteConnection instanceof \Pdo\Sqlite) {
+            $sqliteConnection->createFunction($name, $function, $numArgs);
+
+            return;
+        }
+
+        $sqliteConnection->sqliteCreateFunction($name, $function, $numArgs);
     }
 
     public function getConnection(): Connection

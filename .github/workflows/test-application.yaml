@@ -32,15 +32,24 @@ jobs:
           - sqlite
         dependencies:
           - highest
+        symfony-version:
+          - '*'
         include:
           - php-version: '8.0'
             dependencies: lowest
+            symfony-version: '*'
             db: sqlite
           - php-version: '8.0'
             dependencies: lowest
+            symfony-version: '5.*'
             db: mysql
           - php-version: '8.0'
             dependencies: lowest
+            symfony-version: '5.*'
+            db: pgsql
+          - php-version: '8.5'
+            dependencies: lowest
+            symfony-version: '8.*'
             db: pgsql
 
     services:
@@ -73,12 +82,16 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           extensions: "pdo, pdo_sqlite, pdo_mysql, mysql, pdo_pgsql"
-          tools: 'composer:v2'
+          tools: 'composer:v2, flex'
 
       - name: PHP 8.0 simple cache
         # Symfony 5 is not compatible with SimpleCache 3 but does not declare a conflict. Symfony 6 can not be installed on PHP 8.0.
         if: ${{ '8.0' == matrix.php-version }}
         run: composer require psr/simple-cache "^2.0" --no-update
+
+      - name: Symfony version
+        if: matrix.symfony-version != '*'
+        run: composer config extra.symfony.require ${{ matrix.symfony-version }}
 
       - name: Install dependencies with Composer
         uses: ramsey/composer-install@v2

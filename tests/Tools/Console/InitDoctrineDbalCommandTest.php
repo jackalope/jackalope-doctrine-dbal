@@ -79,7 +79,12 @@ class InitDoctrineDbalCommandTest extends TestCase
         $this->application->setHelperSet($this->helperSet);
 
         $command = new InitDoctrineDbalCommand();
-        $this->application->add($command);
+
+        if (method_exists($this->application, 'addCommand')) {
+            $this->application->addCommand($command);
+        } else {
+            $this->application->add($command);
+        }
     }
 
     /**

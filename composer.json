@@ -34,8 +34,8 @@
         "ext-simplexml":  "*",
         "psr/log": "^1 || ^2 || ^3",
         "phpcr/phpcr-api-tests": "2.1.25",
-        "phpunit/phpunit": "^9.0",
-        "symfony/cache": "^5.4 || ^6.2 || ^7.0",
+        "phpunit/phpunit": "^9.6.16",
+        "symfony/cache": "^5.4 || ^6.2 || ^7.0 || ^8.0",
         "phpstan/phpstan": "^2.0"
     },
     "autoload": {
