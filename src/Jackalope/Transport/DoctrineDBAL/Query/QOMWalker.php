@@ -463,9 +463,19 @@ class QOMWalker
             throw new NotImplementedException('Expected full text search expression to be of type Literal, but got '.get_class($expression));
         }
 
+        if (null === $constraint->getPropertyName()) {
+            return sprintf('%s LIKE %s',
+                $this->sqlXpathExtractValueWithNullProperty($this->getTableAlias($constraint->getSelectorName())),
+                $this->conn->quote('%' . $expression->getLiteralValue() . '%')
+            );
+        }
+
         return sprintf('%s LIKE %s',
-            $this->sqlXpathExtractValue($this->getTableAlias($constraint->getSelectorName()), $constraint->getPropertyName()),
-            $this->conn->quote('%'.$expression->getLiteralValue().'%')
+            $this->sqlXpathExtractValue(
+                $this->getTableAlias($constraint->getSelectorName()),
+                $constraint->getPropertyName()
+            ),
+            $this->conn->quote('%' . $expression->getLiteralValue() . '%')
         );
     }
 
@@ -839,6 +849,29 @@ class QOMWalker
         }
 
         throw new NotImplementedException(sprintf("Xpath evaluations cannot be executed with '%s' yet.", $this->platform->getName()));
+    }
+
+    private function sqlXpathExtractValueWithNullProperty(string $alias): string
+    {
+        if ($this->platform instanceof AbstractMySQLPlatform) {
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:value')", $alias);
+        }
+
+        if ($this->platform instanceof PostgreSQL94Platform || $this->platform instanceof PostgreSQLPlatform) {
+            return sprintf(
+                "(xpath('/sv:value/text()', CAST(%s.props AS xml), %s))[1]::text",
+                $alias,
+                $this->sqlXpathPostgreSQLNamespaces()
+            );
+        }
+
+        if ($this->platform instanceof SqlitePlatform) {
+            return sprintf("EXTRACTVALUE(%s.props, '//sv:value')", $alias);
+        }
+
+        throw new NotImplementedException(
+            sprintf("Xpath evaluations cannot be executed with '%s' yet.", $this->platform->getName())
+        );
     }
 
     private function sqlXpathExtractNumValue(string $alias, string $property): string
